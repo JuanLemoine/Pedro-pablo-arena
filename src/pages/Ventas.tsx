@@ -18,6 +18,7 @@ interface Venta {
   cantidadM3: number;
   valorTotal: number;
   fuente: string;
+  concepto?: string;
 }
 
 interface VentaForm {
@@ -27,6 +28,7 @@ interface VentaForm {
   cantidadM3: string;
   valorTotal: string;
   fuente: string;
+  concepto: string;
 }
 
 const ventasIniciales: Venta[] = [
@@ -43,6 +45,7 @@ const emptyForm: VentaForm = {
   cantidadM3: '',
   valorTotal: '',
   fuente: '',
+  concepto: '',
 };
 
 const Ventas = () => {
@@ -95,6 +98,7 @@ const Ventas = () => {
       cantidadM3: parseFloat(venta.cantidadM3),
       valorTotal: parseFloat(venta.valorTotal),
       fuente: venta.fuente,
+      concepto: venta.concepto || undefined,
     }));
 
     setVentas([...nuevasVentas, ...ventas]);
@@ -141,19 +145,20 @@ const Ventas = () => {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Encabezados de columnas */}
-              <div className="hidden lg:grid lg:grid-cols-7 gap-3 text-sm font-medium text-muted-foreground pb-2 border-b">
+              <div className="hidden lg:grid lg:grid-cols-8 gap-3 text-sm font-medium text-muted-foreground pb-2 border-b">
                 <div>Sílice *</div>
                 <div>N° Recibo *</div>
                 <div>Placa Volqueta *</div>
                 <div>Cantidad (m³) *</div>
                 <div>Valor Total ($) *</div>
                 <div>Fuente *</div>
+                <div>Concepto</div>
                 <div></div>
               </div>
 
               {/* Filas de ventas */}
               {ventasEnCurso.map((venta, index) => (
-                <div key={index} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-3 p-3 bg-muted/30 rounded-lg">
+                <div key={index} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-8 gap-3 p-3 bg-muted/30 rounded-lg">
                   <div className="space-y-1">
                     <Label className="lg:hidden text-xs">Sílice *</Label>
                     <Select
@@ -223,6 +228,15 @@ const Ventas = () => {
                         <SelectItem value="Otro">Otro</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <Label className="lg:hidden text-xs">Concepto</Label>
+                    <Input
+                      placeholder="Opcional"
+                      value={venta.concepto}
+                      onChange={(e) => actualizarVenta(index, 'concepto', e.target.value)}
+                    />
                   </div>
                   
                   <div className="flex items-end">
@@ -298,6 +312,7 @@ const Ventas = () => {
                   <TableHead className="text-right">Cantidad (m³)</TableHead>
                   <TableHead className="text-right">Valor Total</TableHead>
                   <TableHead>Fuente</TableHead>
+                  <TableHead>Concepto</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -314,6 +329,7 @@ const Ventas = () => {
                         {venta.fuente}
                       </Badge>
                     </TableCell>
+                    <TableCell className="text-muted-foreground">{venta.concepto || '-'}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
