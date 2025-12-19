@@ -4,87 +4,117 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Search, FileText } from 'lucide-react';
+import { Plus, Search, FileText, Trash2, Save } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Venta {
   id: number;
   fecha: string;
-  cliente: string;
-  producto: string;
-  cantidad: number;
-  precioUnitario: number;
-  total: number;
-  estado: 'pendiente' | 'completado' | 'cancelado';
+  silice: 'A' | 'B';
+  recibo: string;
+  placa: string;
+  cantidadM3: number;
+  valorTotal: number;
+  fuente: string;
+}
+
+interface VentaForm {
+  silice: 'A' | 'B' | '';
+  recibo: string;
+  placa: string;
+  cantidadM3: string;
+  valorTotal: string;
+  fuente: string;
 }
 
 const ventasIniciales: Venta[] = [
-  { id: 1, fecha: '2024-01-15', cliente: 'Constructora ABC', producto: 'Arena Fina', cantidad: 50, precioUnitario: 25, total: 1250, estado: 'completado' },
-  { id: 2, fecha: '2024-01-14', cliente: 'Obras del Norte', producto: 'Arena Gruesa', cantidad: 80, precioUnitario: 22, total: 1760, estado: 'completado' },
-  { id: 3, fecha: '2024-01-14', cliente: 'Pavimentos SA', producto: 'Arena Fina', cantidad: 120, precioUnitario: 25, total: 3000, estado: 'pendiente' },
-  { id: 4, fecha: '2024-01-13', cliente: 'Cliente Particular', producto: 'Arena Gruesa', cantidad: 10, precioUnitario: 28, total: 280, estado: 'completado' },
+  { id: 1, fecha: '2024-01-15', silice: 'A', recibo: '001', placa: 'ABC-123', cantidadM3: 12, valorTotal: 360000, fuente: 'Zaranda' },
+  { id: 2, fecha: '2024-01-14', silice: 'B', recibo: '002', placa: 'XYZ-789', cantidadM3: 8, valorTotal: 240000, fuente: 'Zaranda' },
+  { id: 3, fecha: '2024-01-14', silice: 'A', recibo: '003', placa: 'DEF-456', cantidadM3: 15, valorTotal: 450000, fuente: 'Otro' },
+  { id: 4, fecha: '2024-01-13', silice: 'B', recibo: '004', placa: 'GHI-321', cantidadM3: 10, valorTotal: 300000, fuente: 'Zaranda' },
 ];
+
+const emptyForm: VentaForm = {
+  silice: '',
+  recibo: '',
+  placa: '',
+  cantidadM3: '',
+  valorTotal: '',
+  fuente: '',
+};
 
 const Ventas = () => {
   const [ventas, setVentas] = useState<Venta[]>(ventasIniciales);
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [formData, setFormData] = useState({
-    cliente: '',
-    producto: '',
-    cantidad: '',
-    precioUnitario: '',
-    notas: '',
-  });
+  const [ventasEnCurso, setVentasEnCurso] = useState<VentaForm[]>([{ ...emptyForm }]);
+
+  const agregarFilaVenta = () => {
+    setVentasEnCurso([...ventasEnCurso, { ...emptyForm }]);
+  };
+
+  const eliminarFilaVenta = (index: number) => {
+    if (ventasEnCurso.length > 1) {
+      setVentasEnCurso(ventasEnCurso.filter((_, i) => i !== index));
+    }
+  };
+
+  const actualizarVenta = (index: number, campo: keyof VentaForm, valor: string) => {
+    const nuevasVentas = [...ventasEnCurso];
+    nuevasVentas[index] = { ...nuevasVentas[index], [campo]: valor };
+    setVentasEnCurso(nuevasVentas);
+  };
+
+  const validarVenta = (venta: VentaForm): boolean => {
+    return !!(venta.silice && venta.recibo && venta.placa && venta.cantidadM3 && venta.valorTotal && venta.fuente);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.cliente || !formData.producto || !formData.cantidad || !formData.precioUnitario) {
-      toast.error('Por favor complete todos los campos requeridos');
+    const ventasValidas = ventasEnCurso.filter(validarVenta);
+    
+    if (ventasValidas.length === 0) {
+      toast.error('Por favor complete todos los campos requeridos en al menos una venta');
       return;
     }
 
-    const cantidad = parseFloat(formData.cantidad);
-    const precioUnitario = parseFloat(formData.precioUnitario);
+    const ventasInvalidas = ventasEnCurso.length - ventasValidas.length;
+    if (ventasInvalidas > 0) {
+      toast.warning(`${ventasInvalidas} venta(s) no fueron registradas por datos incompletos`);
+    }
 
-    const nuevaVenta: Venta = {
-      id: ventas.length + 1,
+    const nuevasVentas: Venta[] = ventasValidas.map((venta, index) => ({
+      id: ventas.length + index + 1,
       fecha: new Date().toISOString().split('T')[0],
-      cliente: formData.cliente,
-      producto: formData.producto,
-      cantidad,
-      precioUnitario,
-      total: cantidad * precioUnitario,
-      estado: 'pendiente',
-    };
+      silice: venta.silice as 'A' | 'B',
+      recibo: venta.recibo,
+      placa: venta.placa.toUpperCase(),
+      cantidadM3: parseFloat(venta.cantidadM3),
+      valorTotal: parseFloat(venta.valorTotal),
+      fuente: venta.fuente,
+    }));
 
-    setVentas([nuevaVenta, ...ventas]);
-    setFormData({ cliente: '', producto: '', cantidad: '', precioUnitario: '', notas: '' });
+    setVentas([...nuevasVentas, ...ventas]);
+    setVentasEnCurso([{ ...emptyForm }]);
     setShowForm(false);
-    toast.success('Venta registrada exitosamente');
+    toast.success(`${ventasValidas.length} venta(s) registrada(s) exitosamente`);
   };
 
   const filteredVentas = ventas.filter(venta =>
-    venta.cliente.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    venta.producto.toLowerCase().includes(searchTerm.toLowerCase())
+    venta.recibo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    venta.placa.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    venta.fuente.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const getEstadoBadge = (estado: Venta['estado']) => {
+  const getSiliceBadge = (silice: 'A' | 'B') => {
     const variants = {
-      completado: 'bg-green-100 text-green-700 border-green-200',
-      pendiente: 'bg-amber-100 text-amber-700 border-amber-200',
-      cancelado: 'bg-red-100 text-red-700 border-red-200',
+      A: 'bg-blue-100 text-blue-700 border-blue-200',
+      B: 'bg-purple-100 text-purple-700 border-purple-200',
     };
-    const labels = {
-      completado: 'Completado',
-      pendiente: 'Pendiente',
-      cancelado: 'Cancelado',
-    };
-    return <Badge variant="outline" className={variants[estado]}>{labels[estado]}</Badge>;
+    return <Badge variant="outline" className={variants[silice]}>Sílice {silice}</Badge>;
   };
 
   return (
@@ -93,7 +123,7 @@ const Ventas = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-display font-bold text-foreground">Ventas</h1>
-          <p className="text-muted-foreground mt-1">Gestiona y registra las ventas de arena</p>
+          <p className="text-muted-foreground mt-1">Registra las ventas de sílice</p>
         </div>
         <Button onClick={() => setShowForm(!showForm)} className="gap-2">
           <Plus className="h-4 w-4" />
@@ -105,77 +135,129 @@ const Ventas = () => {
       {showForm && (
         <Card className="shadow-card animate-slide-up border-primary/20">
           <CardHeader>
-            <CardTitle className="text-lg">Registrar Nueva Venta</CardTitle>
-            <CardDescription>Complete los datos de la venta</CardDescription>
+            <CardTitle className="text-lg">Registrar Ventas</CardTitle>
+            <CardDescription>Puede agregar múltiples ventas a la vez</CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="cliente">Cliente *</Label>
-                <Input
-                  id="cliente"
-                  placeholder="Nombre del cliente"
-                  value={formData.cliente}
-                  onChange={(e) => setFormData({ ...formData, cliente: e.target.value })}
-                />
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Encabezados de columnas */}
+              <div className="hidden lg:grid lg:grid-cols-7 gap-3 text-sm font-medium text-muted-foreground pb-2 border-b">
+                <div>Sílice *</div>
+                <div>N° Recibo *</div>
+                <div>Placa Volqueta *</div>
+                <div>Cantidad (m³) *</div>
+                <div>Valor Total ($) *</div>
+                <div>Fuente *</div>
+                <div></div>
               </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="producto">Producto *</Label>
-                <Select
-                  value={formData.producto}
-                  onValueChange={(value) => setFormData({ ...formData, producto: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccione producto" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Arena Fina">Arena Fina</SelectItem>
-                    <SelectItem value="Arena Gruesa">Arena Gruesa</SelectItem>
-                    <SelectItem value="Arena Media">Arena Media</SelectItem>
-                    <SelectItem value="Grava">Grava</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="cantidad">Cantidad (m³) *</Label>
-                <Input
-                  id="cantidad"
-                  type="number"
-                  placeholder="0"
-                  value={formData.cantidad}
-                  onChange={(e) => setFormData({ ...formData, cantidad: e.target.value })}
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="precio">Precio Unitario ($) *</Label>
-                <Input
-                  id="precio"
-                  type="number"
-                  placeholder="0.00"
-                  value={formData.precioUnitario}
-                  onChange={(e) => setFormData({ ...formData, precioUnitario: e.target.value })}
-                />
-              </div>
-              
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="notas">Notas adicionales</Label>
-                <Textarea
-                  id="notas"
-                  placeholder="Observaciones..."
-                  value={formData.notas}
-                  onChange={(e) => setFormData({ ...formData, notas: e.target.value })}
-                  rows={3}
-                />
-              </div>
-              
-              <div className="md:col-span-2 flex gap-3 justify-end">
-                <Button type="button" variant="outline" onClick={() => setShowForm(false)}>
-                  Cancelar
+
+              {/* Filas de ventas */}
+              {ventasEnCurso.map((venta, index) => (
+                <div key={index} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-3 p-3 bg-muted/30 rounded-lg">
+                  <div className="space-y-1">
+                    <Label className="lg:hidden text-xs">Sílice *</Label>
+                    <Select
+                      value={venta.silice}
+                      onValueChange={(value) => actualizarVenta(index, 'silice', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Tipo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="A">Sílice A</SelectItem>
+                        <SelectItem value="B">Sílice B</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <Label className="lg:hidden text-xs">N° Recibo *</Label>
+                    <Input
+                      placeholder="001"
+                      value={venta.recibo}
+                      onChange={(e) => actualizarVenta(index, 'recibo', e.target.value)}
+                    />
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <Label className="lg:hidden text-xs">Placa Volqueta *</Label>
+                    <Input
+                      placeholder="ABC-123"
+                      value={venta.placa}
+                      onChange={(e) => actualizarVenta(index, 'placa', e.target.value.toUpperCase())}
+                      className="uppercase"
+                    />
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <Label className="lg:hidden text-xs">Cantidad (m³) *</Label>
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      value={venta.cantidadM3}
+                      onChange={(e) => actualizarVenta(index, 'cantidadM3', e.target.value)}
+                    />
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <Label className="lg:hidden text-xs">Valor Total ($) *</Label>
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      value={venta.valorTotal}
+                      onChange={(e) => actualizarVenta(index, 'valorTotal', e.target.value)}
+                    />
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <Label className="lg:hidden text-xs">Fuente *</Label>
+                    <Select
+                      value={venta.fuente}
+                      onValueChange={(value) => actualizarVenta(index, 'fuente', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Fuente" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Zaranda">Zaranda</SelectItem>
+                        <SelectItem value="Otro">Otro</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="flex items-end">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => eliminarFilaVenta(index)}
+                      disabled={ventasEnCurso.length === 1}
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+
+              {/* Botones de acción */}
+              <div className="flex flex-col sm:flex-row gap-3 justify-between pt-4 border-t">
+                <Button type="button" variant="outline" onClick={agregarFilaVenta} className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Agregar otra venta
                 </Button>
-                <Button type="submit">Guardar Venta</Button>
+                <div className="flex gap-3">
+                  <Button type="button" variant="outline" onClick={() => {
+                    setShowForm(false);
+                    setVentasEnCurso([{ ...emptyForm }]);
+                  }}>
+                    Cancelar
+                  </Button>
+                  <Button type="submit" className="gap-2">
+                    <Save className="h-4 w-4" />
+                    Guardar {ventasEnCurso.length > 1 ? `(${ventasEnCurso.length})` : 'Venta'}
+                  </Button>
+                </div>
               </div>
             </form>
           </CardContent>
@@ -196,7 +278,7 @@ const Ventas = () => {
             <div className="relative w-full sm:w-64">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar ventas..."
+                placeholder="Buscar por recibo, placa..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-9"
@@ -210,24 +292,28 @@ const Ventas = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Fecha</TableHead>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead>Producto</TableHead>
-                  <TableHead className="text-right">Cantidad</TableHead>
-                  <TableHead className="text-right">Precio Unit.</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
-                  <TableHead>Estado</TableHead>
+                  <TableHead>Sílice</TableHead>
+                  <TableHead>N° Recibo</TableHead>
+                  <TableHead>Placa</TableHead>
+                  <TableHead className="text-right">Cantidad (m³)</TableHead>
+                  <TableHead className="text-right">Valor Total</TableHead>
+                  <TableHead>Fuente</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredVentas.map((venta) => (
                   <TableRow key={venta.id} className="hover:bg-muted/30">
                     <TableCell className="font-medium">{venta.fecha}</TableCell>
-                    <TableCell>{venta.cliente}</TableCell>
-                    <TableCell>{venta.producto}</TableCell>
-                    <TableCell className="text-right">{venta.cantidad} m³</TableCell>
-                    <TableCell className="text-right">${venta.precioUnitario}</TableCell>
-                    <TableCell className="text-right font-semibold">${venta.total.toLocaleString()}</TableCell>
-                    <TableCell>{getEstadoBadge(venta.estado)}</TableCell>
+                    <TableCell>{getSiliceBadge(venta.silice)}</TableCell>
+                    <TableCell>{venta.recibo}</TableCell>
+                    <TableCell className="font-mono">{venta.placa}</TableCell>
+                    <TableCell className="text-right">{venta.cantidadM3} m³</TableCell>
+                    <TableCell className="text-right font-semibold">${venta.valorTotal.toLocaleString()}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={venta.fuente === 'Zaranda' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-gray-100 text-gray-700 border-gray-200'}>
+                        {venta.fuente}
+                      </Badge>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
