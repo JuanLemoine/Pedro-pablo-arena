@@ -225,7 +225,8 @@ const Ventas = () => {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="Zaranda">Zaranda</SelectItem>
-                        <SelectItem value="Otro">Otro</SelectItem>
+                        <SelectItem value="Trituradora">Trituradora</SelectItem>
+                        <SelectItem value="Clasificadora">Clasificadora</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
