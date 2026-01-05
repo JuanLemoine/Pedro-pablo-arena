@@ -169,8 +169,8 @@ const Ventas = () => {
                         <SelectValue placeholder="Tipo" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="A">Sílice A</SelectItem>
-                        <SelectItem value="B">Sílice B</SelectItem>
+                        <SelectItem value="Silice A - Peña">Silice A - Peña</SelectItem>
+                        <SelectItem value="Silice B - Pozo">Silice B - Pozo</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
