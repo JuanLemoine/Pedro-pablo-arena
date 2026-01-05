@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Search, FileText, Trash2, Save } from 'lucide-react';
+import { Plus, Search, FileText, Trash2, Save, Warehouse } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Venta {
@@ -49,6 +50,7 @@ const emptyForm: VentaForm = {
 };
 
 const Ventas = () => {
+  const navigate = useNavigate();
   const [ventas, setVentas] = useState<Venta[]>(ventasIniciales);
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -129,10 +131,16 @@ const Ventas = () => {
           <h1 className="text-3xl font-display font-bold text-foreground">Ventas</h1>
           <p className="text-muted-foreground mt-1">Registra las ventas de sílice</p>
         </div>
-        <Button onClick={() => setShowForm(!showForm)} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Nueva Venta
-        </Button>
+        <div className="flex gap-3">
+          <Button variant="outline" onClick={() => navigate('/acopio')} className="gap-2">
+            <Warehouse className="h-4 w-4" />
+            Acopio
+          </Button>
+          <Button onClick={() => setShowForm(!showForm)} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Nueva Venta
+          </Button>
+        </div>
       </div>
 
       {/* Form */}
