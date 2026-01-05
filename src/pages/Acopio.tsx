@@ -332,7 +332,6 @@ const Acopio = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Fecha</TableHead>
                   <TableHead>Fuente</TableHead>
                   <TableHead>Sílice</TableHead>
                   <TableHead>Placa</TableHead>
@@ -342,7 +341,6 @@ const Acopio = () => {
               <TableBody>
                 {filteredAcopios.map((acopio) => (
                   <TableRow key={acopio.id} className="hover:bg-muted/30">
-                    <TableCell className="font-medium">{acopio.fecha}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className={getFuenteBadgeClass(acopio.fuente)}>
                         {acopio.fuente}
