@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Search, ArrowLeftRight, ArrowUp, ArrowDown, Mountain, Truck } from 'lucide-react';
+import { Calendar } from '@/components/ui/calendar';
+import { Plus, Search, ArrowLeftRight, Mountain, Truck, CalendarIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Command,
@@ -65,8 +68,10 @@ const Movimientos = () => {
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [openPlaca, setOpenPlaca] = useState(false);
+  const [openCalendar, setOpenCalendar] = useState(false);
   const [placaSearch, setPlacaSearch] = useState('');
   const [formData, setFormData] = useState({
+    fecha: new Date(),
     mina: '',
     silice: '',
     placa: '',
@@ -89,7 +94,7 @@ const Movimientos = () => {
 
     const nuevoMovimiento: Movimiento = {
       id: movimientos.length + 1,
-      fecha: new Date().toISOString().split('T')[0],
+      fecha: format(formData.fecha, 'yyyy-MM-dd'),
       mina: formData.mina,
       silice: formData.silice,
       placa: formData.placa,
@@ -99,7 +104,7 @@ const Movimientos = () => {
     };
 
     setMovimientos([nuevoMovimiento, ...movimientos]);
-    setFormData({ mina: '', silice: '', placa: '', origen: '', destino: '', notas: '' });
+    setFormData({ fecha: new Date(), mina: '', silice: '', placa: '', origen: '', destino: '', notas: '' });
     setPlacaSearch('');
     setShowForm(false);
     toast.success('Movimiento registrado exitosamente');
@@ -222,6 +227,35 @@ const Movimientos = () => {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="fecha">Fecha *</Label>
+                <Popover open={openCalendar} onOpenChange={setOpenCalendar}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start text-left font-normal"
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {format(formData.fecha, "PPP", { locale: es })}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={formData.fecha}
+                      onSelect={(date) => {
+                        if (date) {
+                          setFormData({ ...formData, fecha: date });
+                          setOpenCalendar(false);
+                        }
+                      }}
+                      initialFocus
+                      className="pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="mina">Mina *</Label>
                 <Select

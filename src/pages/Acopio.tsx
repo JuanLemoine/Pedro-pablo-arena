@@ -1,4 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,9 +8,10 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Calendar } from '@/components/ui/calendar';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Plus, Search, Truck, Trash2, Save, Check, ChevronsUpDown, ArrowLeft } from 'lucide-react';
+import { Plus, Search, Truck, Trash2, Save, Check, ChevronsUpDown, ArrowLeft, CalendarIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -31,6 +34,7 @@ interface Acopio {
 }
 
 interface AcopioForm {
+  fecha: Date;
   fuente: string;
   silice: string;
   placa: string;
@@ -43,34 +47,38 @@ const acopiosIniciales: Acopio[] = [
   { id: 3, fecha: '2024-01-14', fuente: 'Clasificadora', silice: 'Silice A - Peña', placa: 'ELJ809', cantidadViajes: 7 },
 ];
 
-const emptyForm: AcopioForm = {
+const getEmptyForm = (): AcopioForm => ({
+  fecha: new Date(),
   fuente: '',
   silice: '',
   placa: '',
   cantidadViajes: '',
-};
+});
 
 const Acopio = () => {
   const navigate = useNavigate();
   const [acopios, setAcopios] = useState<Acopio[]>(acopiosIniciales);
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [acopiosEnCurso, setAcopiosEnCurso] = useState<AcopioForm[]>([{ ...emptyForm }]);
+  const [acopiosEnCurso, setAcopiosEnCurso] = useState<AcopioForm[]>([getEmptyForm()]);
   const [openPopovers, setOpenPopovers] = useState<boolean[]>([false]);
+  const [openCalendars, setOpenCalendars] = useState<boolean[]>([false]);
 
   const agregarFilaAcopio = () => {
-    setAcopiosEnCurso([...acopiosEnCurso, { ...emptyForm }]);
+    setAcopiosEnCurso([...acopiosEnCurso, getEmptyForm()]);
     setOpenPopovers([...openPopovers, false]);
+    setOpenCalendars([...openCalendars, false]);
   };
 
   const eliminarFilaAcopio = (index: number) => {
     if (acopiosEnCurso.length > 1) {
       setAcopiosEnCurso(acopiosEnCurso.filter((_, i) => i !== index));
       setOpenPopovers(openPopovers.filter((_, i) => i !== index));
+      setOpenCalendars(openCalendars.filter((_, i) => i !== index));
     }
   };
 
-  const actualizarAcopio = (index: number, campo: keyof AcopioForm, valor: string) => {
+  const actualizarAcopio = (index: number, campo: keyof AcopioForm, valor: string | Date) => {
     const nuevosAcopios = [...acopiosEnCurso];
     nuevosAcopios[index] = { ...nuevosAcopios[index], [campo]: valor };
     setAcopiosEnCurso(nuevosAcopios);
@@ -80,6 +88,12 @@ const Acopio = () => {
     const newOpenPopovers = [...openPopovers];
     newOpenPopovers[index] = open;
     setOpenPopovers(newOpenPopovers);
+  };
+
+  const setCalendarOpen = (index: number, open: boolean) => {
+    const newOpenCalendars = [...openCalendars];
+    newOpenCalendars[index] = open;
+    setOpenCalendars(newOpenCalendars);
   };
 
   const validarAcopio = (acopio: AcopioForm): boolean => {
@@ -103,7 +117,7 @@ const Acopio = () => {
 
     const nuevosAcopios: Acopio[] = acopiosValidos.map((acopio, index) => ({
       id: acopios.length + index + 1,
-      fecha: new Date().toISOString().split('T')[0],
+      fecha: format(acopio.fecha, 'yyyy-MM-dd'),
       fuente: acopio.fuente,
       silice: acopio.silice,
       placa: acopio.placa,
@@ -111,8 +125,9 @@ const Acopio = () => {
     }));
 
     setAcopios([...nuevosAcopios, ...acopios]);
-    setAcopiosEnCurso([{ ...emptyForm }]);
+    setAcopiosEnCurso([getEmptyForm()]);
     setOpenPopovers([false]);
+    setOpenCalendars([false]);
     setShowForm(false);
     toast.success(`${acopiosValidos.length} registro(s) de acopio guardado(s) exitosamente`);
   };
@@ -165,7 +180,8 @@ const Acopio = () => {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Encabezados de columnas */}
-              <div className="hidden lg:grid lg:grid-cols-5 gap-3 text-sm font-medium text-muted-foreground pb-2 border-b">
+              <div className="hidden lg:grid lg:grid-cols-6 gap-3 text-sm font-medium text-muted-foreground pb-2 border-b">
+                <div>Fecha *</div>
                 <div>Fuente *</div>
                 <div>Sílice *</div>
                 <div>Placa Volqueta *</div>
@@ -175,7 +191,39 @@ const Acopio = () => {
 
               {/* Filas de acopios */}
               {acopiosEnCurso.map((acopio, index) => (
-                <div key={index} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 p-3 bg-muted/30 rounded-lg">
+                <div key={index} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 p-3 bg-muted/30 rounded-lg">
+                  <div className="space-y-1">
+                    <Label className="lg:hidden text-xs">Fecha *</Label>
+                    <Popover open={openCalendars[index]} onOpenChange={(open) => setCalendarOpen(index, open)}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !acopio.fecha && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {format(acopio.fecha, "dd/MM/yy", { locale: es })}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={acopio.fecha}
+                          onSelect={(date) => {
+                            if (date) {
+                              actualizarAcopio(index, 'fecha', date);
+                              setCalendarOpen(index, false);
+                            }
+                          }}
+                          initialFocus
+                          className="pointer-events-auto"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  
                   <div className="space-y-1">
                     <Label className="lg:hidden text-xs">Fuente *</Label>
                     <Select
@@ -287,10 +335,11 @@ const Acopio = () => {
                   Agregar otro registro
                 </Button>
                 <div className="flex gap-3">
-                  <Button type="button" variant="outline" onClick={() => {
+                <Button type="button" variant="outline" onClick={() => {
                     setShowForm(false);
-                    setAcopiosEnCurso([{ ...emptyForm }]);
+                    setAcopiosEnCurso([getEmptyForm()]);
                     setOpenPopovers([false]);
+                    setOpenCalendars([false]);
                   }}>
                     Cancelar
                   </Button>
