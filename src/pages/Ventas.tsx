@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,8 +9,11 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Search, FileText, Trash2, Save, Warehouse } from 'lucide-react';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Plus, Search, FileText, Trash2, Save, Warehouse, CalendarIcon } from 'lucide-react';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 interface Venta {
   id: number;
@@ -23,6 +28,7 @@ interface Venta {
 }
 
 interface VentaForm {
+  fecha: Date;
   silice: 'A' | 'B' | '';
   recibo: string;
   placa: string;
@@ -39,7 +45,8 @@ const ventasIniciales: Venta[] = [
   { id: 4, fecha: '2024-01-13', silice: 'B', recibo: '004', placa: 'GHI-321', cantidadM3: 10, valorTotal: 300000, fuente: 'Zaranda' },
 ];
 
-const emptyForm: VentaForm = {
+const getEmptyForm = (): VentaForm => ({
+  fecha: new Date(),
   silice: '',
   recibo: '',
   placa: '',
@@ -47,29 +54,38 @@ const emptyForm: VentaForm = {
   valorTotal: '',
   fuente: '',
   concepto: '',
-};
+});
 
 const Ventas = () => {
   const navigate = useNavigate();
   const [ventas, setVentas] = useState<Venta[]>(ventasIniciales);
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [ventasEnCurso, setVentasEnCurso] = useState<VentaForm[]>([{ ...emptyForm }]);
+  const [ventasEnCurso, setVentasEnCurso] = useState<VentaForm[]>([getEmptyForm()]);
+  const [openCalendars, setOpenCalendars] = useState<boolean[]>([false]);
 
   const agregarFilaVenta = () => {
-    setVentasEnCurso([...ventasEnCurso, { ...emptyForm }]);
+    setVentasEnCurso([...ventasEnCurso, getEmptyForm()]);
+    setOpenCalendars([...openCalendars, false]);
   };
 
   const eliminarFilaVenta = (index: number) => {
     if (ventasEnCurso.length > 1) {
       setVentasEnCurso(ventasEnCurso.filter((_, i) => i !== index));
+      setOpenCalendars(openCalendars.filter((_, i) => i !== index));
     }
   };
 
-  const actualizarVenta = (index: number, campo: keyof VentaForm, valor: string) => {
+  const actualizarVenta = (index: number, campo: keyof VentaForm, valor: string | Date) => {
     const nuevasVentas = [...ventasEnCurso];
     nuevasVentas[index] = { ...nuevasVentas[index], [campo]: valor };
     setVentasEnCurso(nuevasVentas);
+  };
+
+  const setCalendarOpen = (index: number, open: boolean) => {
+    const newOpenCalendars = [...openCalendars];
+    newOpenCalendars[index] = open;
+    setOpenCalendars(newOpenCalendars);
   };
 
   const validarVenta = (venta: VentaForm): boolean => {
@@ -93,7 +109,7 @@ const Ventas = () => {
 
     const nuevasVentas: Venta[] = ventasValidas.map((venta, index) => ({
       id: ventas.length + index + 1,
-      fecha: new Date().toISOString().split('T')[0],
+      fecha: format(venta.fecha, 'yyyy-MM-dd'),
       silice: venta.silice as 'A' | 'B',
       recibo: venta.recibo,
       placa: venta.placa.toUpperCase(),
@@ -104,7 +120,8 @@ const Ventas = () => {
     }));
 
     setVentas([...nuevasVentas, ...ventas]);
-    setVentasEnCurso([{ ...emptyForm }]);
+    setVentasEnCurso([getEmptyForm()]);
+    setOpenCalendars([false]);
     setShowForm(false);
     toast.success(`${ventasValidas.length} venta(s) registrada(s) exitosamente`);
   };
@@ -153,7 +170,8 @@ const Ventas = () => {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Encabezados de columnas */}
-              <div className="hidden lg:grid lg:grid-cols-8 gap-3 text-sm font-medium text-muted-foreground pb-2 border-b">
+              <div className="hidden lg:grid lg:grid-cols-9 gap-3 text-sm font-medium text-muted-foreground pb-2 border-b">
+                <div>Fecha *</div>
                 <div>Sílice *</div>
                 <div>N° Recibo *</div>
                 <div>Placa Volqueta *</div>
@@ -166,7 +184,39 @@ const Ventas = () => {
 
               {/* Filas de ventas */}
               {ventasEnCurso.map((venta, index) => (
-                <div key={index} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-8 gap-3 p-3 bg-muted/30 rounded-lg">
+                <div key={index} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-9 gap-3 p-3 bg-muted/30 rounded-lg">
+                  <div className="space-y-1">
+                    <Label className="lg:hidden text-xs">Fecha *</Label>
+                    <Popover open={openCalendars[index]} onOpenChange={(open) => setCalendarOpen(index, open)}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !venta.fecha && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {format(venta.fecha, "dd/MM/yy", { locale: es })}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={venta.fecha}
+                          onSelect={(date) => {
+                            if (date) {
+                              actualizarVenta(index, 'fecha', date);
+                              setCalendarOpen(index, false);
+                            }
+                          }}
+                          initialFocus
+                          className="pointer-events-auto"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  
                   <div className="space-y-1">
                     <Label className="lg:hidden text-xs">Sílice *</Label>
                     <Select
@@ -270,9 +320,10 @@ const Ventas = () => {
                   Agregar otra venta
                 </Button>
                 <div className="flex gap-3">
-                  <Button type="button" variant="outline" onClick={() => {
+                <Button type="button" variant="outline" onClick={() => {
                     setShowForm(false);
-                    setVentasEnCurso([{ ...emptyForm }]);
+                    setVentasEnCurso([getEmptyForm()]);
+                    setOpenCalendars([false]);
                   }}>
                     Cancelar
                   </Button>
