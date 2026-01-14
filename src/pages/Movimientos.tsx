@@ -50,9 +50,9 @@ const PLACAS = [
   'IYB806', 'XKJ802', 'SNE194', 'SPM693', 'MBG720', 'XFJ040', 'SBE944', 'AQJ946'
 ];
 
-const ORIGENES = ['Residuos', 'Punto de excavación'];
+const ORIGENES = ['Zaranda', 'Punto de excavación'];
 
-const DESTINOS = ['Trituradora', 'Repaso', 'Clasificadora', 'Zaranda'];
+const DESTINOS = ['Trituradora', 'Clasificadora', 'Zaranda'];
 
 const movimientosIniciales: Movimiento[] = [
   { id: 1, fecha: '2024-01-15', mina: 'MINA ROZO', silice: 'Silice A - Peña', placa: 'SAB643', origen: 'Punto de excavación', destino: 'Trituradora', notas: 'Carga completa' },
@@ -139,9 +139,9 @@ const Movimientos = () => {
   };
 
   const getOrigenBadge = (origen: string) => {
-    const isResiduos = origen === 'Residuos';
+    const isZaranda = origen === 'Zaranda';
     return (
-      <Badge variant="outline" className={isResiduos ? 'bg-red-100 text-red-700 border-red-200' : 'bg-emerald-100 text-emerald-700 border-emerald-200'}>
+      <Badge variant="outline" className={isZaranda ? 'bg-yellow-100 text-yellow-700 border-yellow-200' : 'bg-emerald-100 text-emerald-700 border-emerald-200'}>
         {origen}
       </Badge>
     );
@@ -150,9 +150,8 @@ const Movimientos = () => {
   const getDestinoBadge = (destino: string) => {
     const colors: Record<string, string> = {
       'Trituradora': 'bg-slate-100 text-slate-700 border-slate-200',
-      'Repaso': 'bg-indigo-100 text-indigo-700 border-indigo-200',
       'Clasificadora': 'bg-teal-100 text-teal-700 border-teal-200',
-      'Zaranda': 'bg-yellow-100 text-yellow-700 border-yellow-200',
+      'Zaranda': 'bg-violet-100 text-violet-700 border-violet-200',
     };
     return (
       <Badge variant="outline" className={colors[destino] || 'bg-gray-100 text-gray-700'}>
