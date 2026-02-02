@@ -1,41 +1,90 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, Mountain } from 'lucide-react';
 import { toast } from 'sonner';
 
 const Login = () => {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [nombre, setNombre] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { login } = useAuth();
+  const { login, register, user, isLoading } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Si ya hay usuario, redirigir al dashboard
+  useEffect(() => {
+    if (!isLoading && user) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [user, isLoading, navigate]);
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!username.trim() || !password.trim()) {
-      toast.error('Por favor ingrese usuario y contraseña');
+    if (!email.trim() || !password.trim()) {
+      toast.error('Por favor ingrese email y contraseña');
       return;
     }
     
     setIsSubmitting(true);
     
-    const success = await login(username, password);
+    const result = await login(email, password);
     
-    if (success) {
+    if (result.success) {
       toast.success('¡Bienvenido!');
-      navigate('/dashboard');
+      // La redirección se hará automáticamente por el useEffect
     } else {
-      toast.error('Usuario o contraseña incorrectos');
+      toast.error(result.error || 'Email o contraseña incorrectos');
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!email.trim() || !password.trim() || !nombre.trim()) {
+      toast.error('Por favor complete todos los campos');
+      return;
+    }
+
+    if (password.length < 6) {
+      toast.error('La contraseña debe tener al menos 6 caracteres');
+      return;
+    }
+    
+    setIsSubmitting(true);
+    
+    const result = await register(email, password, nombre);
+    
+    if (result.success) {
+      if (result.error) {
+        // Mensaje informativo (como confirmar email)
+        toast.info(result.error);
+      } else {
+        toast.success('¡Cuenta creada exitosamente!');
+      }
+      // La redirección se hará automáticamente por el useEffect si hay sesión
+    } else {
+      toast.error(result.error || 'Error al crear cuenta');
     }
     
     setIsSubmitting(false);
   };
+
+  // Mostrar loading mientras se verifica si hay sesión
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center gradient-hero p-4">
@@ -59,59 +108,126 @@ const Login = () => {
           </div>
         </CardHeader>
         
-        <CardContent className="pt-6">
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="space-y-2">
-              <Label htmlFor="username" className="text-foreground font-medium">
-                Usuario
-              </Label>
-              <Input
-                id="username"
-                type="text"
-                placeholder="Ingrese su usuario"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="h-11 bg-background border-input focus:border-primary transition-colors"
-                disabled={isSubmitting}
-              />
-            </div>
+        <CardContent className="pt-4">
+          <Tabs defaultValue="login" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-4">
+              <TabsTrigger value="login">Iniciar Sesión</TabsTrigger>
+              <TabsTrigger value="register">Registrarse</TabsTrigger>
+            </TabsList>
             
-            <div className="space-y-2">
-              <Label htmlFor="password" className="text-foreground font-medium">
-                Contraseña
-              </Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="Ingrese su contraseña"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="h-11 bg-background border-input focus:border-primary transition-colors"
-                disabled={isSubmitting}
-              />
-            </div>
+            <TabsContent value="login">
+              <form onSubmit={handleLogin} className="space-y-5">
+                <div className="space-y-2">
+                  <Label htmlFor="email" className="text-foreground font-medium">
+                    Email
+                  </Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="correo@ejemplo.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="h-11 bg-background border-input focus:border-primary transition-colors"
+                    disabled={isSubmitting}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="password" className="text-foreground font-medium">
+                    Contraseña
+                  </Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="Ingrese su contraseña"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="h-11 bg-background border-input focus:border-primary transition-colors"
+                    disabled={isSubmitting}
+                  />
+                </div>
+                
+                <Button 
+                  type="submit" 
+                  className="w-full h-11 text-base font-medium"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Ingresando...
+                    </>
+                  ) : (
+                    'Ingresar'
+                  )}
+                </Button>
+              </form>
+            </TabsContent>
             
-            <Button 
-              type="submit" 
-              className="w-full h-11 text-base font-medium"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Ingresando...
-                </>
-              ) : (
-                'Ingresar'
-              )}
-            </Button>
-          </form>
-          
-          <div className="mt-6 p-4 rounded-lg bg-muted/50 border border-border">
-            <p className="text-xs text-muted-foreground text-center">
-              <strong>Demo:</strong> usuario: <code className="bg-background px-1 rounded">admin</code> / contraseña: <code className="bg-background px-1 rounded">admin123</code>
-            </p>
-          </div>
+            <TabsContent value="register">
+              <form onSubmit={handleRegister} className="space-y-5">
+                <div className="space-y-2">
+                  <Label htmlFor="reg-nombre" className="text-foreground font-medium">
+                    Nombre completo
+                  </Label>
+                  <Input
+                    id="reg-nombre"
+                    type="text"
+                    placeholder="Juan Pérez"
+                    value={nombre}
+                    onChange={(e) => setNombre(e.target.value)}
+                    className="h-11 bg-background border-input focus:border-primary transition-colors"
+                    disabled={isSubmitting}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="reg-email" className="text-foreground font-medium">
+                    Email
+                  </Label>
+                  <Input
+                    id="reg-email"
+                    type="email"
+                    placeholder="correo@ejemplo.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="h-11 bg-background border-input focus:border-primary transition-colors"
+                    disabled={isSubmitting}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="reg-password" className="text-foreground font-medium">
+                    Contraseña
+                  </Label>
+                  <Input
+                    id="reg-password"
+                    type="password"
+                    placeholder="Mínimo 6 caracteres"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="h-11 bg-background border-input focus:border-primary transition-colors"
+                    disabled={isSubmitting}
+                  />
+                </div>
+                
+                <Button 
+                  type="submit" 
+                  className="w-full h-11 text-base font-medium"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Creando cuenta...
+                    </>
+                  ) : (
+                    'Crear cuenta'
+                  )}
+                </Button>
+              </form>
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
     </div>

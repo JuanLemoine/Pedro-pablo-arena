@@ -9,29 +9,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Plus, Search, Truck, Trash2, Save, Check, ChevronsUpDown, ArrowLeft, CalendarIcon } from 'lucide-react';
+import { Plus, Search, Truck, Trash2, Save, Check, ChevronsUpDown, ArrowLeft, CalendarIcon, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-
-const PLACAS_EMPRESA = [
-  'SAB643', 'OAJ577', 'ELJ809', 'CQN427', 'ACJ359',
-  'FBH108', 'SBC690', 'SWQ244', 'WCS071', 'AAD005',
-  'XGJ399', 'SKH366', 'SVM306', 'SNZ091', 'XKJ180',
-  'ATA644', 'IYB806', 'XKJ802', 'SNE194', 'SPM693',
-  'MBG720', 'XFJ040', 'SBE944', 'AQJ946'
-];
-
-interface Acopio {
-  id: number;
-  fecha: string;
-  fuente: string;
-  silice: string;
-  placa: string;
-  cantidadViajes: number;
-}
+import { useAcopios, useCreateAcopios } from '@/hooks/useAcopios';
+import { usePlacas } from '@/hooks/useVolquetas';
+import { getCapacidadVolqueta, calcularM3Producidos } from '@/lib/volquetas';
 
 interface AcopioForm {
   fecha: Date;
@@ -40,12 +27,6 @@ interface AcopioForm {
   placa: string;
   cantidadViajes: string;
 }
-
-const acopiosIniciales: Acopio[] = [
-  { id: 1, fecha: '2024-01-15', fuente: 'Zaranda', silice: 'Silice A - Peña', placa: 'SAB643', cantidadViajes: 5 },
-  { id: 2, fecha: '2024-01-14', fuente: 'Trituradora', silice: 'Silice B - Pozo', placa: 'OAJ577', cantidadViajes: 3 },
-  { id: 3, fecha: '2024-01-14', fuente: 'Clasificadora', silice: 'Silice A - Peña', placa: 'ELJ809', cantidadViajes: 7 },
-];
 
 const getEmptyForm = (): AcopioForm => ({
   fecha: new Date(),
@@ -57,7 +38,10 @@ const getEmptyForm = (): AcopioForm => ({
 
 const Acopio = () => {
   const navigate = useNavigate();
-  const [acopios, setAcopios] = useState<Acopio[]>(acopiosIniciales);
+  const { data: acopios = [], isLoading, error } = useAcopios();
+  const { data: placas = [] } = usePlacas();
+  const createAcopios = useCreateAcopios();
+  
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [acopiosEnCurso, setAcopiosEnCurso] = useState<AcopioForm[]>([getEmptyForm()]);
@@ -100,7 +84,7 @@ const Acopio = () => {
     return !!(acopio.fuente && acopio.silice && acopio.placa && acopio.cantidadViajes);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     const acopiosValidos = acopiosEnCurso.filter(validarAcopio);
@@ -112,24 +96,25 @@ const Acopio = () => {
 
     const acopiosInvalidos = acopiosEnCurso.length - acopiosValidos.length;
     if (acopiosInvalidos > 0) {
-      toast.warning(`${acopiosInvalidos} registro(s) no fueron guardados por datos incompletos`);
+      toast.warning(`${acopiosInvalidos} registro(s) no serán guardados por datos incompletos`);
     }
 
-    const nuevosAcopios: Acopio[] = acopiosValidos.map((acopio, index) => ({
-      id: acopios.length + index + 1,
+    const nuevosAcopios = acopiosValidos.map((acopio) => ({
       fecha: format(acopio.fecha, 'yyyy-MM-dd'),
       fuente: acopio.fuente,
       silice: acopio.silice,
       placa: acopio.placa,
-      cantidadViajes: parseInt(acopio.cantidadViajes),
+      cantidad_viajes: parseInt(acopio.cantidadViajes),
     }));
 
-    setAcopios([...nuevosAcopios, ...acopios]);
-    setAcopiosEnCurso([getEmptyForm()]);
-    setOpenPopovers([false]);
-    setOpenCalendars([false]);
-    setShowForm(false);
-    toast.success(`${acopiosValidos.length} registro(s) de acopio guardado(s) exitosamente`);
+    createAcopios.mutate(nuevosAcopios, {
+      onSuccess: () => {
+        setAcopiosEnCurso([getEmptyForm()]);
+        setOpenPopovers([false]);
+        setOpenCalendars([false]);
+        setShowForm(false);
+      }
+    });
   };
 
   const filteredAcopios = acopios.filter(acopio =>
@@ -150,6 +135,14 @@ const Acopio = () => {
         return 'bg-gray-100 text-gray-700 border-gray-200';
     }
   };
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-destructive">Error al cargar acopios: {error.message}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -277,7 +270,7 @@ const Acopio = () => {
                           <CommandList>
                             <CommandEmpty>No se encontró la placa.</CommandEmpty>
                             <CommandGroup>
-                              {PLACAS_EMPRESA.map((placa) => (
+                              {placas.map((placa) => (
                                 <CommandItem
                                   key={placa}
                                   value={placa}
@@ -343,8 +336,12 @@ const Acopio = () => {
                   }}>
                     Cancelar
                   </Button>
-                  <Button type="submit" className="gap-2">
-                    <Save className="h-4 w-4" />
+                  <Button type="submit" className="gap-2" disabled={createAcopios.isPending}>
+                    {createAcopios.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Save className="h-4 w-4" />
+                    )}
                     Guardar {acopiosEnCurso.length > 1 ? `(${acopiosEnCurso.length})` : 'Registro'}
                   </Button>
                 </div>
@@ -352,6 +349,34 @@ const Acopio = () => {
             </form>
           </CardContent>
         </Card>
+      )}
+
+      {/* Resumen de producción */}
+      {!isLoading && acopios.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <Card className="shadow-card bg-amber-50 border-amber-200">
+            <CardContent className="p-4">
+              <p className="text-sm text-amber-700">Total Viajes</p>
+              <p className="text-2xl font-bold text-amber-800">
+                {acopios.reduce((sum, a) => sum + a.cantidad_viajes, 0)}
+              </p>
+            </CardContent>
+          </Card>
+          <Card className="shadow-card bg-blue-50 border-blue-200">
+            <CardContent className="p-4">
+              <p className="text-sm text-blue-700">m³ Producidos</p>
+              <p className="text-2xl font-bold text-blue-800">
+                {calcularM3Producidos(acopios).toLocaleString()} m³
+              </p>
+            </CardContent>
+          </Card>
+          <Card className="shadow-card bg-green-50 border-green-200">
+            <CardContent className="p-4">
+              <p className="text-sm text-green-700">Registros</p>
+              <p className="text-2xl font-bold text-green-800">{acopios.length}</p>
+            </CardContent>
+          </Card>
+        </div>
       )}
 
       {/* Search and Table */}
@@ -378,34 +403,60 @@ const Acopio = () => {
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Fuente</TableHead>
-                  <TableHead>Sílice</TableHead>
-                  <TableHead>Placa</TableHead>
-                  <TableHead className="text-right">Viajes</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredAcopios.map((acopio) => (
-                  <TableRow key={acopio.id} className="hover:bg-muted/30">
-                    <TableCell>
-                      <Badge variant="outline" className={getFuenteBadgeClass(acopio.fuente)}>
-                        {acopio.fuente}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={acopio.silice.includes('A') ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-purple-100 text-purple-700 border-purple-200'}>
-                        {acopio.silice}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="font-mono">{acopio.placa}</TableCell>
-                    <TableCell className="text-right font-semibold">{acopio.cantidadViajes}</TableCell>
-                  </TableRow>
+            {isLoading ? (
+              <div className="space-y-3">
+                {[...Array(5)].map((_, i) => (
+                  <Skeleton key={i} className="h-12 w-full" />
                 ))}
-              </TableBody>
-            </Table>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Fecha</TableHead>
+                    <TableHead>Fuente</TableHead>
+                    <TableHead>Sílice</TableHead>
+                    <TableHead>Placa</TableHead>
+                    <TableHead className="text-right">Viajes</TableHead>
+                    <TableHead className="text-right">Capacidad</TableHead>
+                    <TableHead className="text-right">m³ Producidos</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredAcopios.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                        No hay registros de acopio
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredAcopios.map((acopio) => {
+                      const capacidad = getCapacidadVolqueta(acopio.placa);
+                      const m3Producidos = capacidad * acopio.cantidad_viajes;
+                      return (
+                        <TableRow key={acopio.id} className="hover:bg-muted/30">
+                          <TableCell className="font-medium">{acopio.fecha}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className={getFuenteBadgeClass(acopio.fuente)}>
+                              {acopio.fuente}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className={acopio.silice.includes('A') ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-purple-100 text-purple-700 border-purple-200'}>
+                              {acopio.silice}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="font-mono">{acopio.placa}</TableCell>
+                          <TableCell className="text-right font-semibold">{acopio.cantidad_viajes}</TableCell>
+                          <TableCell className="text-right text-muted-foreground">{capacidad} m³</TableCell>
+                          <TableCell className="text-right font-bold text-primary">{m3Producidos.toLocaleString()} m³</TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            )}
           </div>
         </CardContent>
       </Card>

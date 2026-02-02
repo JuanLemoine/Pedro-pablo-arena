@@ -11,25 +11,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Plus, Search, FileText, Trash2, Save, Warehouse, CalendarIcon } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Plus, Search, FileText, Trash2, Save, Warehouse, CalendarIcon, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-
-interface Venta {
-  id: number;
-  fecha: string;
-  silice: 'A' | 'B';
-  recibo: string;
-  placa: string;
-  cantidadM3: number;
-  valorTotal: number;
-  fuente: string;
-  concepto?: string;
-}
+import { useVentas, useCreateVentas } from '@/hooks/useVentas';
 
 interface VentaForm {
   fecha: Date;
-  silice: 'A' | 'B' | '';
+  silice: string;
   recibo: string;
   placa: string;
   cantidadM3: string;
@@ -37,13 +27,6 @@ interface VentaForm {
   fuente: string;
   concepto: string;
 }
-
-const ventasIniciales: Venta[] = [
-  { id: 1, fecha: '2024-01-15', silice: 'A', recibo: '001', placa: 'ABC-123', cantidadM3: 12, valorTotal: 360000, fuente: 'Zaranda' },
-  { id: 2, fecha: '2024-01-14', silice: 'B', recibo: '002', placa: 'XYZ-789', cantidadM3: 8, valorTotal: 240000, fuente: 'Zaranda' },
-  { id: 3, fecha: '2024-01-14', silice: 'A', recibo: '003', placa: 'DEF-456', cantidadM3: 15, valorTotal: 450000, fuente: 'Otro' },
-  { id: 4, fecha: '2024-01-13', silice: 'B', recibo: '004', placa: 'GHI-321', cantidadM3: 10, valorTotal: 300000, fuente: 'Zaranda' },
-];
 
 const getEmptyForm = (): VentaForm => ({
   fecha: new Date(),
@@ -58,7 +41,9 @@ const getEmptyForm = (): VentaForm => ({
 
 const Ventas = () => {
   const navigate = useNavigate();
-  const [ventas, setVentas] = useState<Venta[]>(ventasIniciales);
+  const { data: ventas = [], isLoading, error } = useVentas();
+  const createVentas = useCreateVentas();
+  
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [ventasEnCurso, setVentasEnCurso] = useState<VentaForm[]>([getEmptyForm()]);
@@ -92,7 +77,7 @@ const Ventas = () => {
     return !!(venta.silice && venta.recibo && venta.placa && venta.cantidadM3 && venta.valorTotal && venta.fuente);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     const ventasValidas = ventasEnCurso.filter(validarVenta);
@@ -104,26 +89,27 @@ const Ventas = () => {
 
     const ventasInvalidas = ventasEnCurso.length - ventasValidas.length;
     if (ventasInvalidas > 0) {
-      toast.warning(`${ventasInvalidas} venta(s) no fueron registradas por datos incompletos`);
+      toast.warning(`${ventasInvalidas} venta(s) no serán registradas por datos incompletos`);
     }
 
-    const nuevasVentas: Venta[] = ventasValidas.map((venta, index) => ({
-      id: ventas.length + index + 1,
+    const nuevasVentas = ventasValidas.map((venta) => ({
       fecha: format(venta.fecha, 'yyyy-MM-dd'),
-      silice: venta.silice as 'A' | 'B',
+      silice: venta.silice,
       recibo: venta.recibo,
       placa: venta.placa.toUpperCase(),
-      cantidadM3: parseFloat(venta.cantidadM3),
-      valorTotal: parseFloat(venta.valorTotal),
+      cantidad_m3: parseFloat(venta.cantidadM3),
+      valor_total: parseFloat(venta.valorTotal),
       fuente: venta.fuente,
-      concepto: venta.concepto || undefined,
+      concepto: venta.concepto || null,
     }));
 
-    setVentas([...nuevasVentas, ...ventas]);
-    setVentasEnCurso([getEmptyForm()]);
-    setOpenCalendars([false]);
-    setShowForm(false);
-    toast.success(`${ventasValidas.length} venta(s) registrada(s) exitosamente`);
+    createVentas.mutate(nuevasVentas, {
+      onSuccess: () => {
+        setVentasEnCurso([getEmptyForm()]);
+        setOpenCalendars([false]);
+        setShowForm(false);
+      }
+    });
   };
 
   const filteredVentas = ventas.filter(venta =>
@@ -132,13 +118,22 @@ const Ventas = () => {
     venta.fuente.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const getSiliceBadge = (silice: 'A' | 'B') => {
-    const variants = {
-      A: 'bg-blue-100 text-blue-700 border-blue-200',
-      B: 'bg-purple-100 text-purple-700 border-purple-200',
-    };
-    return <Badge variant="outline" className={variants[silice]}>Sílice {silice}</Badge>;
+  const getSiliceBadge = (silice: string) => {
+    const isA = silice.includes('A');
+    return (
+      <Badge variant="outline" className={isA ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-purple-100 text-purple-700 border-purple-200'}>
+        {silice}
+      </Badge>
+    );
   };
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-destructive">Error al cargar ventas: {error.message}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -327,8 +322,12 @@ const Ventas = () => {
                   }}>
                     Cancelar
                   </Button>
-                  <Button type="submit" className="gap-2">
-                    <Save className="h-4 w-4" />
+                  <Button type="submit" className="gap-2" disabled={createVentas.isPending}>
+                    {createVentas.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Save className="h-4 w-4" />
+                    )}
                     Guardar {ventasEnCurso.length > 1 ? `(${ventasEnCurso.length})` : 'Venta'}
                   </Button>
                 </div>
@@ -362,38 +361,54 @@ const Ventas = () => {
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Fecha</TableHead>
-                  <TableHead>Sílice</TableHead>
-                  <TableHead>N° Recibo</TableHead>
-                  <TableHead>Placa</TableHead>
-                  <TableHead className="text-right">Cantidad (m³)</TableHead>
-                  <TableHead className="text-right">Valor Total</TableHead>
-                  <TableHead>Fuente</TableHead>
-                  <TableHead>Concepto</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredVentas.map((venta) => (
-                  <TableRow key={venta.id} className="hover:bg-muted/30">
-                    <TableCell className="font-medium">{venta.fecha}</TableCell>
-                    <TableCell>{getSiliceBadge(venta.silice)}</TableCell>
-                    <TableCell>{venta.recibo}</TableCell>
-                    <TableCell className="font-mono">{venta.placa}</TableCell>
-                    <TableCell className="text-right">{venta.cantidadM3} m³</TableCell>
-                    <TableCell className="text-right font-semibold">${venta.valorTotal.toLocaleString()}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={venta.fuente === 'Zaranda' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-gray-100 text-gray-700 border-gray-200'}>
-                        {venta.fuente}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">{venta.concepto || '-'}</TableCell>
-                  </TableRow>
+            {isLoading ? (
+              <div className="space-y-3">
+                {[...Array(5)].map((_, i) => (
+                  <Skeleton key={i} className="h-12 w-full" />
                 ))}
-              </TableBody>
-            </Table>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Fecha</TableHead>
+                    <TableHead>Sílice</TableHead>
+                    <TableHead>N° Recibo</TableHead>
+                    <TableHead>Placa</TableHead>
+                    <TableHead className="text-right">Cantidad (m³)</TableHead>
+                    <TableHead className="text-right">Valor Total</TableHead>
+                    <TableHead>Fuente</TableHead>
+                    <TableHead>Concepto</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredVentas.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                        No hay ventas registradas
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredVentas.map((venta) => (
+                      <TableRow key={venta.id} className="hover:bg-muted/30">
+                        <TableCell className="font-medium">{venta.fecha}</TableCell>
+                        <TableCell>{getSiliceBadge(venta.silice)}</TableCell>
+                        <TableCell>{venta.recibo}</TableCell>
+                        <TableCell className="font-mono">{venta.placa}</TableCell>
+                        <TableCell className="text-right">{venta.cantidad_m3} m³</TableCell>
+                        <TableCell className="text-right font-semibold">${Number(venta.valor_total).toLocaleString()}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={venta.fuente === 'Zaranda' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-gray-100 text-gray-700 border-gray-200'}>
+                            {venta.fuente}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">{venta.concepto || '-'}</TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            )}
           </div>
         </CardContent>
       </Card>

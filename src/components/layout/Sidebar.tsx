@@ -26,8 +26,8 @@ const Sidebar = () => {
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     navigate('/login');
   };
 
@@ -115,15 +115,15 @@ const Sidebar = () => {
           )}>
             <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
               <span className="text-sm font-semibold text-primary">
-                {user?.name.charAt(0)}
+                {user?.nombre?.charAt(0) || user?.email?.charAt(0) || 'U'}
               </span>
             </div>
             <div className={cn("overflow-hidden transition-opacity duration-200", collapsed ? "lg:hidden" : "")}>
               <p className="text-sm font-medium text-sidebar-foreground truncate">
-                {user?.name}
+                {user?.nombre || 'Usuario'}
               </p>
               <p className="text-xs text-muted-foreground truncate">
-                @{user?.username}
+                {user?.email || ''}
               </p>
             </div>
           </div>

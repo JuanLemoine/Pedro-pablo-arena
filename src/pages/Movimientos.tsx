@@ -10,7 +10,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
-import { Plus, Search, ArrowLeftRight, Mountain, Truck, CalendarIcon } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Plus, Search, ArrowLeftRight, Mountain, Truck, CalendarIcon, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Command,
@@ -25,17 +26,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-
-interface Movimiento {
-  id: number;
-  fecha: string;
-  mina: string;
-  silice: string;
-  placa: string;
-  origen: string;
-  destino: string;
-  notas: string;
-}
+import { useMovimientos, useCreateMovimiento } from '@/hooks/useMovimientos';
+import { usePlacas } from '@/hooks/useVolquetas';
+import { calcularM3PorMovimiento } from '@/lib/volquetas';
 
 const MINAS = [
   'MINA ROZO',
@@ -47,24 +40,47 @@ const MINAS = [
 
 const SILICES = ['Silice A - Peña', 'Silice B - Pozo'];
 
-const PLACAS = [
-  'SAB643', 'OAJ577', 'ELJ809', 'CQN427', 'ACJ359', 'FBH108', 'SBC690', 'SWQ244',
-  'WCS071', 'AAD005', 'XGJ399', 'SKH366', 'SVM306', 'SNZ091', 'XKJ180', 'ATA644',
-  'IYB806', 'XKJ802', 'SNE194', 'SPM693', 'MBG720', 'XFJ040', 'SBE944', 'AQJ946'
-];
+// Función para obtener los orígenes disponibles según el tipo de sílice
+const getOrigenesDisponibles = (silice: string): string[] => {
+  if (silice === 'Silice A - Peña') {
+    // Silice A puede salir del punto de excavación o de la zaranda
+    return ['Punto de excavación', 'Zaranda'];
+  } else if (silice === 'Silice B - Pozo') {
+    // Silice B puede salir del punto de excavación o de la zaranda
+    return ['Punto de excavación', 'Zaranda'];
+  }
+  return ['Punto de excavación', 'Zaranda'];
+};
 
-const ORIGENES = ['Zaranda', 'Punto de excavación'];
-
-const DESTINOS = ['Trituradora', 'Clasificadora', 'Zaranda'];
-
-const movimientosIniciales: Movimiento[] = [
-  { id: 1, fecha: '2024-01-15', mina: 'MINA ROZO', silice: 'Silice A - Peña', placa: 'SAB643', origen: 'Punto de excavación', destino: 'Trituradora', notas: 'Carga completa' },
-  { id: 2, fecha: '2024-01-14', mina: 'MINA SOTO', silice: 'Silice B - Pozo', placa: 'OAJ577', origen: 'Residuos', destino: 'Clasificadora', notas: 'Entrega programada' },
-  { id: 3, fecha: '2024-01-14', mina: 'MINA TINJACA', silice: 'Silice A - Peña', placa: 'ELJ809', origen: 'Punto de excavación', destino: 'Zaranda', notas: 'Reabastecimiento' },
-];
+// Función para obtener los destinos disponibles según el tipo de sílice y origen
+const getDestinosDisponibles = (silice: string, origen: string): string[] => {
+  if (silice === 'Silice A - Peña') {
+    // Silice A - Peña: desde punto de excavación solo va a Zaranda
+    if (origen === 'Punto de excavación') {
+      return ['Zaranda'];
+    }
+    // Silice A - Peña: desde Zaranda va a Trituradora, Clasificadora o Zaranda
+    if (origen === 'Zaranda') {
+      return ['Trituradora', 'Clasificadora', 'Zaranda'];
+    }
+  } else if (silice === 'Silice B - Pozo') {
+    // Silice B - Pozo: desde punto de excavación va a Zaranda o Trituradora
+    if (origen === 'Punto de excavación') {
+      return ['Zaranda', 'Trituradora'];
+    }
+    // Silice B - Pozo: desde Zaranda va a Trituradora o Clasificadora
+    if (origen === 'Zaranda') {
+      return ['Trituradora', 'Clasificadora'];
+    }
+  }
+  return [];
+};
 
 const Movimientos = () => {
-  const [movimientos, setMovimientos] = useState<Movimiento[]>(movimientosIniciales);
+  const { data: movimientos = [], isLoading, error } = useMovimientos();
+  const { data: placas = [] } = usePlacas();
+  const createMovimiento = useCreateMovimiento();
+  
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [openPlaca, setOpenPlaca] = useState(false);
@@ -80,11 +96,11 @@ const Movimientos = () => {
     notas: '',
   });
 
-  const filteredPlacas = PLACAS.filter(placa =>
+  const filteredPlacas = placas.filter(placa =>
     placa.toLowerCase().includes(placaSearch.toLowerCase())
   );
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.mina || !formData.silice || !formData.placa || !formData.origen || !formData.destino) {
@@ -92,22 +108,23 @@ const Movimientos = () => {
       return;
     }
 
-    const nuevoMovimiento: Movimiento = {
-      id: movimientos.length + 1,
+    const nuevoMovimiento = {
       fecha: format(formData.fecha, 'yyyy-MM-dd'),
       mina: formData.mina,
       silice: formData.silice,
       placa: formData.placa,
       origen: formData.origen,
       destino: formData.destino,
-      notas: formData.notas,
+      notas: formData.notas || null,
     };
 
-    setMovimientos([nuevoMovimiento, ...movimientos]);
-    setFormData({ fecha: new Date(), mina: '', silice: '', placa: '', origen: '', destino: '', notas: '' });
-    setPlacaSearch('');
-    setShowForm(false);
-    toast.success('Movimiento registrado exitosamente');
+    createMovimiento.mutate(nuevoMovimiento, {
+      onSuccess: () => {
+        setFormData({ fecha: new Date(), mina: '', silice: '', placa: '', origen: '', destino: '', notas: '' });
+        setPlacaSearch('');
+        setShowForm(false);
+      }
+    });
   };
 
   const filteredMovimientos = movimientos.filter(mov =>
@@ -165,6 +182,14 @@ const Movimientos = () => {
     );
   };
 
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-destructive">Error al cargar movimientos: {error.message}</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
@@ -180,7 +205,7 @@ const Movimientos = () => {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="shadow-card bg-amber-50 border-amber-200">
           <CardContent className="p-4 flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center">
@@ -199,8 +224,8 @@ const Movimientos = () => {
               <Truck className="h-6 w-6 text-blue-600" />
             </div>
             <div>
-              <p className="text-sm text-blue-700">Volquetas Registradas</p>
-              <p className="text-2xl font-bold text-blue-800">{PLACAS.length}</p>
+              <p className="text-sm text-blue-700">Volquetas</p>
+              <p className="text-2xl font-bold text-blue-800">{placas.length}</p>
             </div>
           </CardContent>
         </Card>
@@ -211,8 +236,25 @@ const Movimientos = () => {
               <ArrowLeftRight className="h-6 w-6 text-green-600" />
             </div>
             <div>
-              <p className="text-sm text-green-700">Movimientos Hoy</p>
+              <p className="text-sm text-green-700">Movimientos</p>
               <p className="text-2xl font-bold text-green-800">{movimientos.length}</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-card bg-purple-50 border-purple-200">
+          <CardContent className="p-4 flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center">
+              <ArrowLeftRight className="h-6 w-6 text-purple-600" />
+            </div>
+            <div>
+              <p className="text-sm text-purple-700">m³ Producidos</p>
+              <p className="text-2xl font-bold text-purple-800">
+                {movimientos.reduce((sum, m) => {
+                  const resultado = calcularM3PorMovimiento(m.placa, m.silice, m.origen, m.destino);
+                  return sum + resultado.m3Producidos;
+                }, 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -277,7 +319,24 @@ const Movimientos = () => {
                 <Label htmlFor="silice">Sílice *</Label>
                 <Select
                   value={formData.silice}
-                  onValueChange={(value) => setFormData({ ...formData, silice: value })}
+                  onValueChange={(value) => {
+                    // Al cambiar sílice, verificar si el origen actual es válido
+                    const nuevosOrigenes = getOrigenesDisponibles(value);
+                    const origenValido = nuevosOrigenes.includes(formData.origen);
+                    // Si el origen no es válido, limpiar origen y destino
+                    // Si el origen es válido, verificar si el destino sigue siendo válido
+                    if (!origenValido) {
+                      setFormData({ ...formData, silice: value, origen: '', destino: '' });
+                    } else {
+                      const nuevosDestinos = getDestinosDisponibles(value, formData.origen);
+                      const destinoValido = nuevosDestinos.includes(formData.destino);
+                      setFormData({ 
+                        ...formData, 
+                        silice: value, 
+                        destino: destinoValido ? formData.destino : '' 
+                      });
+                    }
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Seleccione sílice" />
@@ -340,13 +399,23 @@ const Movimientos = () => {
                 <Label htmlFor="origen">Origen *</Label>
                 <Select
                   value={formData.origen}
-                  onValueChange={(value) => setFormData({ ...formData, origen: value })}
+                  onValueChange={(value) => {
+                    // Al cambiar origen, verificar si el destino actual es válido
+                    const nuevosDestinos = getDestinosDisponibles(formData.silice, value);
+                    const destinoValido = nuevosDestinos.includes(formData.destino);
+                    setFormData({ 
+                      ...formData, 
+                      origen: value, 
+                      destino: destinoValido ? formData.destino : '' 
+                    });
+                  }}
+                  disabled={!formData.silice}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Seleccione origen" />
+                    <SelectValue placeholder={formData.silice ? "Seleccione origen" : "Primero seleccione sílice"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {ORIGENES.map((origen) => (
+                    {getOrigenesDisponibles(formData.silice).map((origen) => (
                       <SelectItem key={origen} value={origen}>{origen}</SelectItem>
                     ))}
                   </SelectContent>
@@ -358,12 +427,17 @@ const Movimientos = () => {
                 <Select
                   value={formData.destino}
                   onValueChange={(value) => setFormData({ ...formData, destino: value })}
+                  disabled={!formData.silice || !formData.origen}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Seleccione destino" />
+                    <SelectValue placeholder={
+                      !formData.silice ? "Primero seleccione sílice" : 
+                      !formData.origen ? "Primero seleccione origen" : 
+                      "Seleccione destino"
+                    } />
                   </SelectTrigger>
                   <SelectContent>
-                    {DESTINOS.map((destino) => (
+                    {getDestinosDisponibles(formData.silice, formData.origen).map((destino) => (
                       <SelectItem key={destino} value={destino}>{destino}</SelectItem>
                     ))}
                   </SelectContent>
@@ -385,7 +459,16 @@ const Movimientos = () => {
                 <Button type="button" variant="outline" onClick={() => setShowForm(false)}>
                   Cancelar
                 </Button>
-                <Button type="submit">Guardar Movimiento</Button>
+                <Button type="submit" disabled={createMovimiento.isPending}>
+                  {createMovimiento.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Guardando...
+                    </>
+                  ) : (
+                    'Guardar Movimiento'
+                  )}
+                </Button>
               </div>
             </form>
           </CardContent>
@@ -416,33 +499,68 @@ const Movimientos = () => {
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Mina</TableHead>
-                  <TableHead>Sílice</TableHead>
-                  <TableHead>Placa</TableHead>
-                  <TableHead>Origen</TableHead>
-                  <TableHead>Destino</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredMovimientos.map((mov) => (
-                  <TableRow key={mov.id} className="hover:bg-muted/30">
-                    <TableCell>{getMinaBadge(mov.mina)}</TableCell>
-                    <TableCell>{getSiliceBadge(mov.silice)}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="bg-gray-100 text-gray-700 border-gray-200 gap-1">
-                        <Truck className="h-3 w-3" />
-                        {mov.placa}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{getOrigenBadge(mov.origen)}</TableCell>
-                    <TableCell>{getDestinoBadge(mov.destino)}</TableCell>
-                  </TableRow>
+            {isLoading ? (
+              <div className="space-y-3">
+                {[...Array(5)].map((_, i) => (
+                  <Skeleton key={i} className="h-12 w-full" />
                 ))}
-              </TableBody>
-            </Table>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Fecha</TableHead>
+                    <TableHead>Mina</TableHead>
+                    <TableHead>Sílice</TableHead>
+                    <TableHead>Placa</TableHead>
+                    <TableHead>Origen</TableHead>
+                    <TableHead>Destino</TableHead>
+                    <TableHead className="text-right">m³ Producidos</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredMovimientos.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                        No hay movimientos registrados
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredMovimientos.map((mov) => {
+                      const resultado = calcularM3PorMovimiento(mov.placa, mov.silice, mov.origen, mov.destino);
+                      const siliceCambio = resultado.siliceResultante !== mov.silice;
+                      return (
+                        <TableRow key={mov.id} className="hover:bg-muted/30">
+                          <TableCell className="font-medium">{mov.fecha}</TableCell>
+                          <TableCell>{getMinaBadge(mov.mina)}</TableCell>
+                          <TableCell>
+                            <div className="flex flex-col gap-1">
+                              {getSiliceBadge(mov.silice)}
+                              {siliceCambio && (
+                                <span className="text-xs text-green-600 font-medium">
+                                  → {resultado.siliceResultante.replace('Silice ', '')}
+                                </span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="bg-gray-100 text-gray-700 border-gray-200 gap-1">
+                              <Truck className="h-3 w-3" />
+                              {mov.placa}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{getOrigenBadge(mov.origen)}</TableCell>
+                          <TableCell>{getDestinoBadge(mov.destino)}</TableCell>
+                          <TableCell className="text-right font-bold text-primary">
+                            {resultado.m3Producidos.toFixed(2)} m³
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            )}
           </div>
         </CardContent>
       </Card>
