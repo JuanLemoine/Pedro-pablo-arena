@@ -69,7 +69,7 @@ export const useProduccionVentas = ({ agrupacion, tipoSilice, fechaInicio, fecha
       // (Silice B desde Zaranda se convierte en Silice A)
       const { data: allMovimientos, error: errorMov } = await supabase
         .from('movimientos')
-        .select('fecha, placa, silice, origen, destino')
+        .select('fecha, placa, silice, origen, destino, cantidad_movimientos')
         .gte('fecha', inicioStr)
         .lte('fecha', finStr)
         .order('fecha', { ascending: true });
@@ -107,7 +107,7 @@ export const useProduccionVentas = ({ agrupacion, tipoSilice, fechaInicio, fecha
       // Obtener TODOS los movimientos y ventas para el resumen por tipo (sin filtro de tipo)
       const { data: todosMovimientos } = await supabase
         .from('movimientos')
-        .select('placa, silice, origen, destino')
+        .select('placa, silice, origen, destino, cantidad_movimientos')
         .gte('fecha', inicioStr)
         .lte('fecha', finStr);
 
@@ -130,7 +130,7 @@ export const useProduccionVentas = ({ agrupacion, tipoSilice, fechaInicio, fecha
         const tipoResultante = resultado.siliceResultante;
         if (resumenMap.has(tipoResultante)) {
           const existing = resumenMap.get(tipoResultante)!;
-          existing.producido += resultado.m3Producidos;
+          existing.producido += resultado.m3Producidos * mov.cantidad_movimientos;
           resumenMap.set(tipoResultante, existing);
         }
       });
@@ -180,12 +180,12 @@ export const useProduccionVentas = ({ agrupacion, tipoSilice, fechaInicio, fecha
       };
 
       // Procesar movimientos (producción)
-      // El cálculo depende de la combinación sílice/origen/destino
+      // El cálculo depende de la combinación sílice/origen/destino, multiplicado por cantidad_movimientos
       movimientos?.forEach(mov => {
         const { key } = getGroupKey(mov.fecha);
         const resultado = calcularM3PorMovimiento(mov.placa, mov.silice, mov.origen, mov.destino);
         const existing = agrupados.get(key) || { producido: 0, vendido: 0 };
-        existing.producido += resultado.m3Producidos;
+        existing.producido += resultado.m3Producidos * mov.cantidad_movimientos;
         agrupados.set(key, existing);
       });
 

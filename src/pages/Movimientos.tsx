@@ -93,6 +93,7 @@ const Movimientos = () => {
     placa: '',
     origen: '',
     destino: '',
+    cantidad_movimientos: '',
     notas: '',
   });
 
@@ -103,7 +104,7 @@ const Movimientos = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.mina || !formData.silice || !formData.placa || !formData.origen || !formData.destino) {
+    if (!formData.mina || !formData.silice || !formData.placa || !formData.origen || !formData.destino || !formData.cantidad_movimientos) {
       toast.error('Por favor complete todos los campos requeridos');
       return;
     }
@@ -115,12 +116,13 @@ const Movimientos = () => {
       placa: formData.placa,
       origen: formData.origen,
       destino: formData.destino,
+      cantidad_movimientos: parseInt(formData.cantidad_movimientos),
       notas: formData.notas || null,
     };
 
     createMovimiento.mutate(nuevoMovimiento, {
       onSuccess: () => {
-        setFormData({ fecha: new Date(), mina: '', silice: '', placa: '', origen: '', destino: '', notas: '' });
+        setFormData({ fecha: new Date(), mina: '', silice: '', placa: '', origen: '', destino: '', cantidad_movimientos: '', notas: '' });
         setPlacaSearch('');
         setShowForm(false);
       }
@@ -252,7 +254,7 @@ const Movimientos = () => {
               <p className="text-2xl font-bold text-purple-800">
                 {movimientos.reduce((sum, m) => {
                   const resultado = calcularM3PorMovimiento(m.placa, m.silice, m.origen, m.destino);
-                  return sum + resultado.m3Producidos;
+                  return sum + (resultado.m3Producidos * m.cantidad_movimientos);
                 }, 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </p>
             </div>
@@ -445,6 +447,19 @@ const Movimientos = () => {
               </div>
               
               <div className="space-y-2">
+                <Label htmlFor="cantidad_movimientos">Cantidad de Movimientos *</Label>
+                <Input
+                  id="cantidad_movimientos"
+                  type="number"
+                  min="1"
+                  placeholder="Ej: 3"
+                  value={formData.cantidad_movimientos}
+                  onChange={(e) => setFormData({ ...formData, cantidad_movimientos: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="notas">Notas adicionales</Label>
                 <Textarea
                   id="notas"
@@ -515,13 +530,15 @@ const Movimientos = () => {
                     <TableHead>Placa</TableHead>
                     <TableHead>Origen</TableHead>
                     <TableHead>Destino</TableHead>
+                    <TableHead className="text-center">Cantidad Movimientos</TableHead>
                     <TableHead className="text-right">m³ Producidos</TableHead>
+                    <TableHead>Arena Producida</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredMovimientos.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                         No hay movimientos registrados
                       </TableCell>
                     </TableRow>
@@ -551,8 +568,30 @@ const Movimientos = () => {
                           </TableCell>
                           <TableCell>{getOrigenBadge(mov.origen)}</TableCell>
                           <TableCell>{getDestinoBadge(mov.destino)}</TableCell>
+                          <TableCell className="text-center font-semibold text-blue-600">
+                            {mov.cantidad_movimientos}
+                          </TableCell>
                           <TableCell className="text-right font-bold text-primary">
-                            {resultado.m3Producidos.toFixed(2)} m³
+                            {(resultado.m3Producidos * mov.cantidad_movimientos).toFixed(2)} m³
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-col gap-1">
+                              <Badge
+                                variant="outline"
+                                className={
+                                  resultado.tipoPF === 'Peña'
+                                    ? 'bg-orange-100 text-orange-700 border-orange-200'
+                                    : resultado.tipoPF === 'Pozo'
+                                    ? 'bg-cyan-100 text-cyan-700 border-cyan-200'
+                                    : 'bg-stone-100 text-stone-700 border-stone-200'
+                                }
+                              >
+                                {resultado.tipoPF}
+                              </Badge>
+                              <span className="text-xs text-muted-foreground">
+                                PF: {(resultado.porcentajePF * 100).toFixed(1)}%
+                              </span>
+                            </div>
                           </TableCell>
                         </TableRow>
                       );

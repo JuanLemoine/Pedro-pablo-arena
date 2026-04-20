@@ -106,6 +106,7 @@ export interface Database {
           placa: string;
           origen: string;
           destino: string;
+          cantidad_movimientos: number;
           notas: string | null;
           usuario_id: string | null;
           created_at: string;
@@ -118,6 +119,7 @@ export interface Database {
           placa: string;
           origen: string;
           destino: string;
+          cantidad_movimientos: number;
           notas?: string | null;
           usuario_id?: string | null;
           created_at?: string;
@@ -130,6 +132,7 @@ export interface Database {
           placa?: string;
           origen?: string;
           destino?: string;
+          cantidad_movimientos?: number;
           notas?: string | null;
           usuario_id?: string | null;
           created_at?: string;

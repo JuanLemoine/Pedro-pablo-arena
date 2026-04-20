@@ -173,7 +173,7 @@ const Ventas = () => {
                 <div>Cantidad (m³) *</div>
                 <div>Valor Total ($) *</div>
                 <div>Fuente *</div>
-                <div>Concepto</div>
+                <div>Concepto <span className="text-xs text-muted-foreground/70">(donación/transferencia)</span></div>
                 <div></div>
               </div>
 
@@ -285,9 +285,9 @@ const Ventas = () => {
                   </div>
                   
                   <div className="space-y-1">
-                    <Label className="lg:hidden text-xs">Concepto</Label>
+                    <Label className="lg:hidden text-xs">Concepto <span className="text-muted-foreground text-[10px]">(solo si es donación o transferencia)</span></Label>
                     <Input
-                      placeholder="Opcional"
+                      placeholder="Donación / Transferencia"
                       value={venta.concepto}
                       onChange={(e) => actualizarVenta(index, 'concepto', e.target.value)}
                     />

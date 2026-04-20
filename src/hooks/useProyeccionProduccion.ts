@@ -76,7 +76,7 @@ export const useProyeccionProduccion = () => {
       // Obtener movimientos del mes actual
       const { data: movimientos, error } = await supabase
         .from('movimientos')
-        .select('placa, silice, origen, destino')
+        .select('placa, silice, origen, destino, cantidad_movimientos')
         .gte('fecha', primerDiaMesStr)
         .lte('fecha', hoyStr);
       
@@ -87,18 +87,19 @@ export const useProyeccionProduccion = () => {
       
       // Calcular m³ producidos y viajes reales
       let m3ProducidosReal = 0;
-      const viajesReales = movimientos?.length || 0;
-      
+      let viajesReales = 0;
+
       // Contar volquetas únicas para detectar configuración
       const volquetasUsadas = new Map<string, number>();
-      
+
       movimientos?.forEach(mov => {
         const resultado = calcularM3PorMovimiento(mov.placa, mov.silice, mov.origen, mov.destino);
-        m3ProducidosReal += resultado.m3Producidos;
-        
-        // Contar viajes por volqueta
+        m3ProducidosReal += resultado.m3Producidos * mov.cantidad_movimientos;
+        viajesReales += mov.cantidad_movimientos;
+
+        // Contar viajes por volqueta (multiplicado por cantidad_movimientos)
         const conteo = volquetasUsadas.get(mov.placa) || 0;
-        volquetasUsadas.set(mov.placa, conteo + 1);
+        volquetasUsadas.set(mov.placa, conteo + mov.cantidad_movimientos);
       });
       
       // Detectar configuración actual de flota

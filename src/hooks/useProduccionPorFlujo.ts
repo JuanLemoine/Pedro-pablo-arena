@@ -60,7 +60,7 @@ export const useProduccionPorFlujo = (filtros: FiltrosProduccion) => {
       // Obtener movimientos con filtros
       let movQuery = supabase
         .from('movimientos')
-        .select('id, fecha, mina, silice, placa, origen, destino')
+        .select('id, fecha, mina, silice, placa, origen, destino, cantidad_movimientos')
         .order('fecha', { ascending: false });
 
       if (filtros.fechaInicio) {
@@ -116,7 +116,8 @@ export const useProduccionPorFlujo = (filtros: FiltrosProduccion) => {
 
       movimientos?.forEach(mov => {
         const resultado = calcularM3PorMovimiento(mov.placa, mov.silice, mov.origen, mov.destino);
-        
+        const m3Total = resultado.m3Producidos * mov.cantidad_movimientos;
+
         // Agregar a detallados
         movimientosDetallados.push({
           id: mov.id,
@@ -127,7 +128,7 @@ export const useProduccionPorFlujo = (filtros: FiltrosProduccion) => {
           placa: mov.placa,
           origen: mov.origen,
           destino: mov.destino,
-          m3Producidos: resultado.m3Producidos,
+          m3Producidos: m3Total,
         });
 
         // Agrupar por flujo
@@ -135,16 +136,16 @@ export const useProduccionPorFlujo = (filtros: FiltrosProduccion) => {
         const existing = flujoMap.get(key);
 
         if (existing) {
-          existing.viajes += 1;
-          existing.m3Producidos += resultado.m3Producidos;
+          existing.viajes += mov.cantidad_movimientos;
+          existing.m3Producidos += m3Total;
         } else {
           flujoMap.set(key, {
             silice: mov.silice,
             siliceResultante: resultado.siliceResultante,
             origen: mov.origen,
             destino: mov.destino,
-            viajes: 1,
-            m3Producidos: resultado.m3Producidos,
+            viajes: mov.cantidad_movimientos,
+            m3Producidos: m3Total,
           });
         }
       });

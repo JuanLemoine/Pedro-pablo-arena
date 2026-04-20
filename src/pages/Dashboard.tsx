@@ -1,18 +1,20 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
-import { 
-  TrendingUp, 
-  DollarSign, 
-  Truck, 
+import {
+  TrendingUp,
+  DollarSign,
+  Truck,
   Package,
   ArrowUpRight,
   BarChart3,
-  ArrowDownUp
+  ArrowDownUp,
+  Layers
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useDashboardStats } from '@/hooks/useDashboardStats';
 import ProduccionVentasChart from '@/components/charts/ProduccionVentasChart';
+import ProgresoMensualChart from '@/components/charts/ProgresoMensualChart';
 import ProduccionPorFlujoChart from '@/components/charts/ProduccionPorFlujoChart';
 import ProduccionPorFlujo from '@/components/charts/ProduccionPorFlujo';
 import ProyeccionProduccion from '@/components/charts/ProyeccionProduccion';
@@ -45,10 +47,17 @@ const Dashboard = () => {
     },
     {
       title: 'm³ Producidos',
-      value: stats ? `${stats.m3Producidos.toLocaleString()} m³` : '0 m³',
+      value: stats ? `${stats.m3Producidos.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m³` : '0 m³',
       icon: Package,
       color: 'text-amber-600',
       bgColor: 'bg-amber-500/10',
+    },
+    {
+      title: 'm³ Granzón',
+      value: stats ? `${stats.m3Granzon.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m³` : '0 m³',
+      icon: Layers,
+      color: 'text-orange-600',
+      bgColor: 'bg-orange-500/10',
     },
     {
       title: 'Total Viajes',
@@ -76,7 +85,7 @@ const Dashboard = () => {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {statCards.map((stat, index) => (
           <Card 
             key={stat.title} 
@@ -132,17 +141,30 @@ const Dashboard = () => {
               </div>
 
               {/* Estadísticas detalladas */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="p-4 rounded-xl bg-amber-50 border border-amber-200">
                   <div className="flex items-center gap-2 mb-2">
                     <Package className="h-5 w-5 text-amber-600" />
                     <span className="text-sm font-medium text-amber-700">Producido</span>
                   </div>
                   <p className="text-2xl font-bold text-amber-800">
-                    {stats?.m3Producidos.toLocaleString()} m³
+                    {stats?.m3Producidos.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m³
                   </p>
                   <p className="text-xs text-amber-600 mt-1">
                     {stats?.totalViajes} viajes registrados
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-xl bg-orange-50 border border-orange-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Layers className="h-5 w-5 text-orange-600" />
+                    <span className="text-sm font-medium text-orange-700">Granzón</span>
+                  </div>
+                  <p className="text-2xl font-bold text-orange-800">
+                    {stats?.m3Granzon.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m³
+                  </p>
+                  <p className="text-xs text-orange-600 mt-1">
+                    Residuo grueso de zaranda (9.9%)
                   </p>
                 </div>
 
@@ -179,16 +201,17 @@ const Dashboard = () => {
         </CardContent>
       </Card>
 
-      {/* Gráfica de Producción vs Ventas */}
-      <ProduccionVentasChart />
+      {/* ── Gráficas principales ─────────────────────────────────────── */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        {/* Producción vs Ventas por día */}
+        <ProduccionVentasChart />
+        {/* Progreso mensual vs meta de simulación */}
+        <ProgresoMensualChart />
+      </div>
 
-      {/* Gráfica de Producción por Flujo (Origen → Destino) */}
+      {/* ── Análisis de flujos y proyección detallada ────────────────── */}
       <ProduccionPorFlujoChart />
-
-      {/* Proyección de Producción (Modelo de Optimización) */}
       <ProyeccionProduccion />
-
-      {/* Producción por Flujo (Origen → Destino) */}
       <ProduccionPorFlujo />
 
       {/* Recent Sales */}

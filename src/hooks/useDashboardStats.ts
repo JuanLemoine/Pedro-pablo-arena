@@ -6,6 +6,7 @@ interface DashboardStats {
   ventasMes: number;
   m3Vendidos: number;
   m3Producidos: number;
+  m3Granzon: number;
   totalMovimientos: number;
   totalAcopios: number;
   totalViajes: number;
@@ -38,11 +39,11 @@ export const useDashboardStats = () => {
         console.error('Error fetching ventas:', errorVentas);
       }
 
-      // Movimientos internos con placa, silice, origen y destino para calcular m³ producidos
-      // El cálculo depende de la combinación sílice/origen/destino
+      // Movimientos internos con placa, silice, origen, destino y cantidad_movimientos para calcular m³ producidos
+      // El cálculo depende de la combinación sílice/origen/destino y se multiplica por cantidad_movimientos
       const { data: movimientosData, error: errorMov } = await supabase
         .from('movimientos')
-        .select('placa, silice, origen, destino');
+        .select('placa, silice, origen, destino, cantidad_movimientos');
 
       if (errorMov) {
         console.error('Error fetching movimientos:', errorMov);
@@ -73,13 +74,19 @@ export const useDashboardStats = () => {
       // Por cada venta se suma 1 m³ adicional (yapa que se regala al comprador)
       const m3Vendidos = ventasMes?.reduce((sum, v) => sum + Number(v.cantidad_m3) + 1, 0) || 0;
       
-      // Calcular m³ producidos basándose en los MOVIMIENTOS INTERNOS
-      // El cálculo depende de la combinación sílice/origen/destino
-      const m3Producidos = movimientosData?.reduce((sum, mov) => {
+      // Calcular m³ producidos y m³ granzón basándose en los MOVIMIENTOS INTERNOS
+      // El cálculo depende de la combinación sílice/origen/destino, multiplicado por cantidad_movimientos
+      let m3Producidos = 0;
+      let m3Granzon = 0; // Se calculará cuando existan movimientos de tipo Granzón
+
+      movimientosData?.forEach(mov => {
         const resultado = calcularM3PorMovimiento(mov.placa, mov.silice, mov.origen, mov.destino);
-        return sum + resultado.m3Producidos;
-      }, 0) || 0;
-      
+        m3Producidos += resultado.m3Producidos * mov.cantidad_movimientos;
+        if (resultado.tipoPF === 'Granzón') {
+          m3Granzon += resultado.m3Producidos * mov.cantidad_movimientos;
+        }
+      });
+
       // Total de movimientos
       const totalMovimientos = movimientosData?.length || 0;
       
@@ -90,6 +97,7 @@ export const useDashboardStats = () => {
         ventasMes: totalVentasMes,
         m3Vendidos,
         m3Producidos,
+        m3Granzon,
         totalMovimientos,
         totalAcopios: acopiosData?.length || 0,
         totalViajes,
