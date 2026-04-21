@@ -111,6 +111,7 @@ const PORCENTAJES_ARENA = {
       'Trituradora': PF_ZARANDA_DESTINO,
       'Clasificadora': PF_ZARANDA_DESTINO,
       'Repaso': PF_ZARANDA_DESTINO,
+      'Revolver': PF_ZARANDA_DESTINO,
     },
   },
   'Silice B - Pozo': {

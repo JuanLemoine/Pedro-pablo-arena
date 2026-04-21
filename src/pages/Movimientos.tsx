@@ -61,7 +61,7 @@ const getDestinosDisponibles = (silice: string, origen: string): string[] => {
     }
     // Silice A - Peña: desde Zaranda va a Trituradora, Clasificadora o Repaso
     if (origen === 'Zaranda') {
-      return ['Trituradora', 'Clasificadora', 'Repaso'];
+      return ['Trituradora', 'Clasificadora', 'Repaso', 'Revolver'];
     }
   } else if (silice === 'Silice B - Pozo') {
     // Silice B - Pozo: desde punto de excavación va a Zaranda o Trituradora
@@ -177,6 +177,7 @@ const Movimientos = () => {
       'Clasificadora': 'bg-teal-100 text-teal-700 border-teal-200',
       'Zaranda': 'bg-violet-100 text-violet-700 border-violet-200',
       'Repaso': 'bg-orange-100 text-orange-700 border-orange-200',
+      'Revolver': 'bg-pink-100 text-pink-700 border-pink-200',
     };
     return (
       <Badge variant="outline" className={colors[destino] || 'bg-gray-100 text-gray-700'}>
