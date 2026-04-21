@@ -7,6 +7,15 @@ export interface DashboardFiltros {
   fechaFin: string;
   tipoSilice: string;
   tipoTransaccion: string;
+  fuente: string;
+}
+
+export interface ResumenPorFuente {
+  fuente: string;
+  registros: number;
+  m3Facturados: number;
+  m3Entregados: number;
+  valorTotal: number;
 }
 
 export interface ResumenVentas {
@@ -55,6 +64,7 @@ export interface DashboardResumen {
   ventas: ResumenVentas;
   acopio: ResumenAcopio;
   movimientos: ResumenMovimientos;
+  porFuente: ResumenPorFuente[];
   clientes: ResumenCliente[];
   totalCombinado: number;
 }
@@ -66,15 +76,17 @@ export const useDashboardResumen = (filtros: DashboardFiltros) => {
       // ── Ventas ──────────────────────────────────────────────────
       let ventasQ = supabase
         .from('ventas')
-        .select('cantidad_m3, valor_total, silice, tipo_transaccion')
+        .select('cantidad_m3, valor_total, silice, tipo_transaccion, fuente')
         .gte('fecha', filtros.fechaInicio)
         .lte('fecha', filtros.fechaFin);
       if (filtros.tipoSilice !== 'todos') ventasQ = ventasQ.eq('silice', filtros.tipoSilice);
       if (filtros.tipoTransaccion !== 'todos') ventasQ = ventasQ.eq('tipo_transaccion', filtros.tipoTransaccion);
+      if (filtros.fuente !== 'todos') ventasQ = ventasQ.eq('fuente', filtros.fuente);
       const { data: ventasData } = await ventasQ;
 
       const ventasPorTipoMap = new Map<string, { registros: number; valor: number }>();
       const ventasPorSiliceMap = new Map<string, { registros: number; m3Vendidos: number; m3Entregados: number }>();
+      const ventasPorFuenteMap = new Map<string, ResumenPorFuente>();
       let totalM3Vendidos = 0;
       let totalValorVentas = 0;
       const totalRegistrosVentas = ventasData?.length || 0;
@@ -82,6 +94,7 @@ export const useDashboardResumen = (filtros: DashboardFiltros) => {
       ventasData?.forEach(v => {
         const tipo = (v as any).tipo_transaccion || 'Venta';
         const sil = v.silice;
+        const fuente = (v as any).fuente || 'Sin fuente';
         const m3 = Number(v.cantidad_m3);
         const val = Number(v.valor_total);
         totalM3Vendidos += m3;
@@ -94,9 +107,27 @@ export const useDashboardResumen = (filtros: DashboardFiltros) => {
         ventasPorSiliceMap.set(sil, {
           registros: ps.registros + 1,
           m3Vendidos: ps.m3Vendidos + m3,
-          m3Entregados: ps.m3Entregados + m3 + 1, // +1 yapa por venta
+          m3Entregados: ps.m3Entregados + m3 + 1,
+        });
+
+        const pf = ventasPorFuenteMap.get(fuente) || { fuente, registros: 0, m3Facturados: 0, m3Entregados: 0, valorTotal: 0 };
+        ventasPorFuenteMap.set(fuente, {
+          fuente,
+          registros: pf.registros + 1,
+          m3Facturados: pf.m3Facturados + m3,
+          m3Entregados: pf.m3Entregados + m3 + 1,
+          valorTotal: pf.valorTotal + val,
         });
       });
+
+      const porFuente: ResumenPorFuente[] = Array.from(ventasPorFuenteMap.values())
+        .map(f => ({
+          ...f,
+          m3Facturados: Math.round(f.m3Facturados * 100) / 100,
+          m3Entregados: Math.round(f.m3Entregados * 100) / 100,
+          valorTotal: Math.round(f.valorTotal),
+        }))
+        .sort((a, b) => b.m3Facturados - a.m3Facturados);
 
       const ventas: ResumenVentas = {
         totalRegistros: totalRegistrosVentas,
@@ -179,6 +210,7 @@ export const useDashboardResumen = (filtros: DashboardFiltros) => {
         .lte('fecha', filtros.fechaFin);
       if (filtros.tipoSilice !== 'todos') clientesQ = clientesQ.eq('silice', filtros.tipoSilice);
       if (filtros.tipoTransaccion !== 'todos') clientesQ = clientesQ.eq('tipo_transaccion', filtros.tipoTransaccion);
+      if (filtros.fuente !== 'todos') clientesQ = clientesQ.eq('fuente', filtros.fuente);
       const { data: clientesData } = await clientesQ;
 
       // Agrupar por placa (identificador único del cliente)
@@ -227,7 +259,7 @@ export const useDashboardResumen = (filtros: DashboardFiltros) => {
         }))
         .sort((a, b) => b.valorTotal - a.valorTotal);
 
-      return { ventas, acopio, movimientos, clientes, totalCombinado: Math.round(ventas.totalValor + acopio.totalValor) };
+      return { ventas, acopio, movimientos, porFuente, clientes, totalCombinado: Math.round(ventas.totalValor + acopio.totalValor) };
     },
     staleTime: 15000,
     refetchInterval: 30000,

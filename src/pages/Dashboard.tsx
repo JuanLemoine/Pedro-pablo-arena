@@ -48,6 +48,7 @@ interface Filtros {
   fechaFin: string;
   tipoSilice: string;
   tipoTransaccion: string;
+  fuente: string;
 }
 
 // ── Pequeño picker de fecha reutilizable ─────────────────────────────────────
@@ -86,10 +87,11 @@ const Dashboard = () => {
     fechaFin: DEFAULT_FIN,
     tipoSilice: 'todos',
     tipoTransaccion: 'todos',
+    fuente: 'todos',
   });
 
   const resetFiltros = useCallback(() => {
-    setFiltros({ fechaInicio: DEFAULT_INICIO, fechaFin: DEFAULT_FIN, tipoSilice: 'todos', tipoTransaccion: 'todos' });
+    setFiltros({ fechaInicio: DEFAULT_INICIO, fechaFin: DEFAULT_FIN, tipoSilice: 'todos', tipoTransaccion: 'todos', fuente: 'todos' });
   }, []);
 
   const setF = (key: keyof Filtros) => (val: string) => setFiltros(prev => ({ ...prev, [key]: val }));
@@ -98,7 +100,8 @@ const Dashboard = () => {
     filtros.fechaInicio !== DEFAULT_INICIO ||
     filtros.fechaFin !== DEFAULT_FIN ||
     filtros.tipoSilice !== 'todos' ||
-    filtros.tipoTransaccion !== 'todos';
+    filtros.tipoTransaccion !== 'todos' ||
+    filtros.fuente !== 'todos';
 
   // ── Datos ───────────────────────────────────────────────────────────────────
   const { data: stats, isLoading, error } = useDashboardStats({
@@ -181,6 +184,19 @@ const Dashboard = () => {
                   <SelectItem value="Venta">Venta</SelectItem>
                   <SelectItem value="Donación">Donación</SelectItem>
                   <SelectItem value="Transferencia">Transferencia</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground font-medium">Fuente</p>
+              <Select value={filtros.fuente} onValueChange={setF('fuente')}>
+                <SelectTrigger className="h-9 min-w-[140px] text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todas</SelectItem>
+                  <SelectItem value="Zaranda">Zaranda</SelectItem>
+                  <SelectItem value="Trituradora">Trituradora</SelectItem>
+                  <SelectItem value="Clasificadora">Clasificadora</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -375,6 +391,70 @@ const Dashboard = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* ── Ventas por Fuente ───────────────────────────────────────────────── */}
+      <Card className="shadow-card">
+        <CardHeader>
+          <CardTitle className="text-lg font-semibold flex items-center gap-2">
+            <Warehouse className="h-5 w-5 text-primary" />
+            m³ Vendidos por Fuente
+          </CardTitle>
+          <CardDescription>Desglose de ventas según el origen del material (Zaranda, Trituradora, Clasificadora)</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {resumenLoading ? (
+            <div className="space-y-3">{[...Array(3)].map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}</div>
+          ) : resumen && resumen.porFuente.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <BarChart3 className="h-10 w-10 mx-auto mb-2 opacity-40" />
+              <p className="text-sm">No hay ventas en el período seleccionado</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {/* Totales de referencia para las barras */}
+              {(() => {
+                const totalM3 = resumen?.porFuente.reduce((s, f) => s + f.m3Facturados, 0) || 1;
+                const colores: Record<string, { bar: string; badge: string; text: string }> = {
+                  'Zaranda':      { bar: 'bg-amber-500',  badge: 'bg-amber-50 text-amber-700 border-amber-200',      text: 'text-amber-700' },
+                  'Trituradora':  { bar: 'bg-slate-500',  badge: 'bg-slate-50 text-slate-700 border-slate-200',      text: 'text-slate-700' },
+                  'Clasificadora':{ bar: 'bg-teal-500',   badge: 'bg-teal-50 text-teal-700 border-teal-200',         text: 'text-teal-700' },
+                };
+                return resumen?.porFuente.map(f => {
+                  const pct = Math.round((f.m3Facturados / totalM3) * 100);
+                  const col = colores[f.fuente] || { bar: 'bg-gray-400', badge: 'bg-gray-50 text-gray-700 border-gray-200', text: 'text-gray-700' };
+                  return (
+                    <div key={f.fuente} className="space-y-1.5">
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Badge variant="outline" className={`${col.badge} text-xs shrink-0`}>{f.fuente}</Badge>
+                          <span className="text-xs text-muted-foreground">{f.registros} venta(s)</span>
+                        </div>
+                        <div className="flex items-center gap-4 shrink-0 text-sm tabular-nums">
+                          <div className="text-right">
+                            <span className="text-muted-foreground text-xs">Facturado </span>
+                            <span className="font-medium">{f.m3Facturados.toLocaleString(undefined, { maximumFractionDigits: 1 })} m³</span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-muted-foreground text-xs">Entregado </span>
+                            <span className="font-medium text-sky-700">{f.m3Entregados.toLocaleString(undefined, { maximumFractionDigits: 1 })} m³</span>
+                          </div>
+                          <div className="text-right min-w-[90px]">
+                            <span className="font-semibold text-green-700">${f.valorTotal.toLocaleString()}</span>
+                          </div>
+                          <span className={`text-xs font-semibold w-9 text-right ${col.text}`}>{pct}%</span>
+                        </div>
+                      </div>
+                      <div className="w-full bg-muted rounded-full h-2">
+                        <div className={`${col.bar} h-2 rounded-full transition-all duration-500`} style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* ── Resumen de Clientes ──────────────────────────────────────────────── */}
       <Card className="shadow-card">
