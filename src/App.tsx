@@ -10,6 +10,7 @@ import Dashboard from "./pages/Dashboard";
 import Ventas from "./pages/Ventas";
 import Acopio from "./pages/Acopio";
 import Movimientos from "./pages/Movimientos";
+import Tiempos from "./pages/Tiempos";
 import DashboardLayout from "./components/layout/DashboardLayout";
 import NotFound from "./pages/NotFound";
 
@@ -30,6 +31,7 @@ const App = () => (
               <Route path="/ventas" element={<Ventas />} />
               <Route path="/acopio" element={<Acopio />} />
               <Route path="/movimientos" element={<Movimientos />} />
+              <Route path="/tiempos" element={<Tiempos />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

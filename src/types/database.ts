@@ -164,6 +164,38 @@ export interface Database {
           created_at?: string;
         };
       };
+      tiempos: {
+        Row: {
+          id: string;
+          fecha: string;
+          silice: string;
+          tiempo_ida: number;
+          tiempo_vuelta: number;
+          notas: string | null;
+          usuario_id: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          fecha: string;
+          silice: string;
+          tiempo_ida: number;
+          tiempo_vuelta: number;
+          notas?: string | null;
+          usuario_id?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          fecha?: string;
+          silice?: string;
+          tiempo_ida?: number;
+          tiempo_vuelta?: number;
+          notas?: string | null;
+          usuario_id?: string | null;
+          created_at?: string;
+        };
+      };
     };
   };
 }
@@ -174,8 +206,10 @@ export type Venta = Database['public']['Tables']['ventas']['Row'];
 export type Acopio = Database['public']['Tables']['acopios']['Row'];
 export type Movimiento = Database['public']['Tables']['movimientos']['Row'];
 export type Volqueta = Database['public']['Tables']['volquetas']['Row'];
+export type Tiempo = Database['public']['Tables']['tiempos']['Row'];
 
 export type VentaInsert = Database['public']['Tables']['ventas']['Insert'];
 export type AcopioInsert = Database['public']['Tables']['acopios']['Insert'];
 export type MovimientoInsert = Database['public']['Tables']['movimientos']['Insert'];
+export type TiempoInsert = Database['public']['Tables']['tiempos']['Insert'];
 

@@ -1,15 +1,16 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { 
-  LayoutDashboard, 
-  ShoppingCart, 
-  ArrowLeftRight, 
+import {
+  LayoutDashboard,
+  ShoppingCart,
+  ArrowLeftRight,
   LogOut,
   Mountain,
   ChevronLeft,
   Menu,
-  Warehouse
+  Warehouse,
+  Timer,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
@@ -19,6 +20,7 @@ const navigation = [
   { name: 'Ventas', href: '/ventas', icon: ShoppingCart },
   { name: 'Acopio', href: '/acopio', icon: Warehouse },
   { name: 'Movimientos', href: '/movimientos', icon: ArrowLeftRight },
+  { name: 'Tiempos', href: '/tiempos', icon: Timer },
 ];
 
 const Sidebar = () => {

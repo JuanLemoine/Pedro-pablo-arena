@@ -13,10 +13,21 @@ import {
 import { BarChart3 } from 'lucide-react';
 import { useProduccionVentas } from '@/hooks/useProduccionVentas';
 
-const ProduccionVentasChart = () => {
+interface Props {
+  tipoSilice?: string;
+  fechaInicio?: string;
+  fechaFin?: string;
+}
+
+const ProduccionVentasChart = ({ tipoSilice = 'todos', fechaInicio, fechaFin }: Props) => {
+  const parsedInicio = fechaInicio ? new Date(fechaInicio + 'T00:00:00') : undefined;
+  const parsedFin = fechaFin ? new Date(fechaFin + 'T00:00:00') : undefined;
+
   const { data, isLoading, error } = useProduccionVentas({
     agrupacion: 'diario',
-    tipoSilice: 'todos',
+    tipoSilice: tipoSilice as 'todos' | 'Silice A - Peña' | 'Silice B - Pozo',
+    fechaInicio: parsedInicio,
+    fechaFin: parsedFin,
   });
 
   return (
