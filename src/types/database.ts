@@ -35,6 +35,7 @@ export interface Database {
           valor_total: number;
           fuente: string;
           concepto: string | null;
+          tipo_transaccion: string;
           usuario_id: string | null;
           created_at: string;
         };
@@ -48,6 +49,7 @@ export interface Database {
           valor_total: number;
           fuente: string;
           concepto?: string | null;
+          tipo_transaccion?: string;
           usuario_id?: string | null;
           created_at?: string;
         };
@@ -61,6 +63,7 @@ export interface Database {
           valor_total?: number;
           fuente?: string;
           concepto?: string | null;
+          tipo_transaccion?: string;
           usuario_id?: string | null;
           created_at?: string;
         };

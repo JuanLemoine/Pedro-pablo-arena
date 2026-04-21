@@ -17,6 +17,8 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useVentas, useCreateVentas } from '@/hooks/useVentas';
 
+type TipoTransaccion = 'Venta' | 'Donación' | 'Transferencia';
+
 interface VentaForm {
   fecha: Date;
   silice: string;
@@ -25,6 +27,7 @@ interface VentaForm {
   cantidadM3: string;
   valorTotal: string;
   fuente: string;
+  tipoTransaccion: TipoTransaccion;
   concepto: string;
 }
 
@@ -36,6 +39,7 @@ const getEmptyForm = (): VentaForm => ({
   cantidadM3: '',
   valorTotal: '',
   fuente: '',
+  tipoTransaccion: 'Venta',
   concepto: '',
 });
 
@@ -100,7 +104,8 @@ const Ventas = () => {
       cantidad_m3: parseFloat(venta.cantidadM3),
       valor_total: parseFloat(venta.valorTotal),
       fuente: venta.fuente,
-      concepto: venta.concepto || null,
+      tipo_transaccion: venta.tipoTransaccion,
+      concepto: venta.tipoTransaccion === 'Donación' ? (venta.concepto || null) : null,
     }));
 
     createVentas.mutate(nuevasVentas, {
@@ -165,7 +170,7 @@ const Ventas = () => {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Encabezados de columnas */}
-              <div className="hidden lg:grid lg:grid-cols-9 gap-3 text-sm font-medium text-muted-foreground pb-2 border-b">
+              <div className="hidden lg:grid lg:grid-cols-10 gap-3 text-sm font-medium text-muted-foreground pb-2 border-b">
                 <div>Fecha *</div>
                 <div>Sílice *</div>
                 <div>N° Recibo *</div>
@@ -173,13 +178,14 @@ const Ventas = () => {
                 <div>Cantidad (m³) *</div>
                 <div>Valor Total ($) *</div>
                 <div>Fuente *</div>
-                <div>Concepto <span className="text-xs text-muted-foreground/70">(donación/transferencia)</span></div>
+                <div>Tipo *</div>
+                <div>Concepto <span className="text-xs text-muted-foreground/70">(solo donación)</span></div>
                 <div></div>
               </div>
 
               {/* Filas de ventas */}
               {ventasEnCurso.map((venta, index) => (
-                <div key={index} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-9 gap-3 p-3 bg-muted/30 rounded-lg">
+                <div key={index} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-10 gap-3 p-3 bg-muted/30 rounded-lg">
                   <div className="space-y-1">
                     <Label className="lg:hidden text-xs">Fecha *</Label>
                     <Popover open={openCalendars[index]} onOpenChange={(open) => setCalendarOpen(index, open)}>
@@ -285,12 +291,35 @@ const Ventas = () => {
                   </div>
                   
                   <div className="space-y-1">
-                    <Label className="lg:hidden text-xs">Concepto <span className="text-muted-foreground text-[10px]">(solo si es donación o transferencia)</span></Label>
-                    <Input
-                      placeholder="Donación / Transferencia"
-                      value={venta.concepto}
-                      onChange={(e) => actualizarVenta(index, 'concepto', e.target.value)}
-                    />
+                    <Label className="lg:hidden text-xs">Tipo Transacción *</Label>
+                    <Select
+                      value={venta.tipoTransaccion}
+                      onValueChange={(value) => actualizarVenta(index, 'tipoTransaccion', value as TipoTransaccion)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Tipo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Venta">Venta</SelectItem>
+                        <SelectItem value="Donación">Donación</SelectItem>
+                        <SelectItem value="Transferencia">Transferencia</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label className="lg:hidden text-xs">Concepto <span className="text-muted-foreground text-[10px]">(solo donación)</span></Label>
+                    {venta.tipoTransaccion === 'Donación' ? (
+                      <Input
+                        placeholder="Descripción de la donación"
+                        value={venta.concepto}
+                        onChange={(e) => actualizarVenta(index, 'concepto', e.target.value)}
+                      />
+                    ) : (
+                      <div className="h-10 flex items-center px-3 rounded-md border border-dashed border-muted-foreground/20 text-xs text-muted-foreground/50 select-none">
+                        N/A
+                      </div>
+                    )}
                   </div>
                   
                   <div className="flex items-end">
@@ -378,13 +407,14 @@ const Ventas = () => {
                     <TableHead className="text-right">Cantidad (m³)</TableHead>
                     <TableHead className="text-right">Valor Total</TableHead>
                     <TableHead>Fuente</TableHead>
+                    <TableHead>Tipo</TableHead>
                     <TableHead>Concepto</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredVentas.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                         No hay ventas registradas
                       </TableCell>
                     </TableRow>
@@ -401,6 +431,18 @@ const Ventas = () => {
                           <Badge variant="outline" className={venta.fuente === 'Zaranda' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-gray-100 text-gray-700 border-gray-200'}>
                             {venta.fuente}
                           </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {(() => {
+                            const t = (venta as any).tipo_transaccion || 'Venta';
+                            const cls =
+                              t === 'Donación'
+                                ? 'bg-purple-50 text-purple-700 border-purple-200'
+                                : t === 'Transferencia'
+                                ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                : 'bg-green-50 text-green-700 border-green-200';
+                            return <Badge variant="outline" className={cls}>{t}</Badge>;
+                          })()}
                         </TableCell>
                         <TableCell className="text-muted-foreground">{venta.concepto || '-'}</TableCell>
                       </TableRow>
