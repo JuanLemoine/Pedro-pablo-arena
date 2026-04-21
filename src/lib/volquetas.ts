@@ -84,7 +84,7 @@ export const calcularM3Producidos = (viajes: { placa: string; cantidad_viajes: n
 //   Silice A - Peña  | Punto de excavación → Zaranda      | 67.00%
 //   Silice A - Peña  | Zaranda → Trituradora               | 23.10%
 //   Silice A - Peña  | Zaranda → Clasificadora             | 23.10%
-//   Silice A - Peña  | Zaranda → Zaranda                   | 23.10%
+//   Silice A - Peña  | Zaranda → Repaso                    | 23.10%
 //   Silice B - Pozo  | Punto de excavación → Zaranda       | 67.00%
 //   Silice B - Pozo  | Punto de excavación → Trituradora   | 70.00%
 //   Silice B - Pozo  | Zaranda → Trituradora               | 23.10%  → resulta Peña
@@ -110,7 +110,7 @@ const PORCENTAJES_ARENA = {
     'Zaranda': {
       'Trituradora': PF_ZARANDA_DESTINO,
       'Clasificadora': PF_ZARANDA_DESTINO,
-      'Zaranda': PF_ZARANDA_DESTINO,
+      'Repaso': PF_ZARANDA_DESTINO,
     },
   },
   'Silice B - Pozo': {
@@ -143,7 +143,7 @@ export interface ResultadoProduccion {
  *  Silice A - Peña | Excavación → Zaranda      | 67.00% | Peña
  *  Silice A - Peña | Zaranda → Trituradora      | 23.10% | Peña
  *  Silice A - Peña | Zaranda → Clasificadora    | 23.10% | Peña
- *  Silice A - Peña | Zaranda → Zaranda          | 23.10% | Peña
+ *  Silice A - Peña | Zaranda → Repaso            | 23.10% | Peña
  *  Silice B - Pozo | Excavación → Zaranda       | 67.00% | Pozo
  *  Silice B - Pozo | Excavación → Trituradora   | 70.00% | Pozo
  *  Silice B - Pozo | Zaranda → Trituradora      | 23.10% | Peña  ← conversión
