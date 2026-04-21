@@ -11,10 +11,11 @@ export interface DashboardFiltros {
 
 export interface ResumenVentas {
   totalRegistros: number;
-  totalM3: number;
+  totalM3Vendidos: number;   // suma de cantidad_m3 del recibo
+  totalM3Entregados: number; // totalM3Vendidos + 1 por cada venta (m³ de yapa)
   totalValor: number;
   porTipo: { tipo: string; registros: number; valor: number }[];
-  porSilice: { silice: string; registros: number; m3: number }[];
+  porSilice: { silice: string; registros: number; m3Vendidos: number; m3Entregados: number }[];
 }
 
 export const PRECIO_M3: Record<string, number> = {
@@ -59,28 +60,34 @@ export const useDashboardResumen = (filtros: DashboardFiltros) => {
       const { data: ventasData } = await ventasQ;
 
       const ventasPorTipoMap = new Map<string, { registros: number; valor: number }>();
-      const ventasPorSiliceMap = new Map<string, { registros: number; m3: number }>();
-      let totalM3Ventas = 0;
+      const ventasPorSiliceMap = new Map<string, { registros: number; m3Vendidos: number; m3Entregados: number }>();
+      let totalM3Vendidos = 0;
       let totalValorVentas = 0;
+      const totalRegistrosVentas = ventasData?.length || 0;
 
       ventasData?.forEach(v => {
         const tipo = (v as any).tipo_transaccion || 'Venta';
         const sil = v.silice;
         const m3 = Number(v.cantidad_m3);
         const val = Number(v.valor_total);
-        totalM3Ventas += m3;
+        totalM3Vendidos += m3;
         totalValorVentas += val;
 
         const pt = ventasPorTipoMap.get(tipo) || { registros: 0, valor: 0 };
         ventasPorTipoMap.set(tipo, { registros: pt.registros + 1, valor: pt.valor + val });
 
-        const ps = ventasPorSiliceMap.get(sil) || { registros: 0, m3: 0 };
-        ventasPorSiliceMap.set(sil, { registros: ps.registros + 1, m3: ps.m3 + m3 });
+        const ps = ventasPorSiliceMap.get(sil) || { registros: 0, m3Vendidos: 0, m3Entregados: 0 };
+        ventasPorSiliceMap.set(sil, {
+          registros: ps.registros + 1,
+          m3Vendidos: ps.m3Vendidos + m3,
+          m3Entregados: ps.m3Entregados + m3 + 1, // +1 yapa por venta
+        });
       });
 
       const ventas: ResumenVentas = {
-        totalRegistros: ventasData?.length || 0,
-        totalM3: Math.round(totalM3Ventas * 100) / 100,
+        totalRegistros: totalRegistrosVentas,
+        totalM3Vendidos: Math.round(totalM3Vendidos * 100) / 100,
+        totalM3Entregados: Math.round((totalM3Vendidos + totalRegistrosVentas) * 100) / 100,
         totalValor: Math.round(totalValorVentas),
         porTipo: Array.from(ventasPorTipoMap.entries()).map(([tipo, d]) => ({ tipo, ...d })),
         porSilice: Array.from(ventasPorSiliceMap.entries()).map(([silice, d]) => ({ silice, ...d })),

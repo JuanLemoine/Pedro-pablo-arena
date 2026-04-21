@@ -209,11 +209,13 @@ const Dashboard = () => {
               <div className="space-y-2"><Skeleton className="h-10 w-full" /><Skeleton className="h-6 w-3/4" /></div>
             ) : resumen ? (
               <>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   <ResumenChip label="Registros" value={resumen.ventas.totalRegistros.toString()} color="bg-green-50 border-green-200" />
-                  <ResumenChip label="m³ vendidos" value={resumen.ventas.totalM3.toLocaleString(undefined, { maximumFractionDigits: 1 })} color="bg-blue-50 border-blue-200" />
                   <ResumenChip label="Valor total" value={`$${resumen.ventas.totalValor.toLocaleString()}`} color="bg-emerald-50 border-emerald-200" />
+                  <ResumenChip label="m³ facturados" value={`${resumen.ventas.totalM3Vendidos.toLocaleString(undefined, { maximumFractionDigits: 1 })} m³`} color="bg-blue-50 border-blue-200" />
+                  <ResumenChip label="m³ entregados" value={`${resumen.ventas.totalM3Entregados.toLocaleString(undefined, { maximumFractionDigits: 1 })} m³`} color="bg-sky-50 border-sky-200" />
                 </div>
+                <p className="text-[10px] text-muted-foreground">+1 m³ de yapa por venta · {resumen.ventas.totalRegistros} venta(s)</p>
                 {resumen.ventas.porTipo.length > 0 && (
                   <div className="space-y-1">
                     <p className="text-xs text-muted-foreground font-medium">Por tipo</p>
@@ -236,7 +238,7 @@ const Dashboard = () => {
                       {resumen.ventas.porSilice.map(s => (
                         <Badge key={s.silice} variant="outline" className={cn('text-xs',
                           s.silice.includes('A') ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-purple-50 text-purple-700 border-purple-200')}>
-                          {s.silice.replace('Silice ', '')}: {s.registros} reg · {s.m3.toLocaleString(undefined, { maximumFractionDigits: 1 })} m³
+                          {s.silice.replace('Silice ', '')}: fact. {s.m3Vendidos.toLocaleString(undefined, { maximumFractionDigits: 1 })} · entregado {s.m3Entregados.toLocaleString(undefined, { maximumFractionDigits: 1 })} m³
                         </Badge>
                       ))}
                     </div>
