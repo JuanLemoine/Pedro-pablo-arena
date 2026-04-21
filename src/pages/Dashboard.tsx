@@ -24,6 +24,8 @@ import {
   Warehouse,
   Activity,
   BadgeDollarSign,
+  Users,
+  User,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useDashboardStats } from '@/hooks/useDashboardStats';
@@ -373,6 +375,103 @@ const Dashboard = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* ── Resumen de Clientes ──────────────────────────────────────────────── */}
+      <Card className="shadow-card">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                <Users className="h-5 w-5 text-primary" />
+                Resumen de Clientes
+              </CardTitle>
+              <CardDescription>
+                {resumen ? `${resumen.clientes.length} cliente(s) con compras en el período` : 'Cargando…'}
+              </CardDescription>
+            </div>
+            <button onClick={() => navigate('/ventas')} className="text-sm text-primary hover:underline flex items-center gap-1">
+              Ver ventas <ArrowUpRight className="h-3 w-3" />
+            </button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {resumenLoading ? (
+            <div className="space-y-3">{[...Array(3)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}</div>
+          ) : resumen && resumen.clientes.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Users className="h-10 w-10 mx-auto mb-2 opacity-40" />
+              <p className="text-sm">No hay clientes en el período seleccionado</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-xs text-muted-foreground">
+                    <th className="text-left pb-2 pr-4 font-medium">Cliente</th>
+                    <th className="text-left pb-2 pr-4 font-medium">Placa</th>
+                    <th className="text-center pb-2 pr-4 font-medium">Compras</th>
+                    <th className="text-right pb-2 pr-4 font-medium">m³ facturados</th>
+                    <th className="text-right pb-2 pr-4 font-medium">m³ entregados</th>
+                    <th className="text-right pb-2 pr-4 font-medium">Valor total</th>
+                    <th className="text-left pb-2 pr-4 font-medium">Sílice(s)</th>
+                    <th className="text-left pb-2 font-medium">Última compra</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/50">
+                  {resumen?.clientes.map((c) => (
+                    <tr key={c.placa} className="hover:bg-muted/30 transition-colors">
+                      <td className="py-3 pr-4">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                            <User className="h-3.5 w-3.5 text-primary" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-foreground leading-tight">
+                              {c.tieneNombre ? c.nombre : <span className="text-muted-foreground italic">Sin nombre</span>}
+                            </p>
+                            {c.tiposTransaccion.map(t => (
+                              <Badge key={t} variant="outline" className={cn('text-[10px] px-1 py-0 mr-0.5',
+                                t === 'Donación' ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                                t === 'Transferencia' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                'bg-green-50 text-green-700 border-green-200')}>
+                                {t}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-3 pr-4 font-mono text-xs text-muted-foreground tracking-widest">{c.placa}</td>
+                      <td className="py-3 pr-4 text-center">
+                        <Badge variant="secondary" className="text-xs">{c.totalCompras}</Badge>
+                      </td>
+                      <td className="py-3 pr-4 text-right tabular-nums">
+                        {c.m3Facturados.toLocaleString(undefined, { maximumFractionDigits: 1 })} m³
+                      </td>
+                      <td className="py-3 pr-4 text-right tabular-nums text-sky-700 font-medium">
+                        {c.m3Entregados.toLocaleString(undefined, { maximumFractionDigits: 1 })} m³
+                      </td>
+                      <td className="py-3 pr-4 text-right tabular-nums font-semibold text-green-700">
+                        ${c.valorTotal.toLocaleString()}
+                      </td>
+                      <td className="py-3 pr-4">
+                        <div className="flex flex-wrap gap-1">
+                          {c.silices.map(s => (
+                            <Badge key={s} variant="outline" className={cn('text-[10px] px-1.5 py-0',
+                              s.includes('A') ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-purple-50 text-purple-700 border-purple-200')}>
+                              {s.replace('Silice ', '')}
+                            </Badge>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="py-3 text-xs text-muted-foreground">{c.ultimaCompra}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* ── KPI Cards ────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">

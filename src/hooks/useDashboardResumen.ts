@@ -38,11 +38,25 @@ export interface ResumenMovimientos {
   totalM3Producidos: number;
 }
 
+export interface ResumenCliente {
+  nombre: string;         // nombre_cliente o placa si no tiene nombre
+  placa: string;
+  tieneNombre: boolean;
+  totalCompras: number;
+  m3Facturados: number;
+  m3Entregados: number;
+  valorTotal: number;
+  ultimaCompra: string;
+  silices: string[];
+  tiposTransaccion: string[];
+}
+
 export interface DashboardResumen {
   ventas: ResumenVentas;
   acopio: ResumenAcopio;
   movimientos: ResumenMovimientos;
-  totalCombinado: number; // ventas.totalValor + acopio.totalValor
+  clientes: ResumenCliente[];
+  totalCombinado: number;
 }
 
 export const useDashboardResumen = (filtros: DashboardFiltros) => {
@@ -157,7 +171,63 @@ export const useDashboardResumen = (filtros: DashboardFiltros) => {
         totalM3Producidos: Math.round(totalM3Mov * 100) / 100,
       };
 
-      return { ventas, acopio, movimientos, totalCombinado: Math.round(ventas.totalValor + acopio.totalValor) };
+      // ── Clientes ────────────────────────────────────────────────
+      let clientesQ = supabase
+        .from('ventas')
+        .select('placa, nombre_cliente, cantidad_m3, valor_total, silice, tipo_transaccion, fecha')
+        .gte('fecha', filtros.fechaInicio)
+        .lte('fecha', filtros.fechaFin);
+      if (filtros.tipoSilice !== 'todos') clientesQ = clientesQ.eq('silice', filtros.tipoSilice);
+      if (filtros.tipoTransaccion !== 'todos') clientesQ = clientesQ.eq('tipo_transaccion', filtros.tipoTransaccion);
+      const { data: clientesData } = await clientesQ;
+
+      // Agrupar por placa (identificador único del cliente)
+      const clienteMap = new Map<string, ResumenCliente>();
+      clientesData?.forEach(v => {
+        const placa = v.placa;
+        const nombre = (v as any).nombre_cliente as string | null;
+        const m3 = Number(v.cantidad_m3);
+        const val = Number(v.valor_total);
+        const tipo = (v as any).tipo_transaccion || 'Venta';
+
+        const prev = clienteMap.get(placa) || {
+          nombre: nombre || placa,
+          placa,
+          tieneNombre: !!nombre,
+          totalCompras: 0,
+          m3Facturados: 0,
+          m3Entregados: 0,
+          valorTotal: 0,
+          ultimaCompra: v.fecha,
+          silices: [] as string[],
+          tiposTransaccion: [] as string[],
+        };
+
+        // Si en alguna fila tiene nombre, lo actualizamos
+        if (nombre && !prev.tieneNombre) { prev.nombre = nombre; prev.tieneNombre = true; }
+
+        prev.totalCompras += 1;
+        prev.m3Facturados += m3;
+        prev.m3Entregados += m3 + 1;
+        prev.valorTotal += val;
+        if (v.fecha > prev.ultimaCompra) prev.ultimaCompra = v.fecha;
+        if (!prev.silices.includes(v.silice)) prev.silices.push(v.silice);
+        if (!prev.tiposTransaccion.includes(tipo)) prev.tiposTransaccion.push(tipo);
+
+        clienteMap.set(placa, prev);
+      });
+
+      // Ordenar por valor total descendente
+      const clientes = Array.from(clienteMap.values())
+        .map(c => ({
+          ...c,
+          m3Facturados: Math.round(c.m3Facturados * 100) / 100,
+          m3Entregados: Math.round(c.m3Entregados * 100) / 100,
+          valorTotal: Math.round(c.valorTotal),
+        }))
+        .sort((a, b) => b.valorTotal - a.valorTotal);
+
+      return { ventas, acopio, movimientos, clientes, totalCombinado: Math.round(ventas.totalValor + acopio.totalValor) };
     },
     staleTime: 15000,
     refetchInterval: 30000,
