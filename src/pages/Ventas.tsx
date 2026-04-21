@@ -12,10 +12,11 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, Search, FileText, Trash2, Save, Warehouse, CalendarIcon, Loader2 } from 'lucide-react';
+import { Plus, Search, FileText, Trash2, Save, Warehouse, CalendarIcon, Loader2, User, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useVentas, useCreateVentas } from '@/hooks/useVentas';
+import { usePlacasClientes, formatearPlaca, validarPlaca } from '@/hooks/usePlacaCliente';
 
 type TipoTransaccion = 'Venta' | 'Donación' | 'Transferencia';
 
@@ -24,6 +25,7 @@ interface VentaForm {
   silice: string;
   recibo: string;
   placa: string;
+  nombreCliente: string;
   cantidadM3: string;
   valorTotal: string;
   fuente: string;
@@ -36,6 +38,7 @@ const getEmptyForm = (): VentaForm => ({
   silice: '',
   recibo: '',
   placa: '',
+  nombreCliente: '',
   cantidadM3: '',
   valorTotal: '',
   fuente: '',
@@ -47,7 +50,8 @@ const Ventas = () => {
   const navigate = useNavigate();
   const { data: ventas = [], isLoading, error } = useVentas();
   const createVentas = useCreateVentas();
-  
+  const { data: placasClientes = new Map() } = usePlacasClientes();
+
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [ventasEnCurso, setVentasEnCurso] = useState<VentaForm[]>([getEmptyForm()]);
@@ -71,6 +75,17 @@ const Ventas = () => {
     setVentasEnCurso(nuevasVentas);
   };
 
+  const actualizarPlaca = (index: number, valor: string) => {
+    const placa = formatearPlaca(valor);
+    const nuevasVentas = [...ventasEnCurso];
+    nuevasVentas[index] = { ...nuevasVentas[index], placa };
+    // Si la placa es válida y hay un nombre registrado, autocompletar
+    if (validarPlaca(placa) && placasClientes.has(placa) && !nuevasVentas[index].nombreCliente) {
+      nuevasVentas[index].nombreCliente = placasClientes.get(placa)!;
+    }
+    setVentasEnCurso(nuevasVentas);
+  };
+
   const setCalendarOpen = (index: number, open: boolean) => {
     const newOpenCalendars = [...openCalendars];
     newOpenCalendars[index] = open;
@@ -78,7 +93,15 @@ const Ventas = () => {
   };
 
   const validarVenta = (venta: VentaForm): boolean => {
-    return !!(venta.silice && venta.recibo && venta.placa && venta.cantidadM3 && venta.valorTotal && venta.fuente);
+    return !!(
+      venta.silice &&
+      venta.recibo &&
+      venta.placa &&
+      validarPlaca(venta.placa) &&
+      venta.cantidadM3 &&
+      venta.valorTotal &&
+      venta.fuente
+    );
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -105,6 +128,7 @@ const Ventas = () => {
       valor_total: parseFloat(venta.valorTotal),
       fuente: venta.fuente,
       tipo_transaccion: venta.tipoTransaccion,
+      nombre_cliente: venta.nombreCliente || null,
       concepto: venta.tipoTransaccion === 'Donación' ? (venta.concepto || null) : null,
     }));
 
@@ -170,22 +194,23 @@ const Ventas = () => {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Encabezados de columnas */}
-              <div className="hidden lg:grid lg:grid-cols-10 gap-3 text-sm font-medium text-muted-foreground pb-2 border-b">
+              <div className="hidden lg:grid lg:grid-cols-11 gap-3 text-sm font-medium text-muted-foreground pb-2 border-b">
                 <div>Fecha *</div>
                 <div>Sílice *</div>
                 <div>N° Recibo *</div>
-                <div>Placa Volqueta *</div>
+                <div>Placa *</div>
+                <div>Cliente</div>
                 <div>Cantidad (m³) *</div>
                 <div>Valor Total ($) *</div>
                 <div>Fuente *</div>
                 <div>Tipo *</div>
-                <div>Concepto <span className="text-xs text-muted-foreground/70">(solo donación)</span></div>
+                <div>Concepto <span className="text-xs text-muted-foreground/70">(donación)</span></div>
                 <div></div>
               </div>
 
               {/* Filas de ventas */}
               {ventasEnCurso.map((venta, index) => (
-                <div key={index} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-10 gap-3 p-3 bg-muted/30 rounded-lg">
+                <div key={index} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-11 gap-3 p-3 bg-muted/30 rounded-lg">
                   <div className="space-y-1">
                     <Label className="lg:hidden text-xs">Fecha *</Label>
                     <Popover open={openCalendars[index]} onOpenChange={(open) => setCalendarOpen(index, open)}>
@@ -245,12 +270,45 @@ const Ventas = () => {
                   
                   <div className="space-y-1">
                     <Label className="lg:hidden text-xs">Placa Volqueta *</Label>
-                    <Input
-                      placeholder="ABC-123"
-                      value={venta.placa}
-                      onChange={(e) => actualizarVenta(index, 'placa', e.target.value.toUpperCase())}
-                      className="uppercase"
-                    />
+                    <div className="relative">
+                      <Input
+                        placeholder="BMW345"
+                        value={venta.placa}
+                        onChange={(e) => actualizarPlaca(index, e.target.value)}
+                        maxLength={6}
+                        className={cn(
+                          'uppercase font-mono tracking-widest pr-8',
+                          venta.placa.length === 6 && !validarPlaca(venta.placa) && 'border-red-400 focus-visible:ring-red-400'
+                        )}
+                      />
+                      {venta.placa.length === 6 && !validarPlaca(venta.placa) && (
+                        <AlertCircle className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-red-500" />
+                      )}
+                    </div>
+                    {venta.placa.length === 6 && !validarPlaca(venta.placa) && (
+                      <p className="text-xs text-red-500">3 letras + 3 números (ej. BMW345)</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label className="lg:hidden text-xs">
+                      Nombre Cliente
+                      {validarPlaca(venta.placa) && placasClientes.has(venta.placa) && (
+                        <span className="ml-1 text-green-600 text-[10px]">✓ cliente conocido</span>
+                      )}
+                    </Label>
+                    <div className="relative">
+                      <User className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                      <Input
+                        placeholder="Nombre del cliente"
+                        value={venta.nombreCliente}
+                        onChange={(e) => actualizarVenta(index, 'nombreCliente', e.target.value)}
+                        className={cn(
+                          'pl-8',
+                          validarPlaca(venta.placa) && placasClientes.has(venta.placa) && venta.nombreCliente === placasClientes.get(venta.placa) && 'border-green-300 bg-green-50/50'
+                        )}
+                      />
+                    </div>
                   </div>
                   
                   <div className="space-y-1">
@@ -404,6 +462,7 @@ const Ventas = () => {
                     <TableHead>Sílice</TableHead>
                     <TableHead>N° Recibo</TableHead>
                     <TableHead>Placa</TableHead>
+                    <TableHead>Cliente</TableHead>
                     <TableHead className="text-right">Cantidad (m³)</TableHead>
                     <TableHead className="text-right">Valor Total</TableHead>
                     <TableHead>Fuente</TableHead>
@@ -414,7 +473,7 @@ const Ventas = () => {
                 <TableBody>
                   {filteredVentas.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                         No hay ventas registradas
                       </TableCell>
                     </TableRow>
@@ -424,7 +483,12 @@ const Ventas = () => {
                         <TableCell className="font-medium">{venta.fecha}</TableCell>
                         <TableCell>{getSiliceBadge(venta.silice)}</TableCell>
                         <TableCell>{venta.recibo}</TableCell>
-                        <TableCell className="font-mono">{venta.placa}</TableCell>
+                        <TableCell className="font-mono tracking-widest">{venta.placa}</TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {(venta as any).nombre_cliente
+                            ? <span className="flex items-center gap-1"><User className="h-3 w-3" />{(venta as any).nombre_cliente}</span>
+                            : <span className="text-muted-foreground/40">—</span>}
+                        </TableCell>
                         <TableCell className="text-right">{venta.cantidad_m3} m³</TableCell>
                         <TableCell className="text-right font-semibold">${Number(venta.valor_total).toLocaleString()}</TableCell>
                         <TableCell>
