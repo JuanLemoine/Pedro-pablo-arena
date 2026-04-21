@@ -32,11 +32,11 @@ const getEmptyForm = (): TiempoForm => ({
   notas: '',
 });
 
-const formatMinutos = (min: number) => {
-  if (min < 60) return `${min} min`;
-  const h = Math.floor(min / 60);
-  const m = min % 60;
-  return m > 0 ? `${h}h ${m}min` : `${h}h`;
+const formatSegundos = (seg: number) => {
+  if (seg < 60) return `${seg} seg`;
+  const m = Math.floor(seg / 60);
+  const s = seg % 60;
+  return s > 0 ? `${m}min ${s}seg` : `${m}min`;
 };
 
 const getSiliceBadge = (silice: string) => {
@@ -119,7 +119,7 @@ const Tiempos = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-display font-bold text-foreground">Tiempos de Ruta</h1>
-          <p className="text-muted-foreground mt-1">Registro de tiempos de ida y vuelta por tipo de sílice</p>
+          <p className="text-muted-foreground mt-1">Registro de tiempos de ida y vuelta por tipo de sílice (en segundos)</p>
         </div>
         <Button onClick={() => setShowForm(!showForm)} className="gap-2">
           <Plus className="h-4 w-4" />
@@ -137,7 +137,7 @@ const Tiempos = () => {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Promedio ida</p>
-                <p className="text-2xl font-bold">{formatMinutos(promedioIda)}</p>
+                <p className="text-2xl font-bold">{formatSegundos(promedioIda)}</p>
               </div>
             </CardContent>
           </Card>
@@ -148,7 +148,7 @@ const Tiempos = () => {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Promedio vuelta</p>
-                <p className="text-2xl font-bold">{formatMinutos(promedioVuelta)}</p>
+                <p className="text-2xl font-bold">{formatSegundos(promedioVuelta)}</p>
               </div>
             </CardContent>
           </Card>
@@ -159,7 +159,7 @@ const Tiempos = () => {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Promedio ciclo completo</p>
-                <p className="text-2xl font-bold">{formatMinutos(promedioCiclo)}</p>
+                <p className="text-2xl font-bold">{formatSegundos(promedioCiclo)}</p>
               </div>
             </CardContent>
           </Card>
@@ -174,7 +174,7 @@ const Tiempos = () => {
               <Timer className="h-5 w-5 text-primary" />
               Registrar Tiempo de Ruta
             </CardTitle>
-            <CardDescription>Los tiempos se registran en minutos</CardDescription>
+            <CardDescription>Los tiempos se registran en segundos</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-5">
@@ -216,39 +216,39 @@ const Tiempos = () => {
 
                 {/* Tiempo ida */}
                 <div className="space-y-2">
-                  <Label>Tiempo de Ida * <span className="text-muted-foreground text-xs">(minutos)</span></Label>
+                  <Label>Tiempo de Ida * <span className="text-muted-foreground text-xs">(segundos)</span></Label>
                   <div className="relative">
                     <ArrowRight className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-blue-500" />
                     <Input
                       type="number"
                       min="1"
-                      placeholder="ej. 45"
+                      placeholder="ej. 180"
                       value={form.tiempo_ida}
                       onChange={(e) => setF('tiempo_ida', e.target.value)}
                       className="pl-9"
                     />
                   </div>
                   {form.tiempo_ida && !isNaN(parseInt(form.tiempo_ida)) && (
-                    <p className="text-xs text-muted-foreground">{formatMinutos(parseInt(form.tiempo_ida))}</p>
+                    <p className="text-xs text-muted-foreground">{formatSegundos(parseInt(form.tiempo_ida))}</p>
                   )}
                 </div>
 
                 {/* Tiempo vuelta */}
                 <div className="space-y-2">
-                  <Label>Tiempo de Vuelta * <span className="text-muted-foreground text-xs">(minutos)</span></Label>
+                  <Label>Tiempo de Vuelta * <span className="text-muted-foreground text-xs">(segundos)</span></Label>
                   <div className="relative">
                     <ArrowLeft className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-purple-500" />
                     <Input
                       type="number"
                       min="1"
-                      placeholder="ej. 40"
+                      placeholder="ej. 150"
                       value={form.tiempo_vuelta}
                       onChange={(e) => setF('tiempo_vuelta', e.target.value)}
                       className="pl-9"
                     />
                   </div>
                   {form.tiempo_vuelta && !isNaN(parseInt(form.tiempo_vuelta)) && (
-                    <p className="text-xs text-muted-foreground">{formatMinutos(parseInt(form.tiempo_vuelta))}</p>
+                    <p className="text-xs text-muted-foreground">{formatSegundos(parseInt(form.tiempo_vuelta))}</p>
                   )}
                 </div>
               </div>
@@ -259,10 +259,10 @@ const Tiempos = () => {
                 <div className="flex items-center gap-2 p-3 rounded-lg bg-green-50 border border-green-200 text-sm text-green-700">
                   <TrendingUp className="h-4 w-4 shrink-0" />
                   Ciclo completo: <span className="font-bold">
-                    {formatMinutos(parseInt(form.tiempo_ida) + parseInt(form.tiempo_vuelta))}
+                    {formatSegundos(parseInt(form.tiempo_ida) + parseInt(form.tiempo_vuelta))}
                   </span>
                   <span className="text-green-600 text-xs">
-                    ({parseInt(form.tiempo_ida) + parseInt(form.tiempo_vuelta)} min en total)
+                    ({parseInt(form.tiempo_ida) + parseInt(form.tiempo_vuelta)} seg en total)
                   </span>
                 </div>
               )}
@@ -350,14 +350,14 @@ const Tiempos = () => {
                         <TableCell className="font-medium">{t.fecha}</TableCell>
                         <TableCell>{getSiliceBadge(t.silice)}</TableCell>
                         <TableCell className="text-right">
-                          <span className="font-medium text-blue-700 tabular-nums">{formatMinutos(t.tiempo_ida)}</span>
+                          <span className="font-medium text-blue-700 tabular-nums">{formatSegundos(t.tiempo_ida)}</span>
                         </TableCell>
                         <TableCell className="text-right">
-                          <span className="font-medium text-purple-700 tabular-nums">{formatMinutos(t.tiempo_vuelta)}</span>
+                          <span className="font-medium text-purple-700 tabular-nums">{formatSegundos(t.tiempo_vuelta)}</span>
                         </TableCell>
                         <TableCell className="text-right">
                           <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 tabular-nums">
-                            {formatMinutos(t.tiempo_ida + t.tiempo_vuelta)}
+                            {formatSegundos(t.tiempo_ida + t.tiempo_vuelta)}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-muted-foreground text-sm max-w-[200px] truncate">
