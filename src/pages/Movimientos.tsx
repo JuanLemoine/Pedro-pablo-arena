@@ -68,9 +68,9 @@ const getDestinosDisponibles = (silice: string, origen: string): string[] => {
     if (origen === 'Punto de excavación') {
       return ['Zaranda', 'Trituradora'];
     }
-    // Silice B - Pozo: desde Zaranda va a Trituradora o Clasificadora
+    // Silice B - Pozo: desde Zaranda va a Trituradora, Clasificadora o Repaso
     if (origen === 'Zaranda') {
-      return ['Trituradora', 'Clasificadora'];
+      return ['Trituradora', 'Clasificadora', 'Repaso'];
     }
   }
   return [];

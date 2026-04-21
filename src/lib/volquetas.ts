@@ -122,6 +122,7 @@ const PORCENTAJES_ARENA = {
     'Zaranda': {
       'Trituradora': PF_ZARANDA_DESTINO,  // Resultado: Silice A - Peña
       'Clasificadora': PF_ZARANDA_DESTINO, // Resultado: Silice A - Peña
+      'Repaso': PF_ZARANDA_DESTINO,        // Resultado: Silice A - Peña
     },
   },
 };
