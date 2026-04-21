@@ -17,11 +17,17 @@ export interface ResumenVentas {
   porSilice: { silice: string; registros: number; m3: number }[];
 }
 
+export const PRECIO_M3: Record<string, number> = {
+  'Silice B - Pozo': 85000,
+  'Silice A - Peña': 75000,
+};
+
 export interface ResumenAcopio {
   totalRegistros: number;
   totalViajes: number;
   totalM3: number;
-  porSilice: { silice: string; viajes: number; m3: number }[];
+  totalValor: number;
+  porSilice: { silice: string; viajes: number; m3: number; valor: number }[];
   porFuente: { fuente: string; viajes: number }[];
 }
 
@@ -35,6 +41,7 @@ export interface DashboardResumen {
   ventas: ResumenVentas;
   acopio: ResumenAcopio;
   movimientos: ResumenMovimientos;
+  totalCombinado: number; // ventas.totalValor + acopio.totalValor
 }
 
 export const useDashboardResumen = (filtros: DashboardFiltros) => {
@@ -92,16 +99,20 @@ export const useDashboardResumen = (filtros: DashboardFiltros) => {
       const acopioPorFuenteMap = new Map<string, { viajes: number }>();
       let totalViajesAcopio = 0;
       let totalM3Acopio = 0;
+      let totalValorAcopio = 0;
 
       acopioData?.forEach(a => {
         const viajes = a.cantidad_viajes;
         const capacidad = getCapacidadVolqueta(a.placa);
         const m3 = capacidad * viajes;
+        const precio = PRECIO_M3[a.silice] ?? 0;
+        const valor = m3 * precio;
         totalViajesAcopio += viajes;
         totalM3Acopio += m3;
+        totalValorAcopio += valor;
 
-        const ps = acopioPorSiliceMap.get(a.silice) || { viajes: 0, m3: 0 };
-        acopioPorSiliceMap.set(a.silice, { viajes: ps.viajes + viajes, m3: ps.m3 + m3 });
+        const ps = acopioPorSiliceMap.get(a.silice) || { viajes: 0, m3: 0, valor: 0 };
+        acopioPorSiliceMap.set(a.silice, { viajes: ps.viajes + viajes, m3: ps.m3 + m3, valor: ps.valor + valor });
 
         const pf = acopioPorFuenteMap.get(a.fuente) || { viajes: 0 };
         acopioPorFuenteMap.set(a.fuente, { viajes: pf.viajes + viajes });
@@ -111,6 +122,7 @@ export const useDashboardResumen = (filtros: DashboardFiltros) => {
         totalRegistros: acopioData?.length || 0,
         totalViajes: totalViajesAcopio,
         totalM3: Math.round(totalM3Acopio * 100) / 100,
+        totalValor: Math.round(totalValorAcopio),
         porSilice: Array.from(acopioPorSiliceMap.entries()).map(([silice, d]) => ({ silice, ...d })),
         porFuente: Array.from(acopioPorFuenteMap.entries()).map(([fuente, d]) => ({ fuente, ...d })),
       };
@@ -138,7 +150,7 @@ export const useDashboardResumen = (filtros: DashboardFiltros) => {
         totalM3Producidos: Math.round(totalM3Mov * 100) / 100,
       };
 
-      return { ventas, acopio, movimientos };
+      return { ventas, acopio, movimientos, totalCombinado: Math.round(ventas.totalValor + acopio.totalValor) };
     },
     staleTime: 15000,
     refetchInterval: 30000,

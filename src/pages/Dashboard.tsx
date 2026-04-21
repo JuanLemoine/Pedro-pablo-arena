@@ -23,6 +23,7 @@ import {
   ShoppingCart,
   Warehouse,
   Activity,
+  BadgeDollarSign,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useDashboardStats } from '@/hooks/useDashboardStats';
@@ -193,7 +194,7 @@ const Dashboard = () => {
       </Card>
 
       {/* ── Resumen por sección ──────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-4">
 
         {/* Ventas */}
         <Card className="shadow-card border-green-200/60 bg-gradient-to-br from-green-50/40 to-white">
@@ -262,10 +263,11 @@ const Dashboard = () => {
               <div className="space-y-2"><Skeleton className="h-10 w-full" /><Skeleton className="h-6 w-3/4" /></div>
             ) : resumen ? (
               <>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   <ResumenChip label="Registros" value={resumen.acopio.totalRegistros.toString()} color="bg-amber-50 border-amber-200" />
                   <ResumenChip label="Viajes" value={resumen.acopio.totalViajes.toString()} color="bg-orange-50 border-orange-200" />
                   <ResumenChip label="m³ brutos" value={resumen.acopio.totalM3.toLocaleString(undefined, { maximumFractionDigits: 1 })} color="bg-yellow-50 border-yellow-200" />
+                  <ResumenChip label="Valor acopio" value={`$${resumen.acopio.totalValor.toLocaleString()}`} color="bg-green-50 border-green-200" />
                 </div>
                 {resumen.acopio.porSilice.length > 0 && (
                   <div className="space-y-1">
@@ -274,7 +276,7 @@ const Dashboard = () => {
                       {resumen.acopio.porSilice.map(s => (
                         <Badge key={s.silice} variant="outline" className={cn('text-xs',
                           s.silice.includes('A') ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-purple-50 text-purple-700 border-purple-200')}>
-                          {s.silice.replace('Silice ', '')}: {s.viajes} viajes · {s.m3.toLocaleString(undefined, { maximumFractionDigits: 1 })} m³
+                          {s.silice.replace('Silice ', '')}: {s.m3.toLocaleString(undefined, { maximumFractionDigits: 1 })} m³ · ${s.valor.toLocaleString()}
                         </Badge>
                       ))}
                     </div>
@@ -292,9 +294,49 @@ const Dashboard = () => {
                     </div>
                   </div>
                 )}
+                <p className="text-[10px] text-muted-foreground">Peña $75.000/m³ · Pozo $85.000/m³</p>
                 <button onClick={() => navigate('/acopio')} className="text-xs text-primary hover:underline flex items-center gap-1 pt-0.5">
                   Ver detalle <ArrowUpRight className="h-3 w-3" />
                 </button>
+              </>
+            ) : null}
+          </CardContent>
+        </Card>
+
+        {/* Total Combinado */}
+        <Card className="shadow-card border-teal-200/60 bg-gradient-to-br from-teal-50/60 to-white">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2 text-teal-700">
+              <BadgeDollarSign className="h-4 w-4" />
+              Total Combinado
+            </CardTitle>
+            <CardDescription className="text-xs">Ventas + Acopio</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {resumenLoading ? (
+              <div className="space-y-2"><Skeleton className="h-10 w-full" /><Skeleton className="h-6 w-3/4" /></div>
+            ) : resumen ? (
+              <>
+                <div className="p-4 rounded-xl bg-teal-50 border border-teal-200 text-center">
+                  <p className="text-xs text-teal-600 mb-1">Ingreso total del período</p>
+                  <p className="text-3xl font-bold text-teal-800">${resumen.totalCombinado.toLocaleString()}</p>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="flex items-center gap-1.5 text-green-700"><ShoppingCart className="h-3 w-3" /> Ventas</span>
+                    <span className="font-semibold">${resumen.ventas.totalValor.toLocaleString()}</span>
+                  </div>
+                  <div className="w-full bg-muted rounded-full h-1.5">
+                    <div className="bg-green-500 h-1.5 rounded-full" style={{ width: resumen.totalCombinado > 0 ? `${(resumen.ventas.totalValor / resumen.totalCombinado) * 100}%` : '0%' }} />
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="flex items-center gap-1.5 text-amber-700"><Warehouse className="h-3 w-3" /> Acopio</span>
+                    <span className="font-semibold">${resumen.acopio.totalValor.toLocaleString()}</span>
+                  </div>
+                  <div className="w-full bg-muted rounded-full h-1.5">
+                    <div className="bg-amber-500 h-1.5 rounded-full" style={{ width: resumen.totalCombinado > 0 ? `${(resumen.acopio.totalValor / resumen.totalCombinado) * 100}%` : '0%' }} />
+                  </div>
+                </div>
               </>
             ) : null}
           </CardContent>
