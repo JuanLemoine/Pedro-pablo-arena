@@ -31,6 +31,7 @@ import { useNavigate } from 'react-router-dom';
 import { useDashboardStats } from '@/hooks/useDashboardStats';
 import { useDashboardResumen } from '@/hooks/useDashboardResumen';
 import ProduccionVentasChart from '@/components/charts/ProduccionVentasChart';
+import ProduccionDiariaLineChart from '@/components/charts/ProduccionDiariaLineChart';
 import ProgresoMensualChart from '@/components/charts/ProgresoMensualChart';
 import ProduccionPorFlujoChart from '@/components/charts/ProduccionPorFlujoChart';
 import ProduccionPorFlujo from '@/components/charts/ProduccionPorFlujo';
@@ -647,6 +648,12 @@ const Dashboard = () => {
       </Card>
 
       {/* ── Gráficas principales ─────────────────────────────────────────────── */}
+      <ProduccionDiariaLineChart
+        tipoSilice={filtros.tipoSilice}
+        fechaInicio={filtros.fechaInicio}
+        fechaFin={filtros.fechaFin}
+      />
+
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <ProduccionVentasChart tipoSilice={filtros.tipoSilice} fechaInicio={filtros.fechaInicio} fechaFin={filtros.fechaFin} />
         <ProgresoMensualChart />
