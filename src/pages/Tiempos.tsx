@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, Search, Trash2, Save, CalendarIcon, Loader2, Timer, TrendingUp, ArrowRight, ArrowLeft, Clock } from 'lucide-react';
+import { Plus, Search, Trash2, Save, CalendarIcon, Loader2, Timer, TrendingUp, ArrowRight, ArrowLeft, Clock, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useTiempos, useCreateTiempo, useDeleteTiempo } from '@/hooks/useTiempos';
@@ -73,9 +73,15 @@ const Tiempos = () => {
       toast.error('Los tiempos deben ser números positivos');
       return;
     }
+    const fechaStr = format(form.fecha, 'yyyy-MM-dd');
+    const duplicado = tiempos.find(t => t.fecha === fechaStr && t.silice === form.silice);
+    if (duplicado) {
+      toast.error(`Ya existe un registro de ${form.silice} para el ${format(form.fecha, 'dd/MM/yyyy', { locale: es })}. Solo se permite uno por fecha y tipo de sílice.`);
+      return;
+    }
     createTiempo.mutate(
       {
-        fecha: format(form.fecha, 'yyyy-MM-dd'),
+        fecha: fechaStr,
         silice: form.silice,
         tiempo_ida: ida,
         tiempo_vuelta: vuelta,
@@ -89,6 +95,10 @@ const Tiempos = () => {
       }
     );
   };
+
+  const yaExiste = form.silice
+    ? tiempos.some(t => t.fecha === format(form.fecha, 'yyyy-MM-dd') && t.silice === form.silice)
+    : false;
 
   const filtered = tiempos.filter(t =>
     t.silice.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -253,6 +263,14 @@ const Tiempos = () => {
                 </div>
               </div>
 
+              {/* Aviso de duplicado */}
+              {yaExiste && (
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">
+                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                  Ya existe un registro de <span className="font-semibold">{form.silice}</span> para el <span className="font-semibold">{format(form.fecha, 'dd/MM/yyyy', { locale: es })}</span>. Solo se permite uno por fecha y tipo de sílice.
+                </div>
+              )}
+
               {/* Ciclo total preview */}
               {form.tiempo_ida && form.tiempo_vuelta &&
                 !isNaN(parseInt(form.tiempo_ida)) && !isNaN(parseInt(form.tiempo_vuelta)) && (
@@ -281,7 +299,7 @@ const Tiempos = () => {
                 <Button type="button" variant="outline" onClick={() => { setShowForm(false); setForm(getEmptyForm()); }}>
                   Cancelar
                 </Button>
-                <Button type="submit" className="gap-2" disabled={createTiempo.isPending}>
+                <Button type="submit" className="gap-2" disabled={createTiempo.isPending || yaExiste}>
                   {createTiempo.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                   Guardar Registro
                 </Button>
