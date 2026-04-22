@@ -3,15 +3,17 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   AreaChart,
   Area,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  ReferenceLine,
 } from 'recharts';
 import { Pickaxe } from 'lucide-react';
 import { useMovimientosExcavacion } from '@/hooks/useMovimientosExcavacion';
+import { useOptimoDiario } from '@/hooks/useOptimoDiario';
+import { format } from 'date-fns';
 
 interface Props {
   tipoSilice?: string;
@@ -21,20 +23,50 @@ interface Props {
 
 const TooltipPersonalizado = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
+  const mov = payload.find((p: any) => p.dataKey === 'movimientos');
+  const optimo = payload.find((p: any) => p.dataKey === 'optimo');
   return (
     <div className="bg-white border border-slate-200 rounded-lg shadow-lg p-3 text-xs space-y-1">
       <p className="font-semibold text-slate-700">{label}</p>
-      <div className="flex items-center gap-2">
-        <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-        <span className="text-slate-500">Movimientos:</span>
-        <span className="font-bold text-slate-800">{payload[0].value}</span>
-      </div>
+      {mov && (
+        <div className="flex items-center gap-2">
+          <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+          <span className="text-slate-500">Movimientos:</span>
+          <span className="font-bold text-slate-800">{mov.value}</span>
+        </div>
+      )}
+      {optimo && optimo.value > 0 && (
+        <div className="flex items-center gap-2">
+          <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
+          <span className="text-slate-500">Óptimo (simulador):</span>
+          <span className="font-bold text-slate-800">{optimo.value}</span>
+        </div>
+      )}
     </div>
   );
 };
 
 const MovimientosExcavacionChart = ({ tipoSilice, fechaInicio, fechaFin }: Props) => {
   const { data, isLoading, error } = useMovimientosExcavacion({ tipoSilice, fechaInicio, fechaFin });
+
+  const now = new Date();
+  const rangoInicio = fechaInicio ?? format(new Date(now.getFullYear(), now.getMonth(), 1), 'yyyy-MM-dd');
+  const rangoFin = fechaFin ?? format(now, 'yyyy-MM-dd');
+  const { data: optimoMap } = useOptimoDiario({
+    fechaInicio: rangoInicio,
+    fechaFin: rangoFin,
+    tipoSilice,
+  });
+
+  const diasConOptimo = (data?.dias ?? []).map(d => ({
+    ...d,
+    optimo: optimoMap?.get(d.fecha)?.viajesOptimo ?? 0,
+  }));
+
+  const diasOptimo = diasConOptimo.filter(d => d.optimo > 0);
+  const optimoPromedio = diasOptimo.length > 0
+    ? Math.round((diasOptimo.reduce((s, d) => s + d.optimo, 0) / diasOptimo.length) * 10) / 10
+    : 0;
 
   return (
     <Card className="shadow-card">
@@ -56,8 +88,8 @@ const MovimientosExcavacionChart = ({ tipoSilice, fechaInicio, fechaFin }: Props
                 <p className="font-bold text-emerald-600">{data.totalMovimientos.toLocaleString()}</p>
               </div>
               <div className="text-right">
-                <p className="text-xs text-muted-foreground">Promedio/día</p>
-                <p className="font-bold text-blue-600">{data.promedioDia}</p>
+                <p className="text-xs text-muted-foreground">Óptimo prom./día</p>
+                <p className="font-bold text-blue-600">{optimoPromedio}</p>
               </div>
               {data.diaPico && (
                 <div className="text-right">
@@ -82,7 +114,7 @@ const MovimientosExcavacionChart = ({ tipoSilice, fechaInicio, fechaFin }: Props
           <div className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart
-                data={data.dias}
+                data={diasConOptimo}
                 margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
               >
                 <defs>
@@ -110,21 +142,19 @@ const MovimientosExcavacionChart = ({ tipoSilice, fechaInicio, fechaFin }: Props
                 />
                 <Tooltip content={<TooltipPersonalizado />} />
 
-                {/* Línea de promedio */}
-                {data.promedioDia > 0 && (
-                  <ReferenceLine
-                    y={data.promedioDia}
-                    stroke="hsl(210,75%,52%)"
-                    strokeDasharray="5 3"
-                    strokeWidth={1.5}
-                    label={{
-                      value: `Prom. ${data.promedioDia}`,
-                      position: 'insideTopRight',
-                      fontSize: 10,
-                      fill: 'hsl(210,75%,40%)',
-                    }}
-                  />
-                )}
+                {/* Línea de óptimo diario según simulador */}
+                <Line
+                  type="monotone"
+                  dataKey="optimo"
+                  name="Óptimo"
+                  stroke="hsl(210,75%,52%)"
+                  strokeDasharray="5 3"
+                  strokeWidth={2}
+                  dot={false}
+                  activeDot={{ r: 4, strokeWidth: 2, stroke: 'white', fill: 'hsl(210,75%,52%)' }}
+                  isAnimationActive={false}
+                  connectNulls
+                />
 
                 <Area
                   type="monotone"
