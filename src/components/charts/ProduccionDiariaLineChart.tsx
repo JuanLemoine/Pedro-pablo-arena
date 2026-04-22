@@ -14,7 +14,8 @@ import {
 } from 'recharts';
 import { TrendingUp } from 'lucide-react';
 import { useProduccionVentas } from '@/hooks/useProduccionVentas';
-import { format } from 'date-fns';
+import { useOptimoDiario } from '@/hooks/useOptimoDiario';
+import { format, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 interface Props {
@@ -26,6 +27,7 @@ interface Props {
 const TooltipPersonalizado = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   const producido = payload.find((p: any) => p.dataKey === 'producido');
+  const optimo = payload.find((p: any) => p.dataKey === 'optimo');
   return (
     <div className="bg-white border border-slate-200 rounded-lg shadow-lg p-3 text-xs space-y-1">
       <p className="font-semibold text-slate-700">{label}</p>
@@ -35,6 +37,15 @@ const TooltipPersonalizado = ({ active, payload, label }: any) => {
           <span className="text-slate-500">Producido:</span>
           <span className="font-bold text-slate-800">
             {Number(producido.value).toLocaleString(undefined, { maximumFractionDigits: 2 })} m³
+          </span>
+        </div>
+      )}
+      {optimo && optimo.value > 0 && (
+        <div className="flex items-center gap-2">
+          <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
+          <span className="text-slate-500">Óptimo (simulador):</span>
+          <span className="font-bold text-slate-800">
+            {Number(optimo.value).toLocaleString(undefined, { maximumFractionDigits: 2 })} m³
           </span>
         </div>
       )}
@@ -53,9 +64,25 @@ const ProduccionDiariaLineChart = ({ tipoSilice = 'todos', fechaInicio, fechaFin
     fechaFin: parsedFin,
   });
 
-  // Promedio diario
-  const promedio = data && data.datos.length > 0
-    ? data.totalProducido / data.datos.filter(d => d.producido > 0).length
+  // Rango para el hook de óptimo (coincide con el del dashboard)
+  const rangoInicio = fechaInicio ?? format(parsedInicio ?? subDays(new Date(), 14), 'yyyy-MM-dd');
+  const rangoFin = fechaFin ?? format(parsedFin ?? new Date(), 'yyyy-MM-dd');
+  const { data: optimoMap } = useOptimoDiario({
+    fechaInicio: rangoInicio,
+    fechaFin: rangoFin,
+    tipoSilice,
+  });
+
+  // Fusionar óptimo con datos por fecha
+  const datosConOptimo = (data?.datos ?? []).map(d => ({
+    ...d,
+    optimo: optimoMap?.get(d.fecha)?.m3Optimo ?? 0,
+  }));
+
+  // Promedio del óptimo (sólo días con óptimo > 0)
+  const diasOptimo = datosConOptimo.filter(d => d.optimo > 0);
+  const optimoPromedio = diasOptimo.length > 0
+    ? diasOptimo.reduce((s, d) => s + d.optimo, 0) / diasOptimo.length
     : 0;
 
   // Máximo del período
@@ -84,9 +111,9 @@ const ProduccionDiariaLineChart = ({ tipoSilice = 'todos', fechaInicio, fechaFin
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-xs text-muted-foreground">Promedio/día</p>
+                <p className="text-xs text-muted-foreground">Óptimo prom./día</p>
                 <p className="font-bold text-blue-600">
-                  {promedio.toLocaleString(undefined, { maximumFractionDigits: 1 })} m³
+                  {optimoPromedio.toLocaleString(undefined, { maximumFractionDigits: 1 })} m³
                 </p>
               </div>
               {diaPico && maximo > 0 && (
@@ -114,7 +141,7 @@ const ProduccionDiariaLineChart = ({ tipoSilice = 'todos', fechaInicio, fechaFin
           <div className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart
-                data={data.datos}
+                data={datosConOptimo}
                 margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
               >
                 <defs>
@@ -142,21 +169,19 @@ const ProduccionDiariaLineChart = ({ tipoSilice = 'todos', fechaInicio, fechaFin
                 />
                 <Tooltip content={<TooltipPersonalizado />} />
 
-                {/* Línea de promedio */}
-                {promedio > 0 && (
-                  <ReferenceLine
-                    y={promedio}
-                    stroke="hsl(210,75%,52%)"
-                    strokeDasharray="5 3"
-                    strokeWidth={1.5}
-                    label={{
-                      value: `Prom. ${promedio.toLocaleString(undefined, { maximumFractionDigits: 1 })}`,
-                      position: 'insideTopRight',
-                      fontSize: 10,
-                      fill: 'hsl(210,75%,40%)',
-                    }}
-                  />
-                )}
+                {/* Línea de óptimo diario según simulador */}
+                <Line
+                  type="monotone"
+                  dataKey="optimo"
+                  name="Óptimo"
+                  stroke="hsl(210,75%,52%)"
+                  strokeDasharray="5 3"
+                  strokeWidth={2}
+                  dot={false}
+                  activeDot={{ r: 4, strokeWidth: 2, stroke: 'white', fill: 'hsl(210,75%,52%)' }}
+                  isAnimationActive={false}
+                  connectNulls
+                />
 
                 <Area
                   type="monotone"
