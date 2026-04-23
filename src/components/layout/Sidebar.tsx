@@ -11,6 +11,7 @@ import {
   Menu,
   Warehouse,
   Timer,
+  Calculator,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
@@ -21,6 +22,7 @@ const navigation = [
   { name: 'Acopio', href: '/acopio', icon: Warehouse },
   { name: 'Movimientos', href: '/movimientos', icon: ArrowLeftRight },
   { name: 'Tiempos', href: '/tiempos', icon: Timer },
+  { name: 'Simulador', href: '/simulador', icon: Calculator },
 ];
 
 const Sidebar = () => {
