@@ -1,16 +1,14 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  LineChart,
+  ComposedChart,
   Line,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  ReferenceLine,
   Area,
-  AreaChart,
 } from 'recharts';
 import { TrendingUp } from 'lucide-react';
 import { useProduccionVentas } from '@/hooks/useProduccionVentas';
@@ -140,7 +138,7 @@ const ProduccionDiariaLineChart = ({ tipoSilice = 'todos', fechaInicio, fechaFin
         ) : data && data.datos.length > 0 ? (
           <div className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart
+              <ComposedChart
                 data={datosConOptimo}
                 margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
               >
@@ -208,7 +206,7 @@ const ProduccionDiariaLineChart = ({ tipoSilice = 'todos', fechaInicio, fechaFin
                   }}
                   activeDot={{ r: 6, strokeWidth: 2, stroke: 'white' }}
                 />
-              </AreaChart>
+              </ComposedChart>
             </ResponsiveContainer>
           </div>
         ) : (
