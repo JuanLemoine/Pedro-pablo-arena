@@ -94,6 +94,47 @@ export function calcularOptimoDia({
   return { viajes: viajesSmall + viajesLarge, m3, m3Bruto };
 }
 
+/**
+ * Óptimo teórico del día: el valor MÁXIMO alcanzable de "Cant m³ fase 1/día"
+ * dados los tiempos de ida/vuelta del día y la jornada, asumiendo que se
+ * asignan las volquetas necesarias para saturar la excavadora.
+ *
+ * Flota asumida: homogénea 7m³ (configuración más común; 20 volquetas disponibles).
+ * - Ttotal = 313 + 40 + ida + vuelta
+ * - Wo = Ttotal / 313  (volquetas mínimas para 0 espera)
+ * - Con W ≥ ceil(Wo): la excavadora está saturada → viajes/día = floor(Jornada/313)
+ * - m³ fase 1/día máximo = viajes × 5.5
+ *
+ * Esto es lo que el Excel muestra como "Cant m³ fase 1/día" cuando W = Wreal
+ * con W ≥ Wo (saturación de la excavadora).
+ */
+export interface OptimoTeoricoResult {
+  viajes: number;      // viajes máximos alcanzables en la jornada
+  m3Fase1: number;     // m³ fase 1 máximos (sin PF)
+  Wo: number;          // volquetas óptimas (decimal)
+  WoRound: number;     // volquetas mínimas para alcanzar el máximo
+  ciclo: number;       // Ttotal individual
+}
+
+export function calcularOptimoTeorico(
+  tIda: number,
+  tVuelta: number,
+  jornadaSeg: number
+): OptimoTeoricoResult {
+  if (jornadaSeg <= 0) {
+    return { viajes: 0, m3Fase1: 0, Wo: 0, WoRound: 0, ciclo: 0 };
+  }
+  const ida = Math.max(0, tIda);
+  const vuelta = Math.max(0, tVuelta);
+  const ciclo = TCARGA_SMALL + TDESCARGA_SMALL + ida + vuelta;
+  const Wo = ciclo / TCARGA_SMALL;
+  const WoRound = Math.max(1, Math.ceil(Wo));
+  // Con W ≥ Wo la excavadora está saturada: viajes = Jornada / Tcarga
+  const viajes = Math.floor(jornadaSeg / TCARGA_SMALL);
+  const m3Fase1 = viajes * M3_POR_VIAJE_SMALL;
+  return { viajes, m3Fase1, Wo, WoRound, ciclo };
+}
+
 // ─── Simulador completo (hojas del Excel) ────────────────────────────────────
 
 export const PF_RESIDUOS_PROC = 0.7;   // % del residuo que se produce cómo Peña
