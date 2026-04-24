@@ -37,6 +37,7 @@ import ProgresoMensualChart from '@/components/charts/ProgresoMensualChart';
 import ProduccionPorFlujoChart from '@/components/charts/ProduccionPorFlujoChart';
 import ProduccionPorFlujo from '@/components/charts/ProduccionPorFlujo';
 import ProyeccionProduccion from '@/components/charts/ProyeccionProduccion';
+import VolquetasBalanceChart from '@/components/charts/VolquetasBalanceChart';
 import { format, startOfMonth } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -661,6 +662,12 @@ const Dashboard = () => {
           fechaFin={filtros.fechaFin}
         />
       </div>
+
+      <VolquetasBalanceChart
+        tipoSilice={filtros.tipoSilice}
+        fechaInicio={filtros.fechaInicio}
+        fechaFin={filtros.fechaFin}
+      />
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <ProduccionVentasChart tipoSilice={filtros.tipoSilice} fechaInicio={filtros.fechaInicio} fechaFin={filtros.fechaFin} />
