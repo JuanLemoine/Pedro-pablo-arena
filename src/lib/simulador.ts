@@ -135,6 +135,77 @@ export function calcularOptimoTeorico(
   return { viajes, m3Fase1, Wo, WoRound, ciclo };
 }
 
+/**
+ * Mejor configuración de flota para maximizar "Cant m³ fase 1/día" dados los
+ * tiempos de ida/vuelta y la jornada. Explora:
+ *   - homogénea pequeña (1..maxSmall)
+ *   - 1 volqueta grande sola
+ *   - mixta 1×14m³ + n×7m³ (n = 1..maxSmall)
+ *
+ * Se usa para mostrar el "Óptimo" en el dashboard como el máximo m³ alcanzable
+ * antes de que agregar una volqueta más deje de aumentar la producción.
+ */
+export interface MejorConfig {
+  nSmall: number;
+  nLarge: number;
+  viajes: number;
+  m3Bruto: number;       // m³ fase 1 (sin PF)
+  label: string;
+  Wo: number;            // Wo teórico (decimal) de la flota ganadora
+}
+
+export function labelFlota(nSmall: number, nLarge: number): string {
+  if (nSmall + nLarge === 0) return '—';
+  const parts: string[] = [];
+  if (nLarge > 0) parts.push(`${nLarge}×14m³`);
+  if (nSmall > 0) parts.push(`${nSmall}×7m³`);
+  return parts.join(' + ');
+}
+
+export function calcularMejorConfig(
+  tIda: number,
+  tVuelta: number,
+  jornadaSeg: number,
+  opts: { incluirLarge?: boolean; maxSmall?: number } = {}
+): MejorConfig {
+  const { incluirLarge = true, maxSmall = 20 } = opts;
+  let best: MejorConfig = { nSmall: 0, nLarge: 0, viajes: 0, m3Bruto: 0, label: '—', Wo: 0 };
+  if (jornadaSeg <= 0) return best;
+
+  const TtotalSmall = TCARGA_SMALL + TDESCARGA_SMALL + tIda + tVuelta;
+  const TtotalLarge = TCARGA_LARGE + TDESCARGA_LARGE + tIda + tVuelta;
+
+  // Homogénea pequeña
+  for (let n = 1; n <= maxSmall; n++) {
+    const r = calcularOptimoDia({ tIda, tVuelta, nSmall: n, nLarge: 0, jornadaSeg });
+    if (r.m3Bruto > best.m3Bruto) {
+      best = { nSmall: n, nLarge: 0, viajes: r.viajes, m3Bruto: r.m3Bruto,
+        label: labelFlota(n, 0), Wo: TtotalSmall / TCARGA_SMALL };
+    }
+  }
+
+  if (incluirLarge) {
+    // 1×14m³ sola
+    const rL = calcularOptimoDia({ tIda, tVuelta, nSmall: 0, nLarge: 1, jornadaSeg });
+    if (rL.m3Bruto > best.m3Bruto) {
+      best = { nSmall: 0, nLarge: 1, viajes: rL.viajes, m3Bruto: rL.m3Bruto,
+        label: labelFlota(0, 1), Wo: TtotalLarge / TCARGA_LARGE };
+    }
+    // Mixta 1×14m³ + n×7m³
+    for (let n = 1; n <= maxSmall; n++) {
+      const r = calcularOptimoDia({ tIda, tVuelta, nSmall: n, nLarge: 1, jornadaSeg });
+      if (r.m3Bruto > best.m3Bruto) {
+        // Wo teórico en mixta: ciclo / (Tcarga promedio ponderado) — aquí usamos
+        // relación Ttotal de la grande sobre Tcarga grande (saturación excavadora).
+        best = { nSmall: n, nLarge: 1, viajes: r.viajes, m3Bruto: r.m3Bruto,
+          label: labelFlota(n, 1), Wo: TtotalLarge / TCARGA_LARGE + n };
+      }
+    }
+  }
+
+  return best;
+}
+
 // ─── Simulador completo (hojas del Excel) ────────────────────────────────────
 
 export const PF_RESIDUOS_PROC = 0.7;   // % del residuo que se produce cómo Peña

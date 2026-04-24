@@ -1,17 +1,33 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
-import { calcularOptimoDia, calcularOptimoTeorico, jornadaSegundosParaFecha } from '@/lib/simulador';
+import {
+  calcularOptimoDia,
+  calcularMejorConfig,
+  jornadaSegundosParaFecha,
+  labelFlota,
+} from '@/lib/simulador';
 import { getCapacidadVolqueta } from '@/lib/volquetas';
 import { eachDayOfInterval, format, parseISO } from 'date-fns';
 
 export interface OptimoPorDia {
   fecha: string;
+  // Flota real asignada ese día (agregada sobre sílices)
+  nSmallActual: number;
+  nLargeActual: number;
+  wActual: number;                // nSmall + nLarge reales
+  configActualLabel: string;      // p.ej. "2×7m³" o "1×14m³ + 1×7m³"
+  m3Actual: number;               // m³ fase 1 que producirían las volquetas reales
+  viajesActual: number;
+  // Óptimo teórico (mejor combinación dados los tiempos)
+  nSmallOptimo: number;
+  nLargeOptimo: number;
+  woRound: number;                // nSmallOptimo + nLargeOptimo (= "mín. volquetas para el máximo")
+  configOptimoLabel: string;      // p.ej. "1×14m³ + 1×7m³"
+  m3Optimo: number;               // máximo "Cant m³ fase 1/día" alcanzable
   viajesOptimo: number;
-  m3Optimo: number;       // "Cant m³ fase 1/día" del Excel (sin PF)
-  wActual: number;        // volquetas reales asignadas ese día
-  woOptimo: number;       // Wo = volquetas necesarias para saturar (decimal)
-  woRound: number;        // ceil(Wo) = mínimo entero para saturar
-  diferencia: number;     // wActual - woRound (+ = de más, - = faltan)
+  woOptimo: number;               // Wo teórico (decimal)
+  // Balance
+  diferencia: number;             // wActual - woRound
   usedFallback: boolean;
 }
 
@@ -23,6 +39,15 @@ interface Params {
 
 interface TiempoRow { fecha: string; silice: string; tiempo_ida: number; tiempo_vuelta: number; }
 interface MovRow { fecha: string; placa: string; silice: string; }
+
+const vacio = (fecha: string): OptimoPorDia => ({
+  fecha,
+  nSmallActual: 0, nLargeActual: 0, wActual: 0, configActualLabel: '—',
+  m3Actual: 0, viajesActual: 0,
+  nSmallOptimo: 0, nLargeOptimo: 0, woRound: 0, configOptimoLabel: '—',
+  m3Optimo: 0, viajesOptimo: 0, woOptimo: 0,
+  diferencia: 0, usedFallback: false,
+});
 
 export const useOptimoDiario = ({ fechaInicio, fechaFin, tipoSilice }: Params) => {
   return useQuery({
@@ -47,7 +72,6 @@ export const useOptimoDiario = ({ fechaInicio, fechaFin, tipoSilice }: Params) =
       const movs = (movsRes.data ?? []) as MovRow[];
       const tiemposAll = (tiemposAllRes.data ?? []) as Pick<TiempoRow, 'tiempo_ida' | 'tiempo_vuelta'>[];
 
-      // Promedio histórico de tiempos (fallback cuando no hay registro ese día)
       const promedioHist = (() => {
         if (tiemposAll.length === 0) return null;
         const n = tiemposAll.length;
@@ -57,7 +81,6 @@ export const useOptimoDiario = ({ fechaInicio, fechaFin, tipoSilice }: Params) =
         };
       })();
 
-      // Tiempos por fecha+silice
       const tiemposMap = new Map<string, { ida: number; vuelta: number }>();
       tiemposRango.forEach(t => {
         tiemposMap.set(`${t.fecha}|${t.silice}`, {
@@ -66,7 +89,6 @@ export const useOptimoDiario = ({ fechaInicio, fechaFin, tipoSilice }: Params) =
         });
       });
 
-      // Placas únicas por fecha+silice
       const placasMap = new Map<string, Set<string>>();
       const silicesPorFecha = new Map<string, Set<string>>();
       movs.forEach(m => {
@@ -85,22 +107,22 @@ export const useOptimoDiario = ({ fechaInicio, fechaFin, tipoSilice }: Params) =
       for (const d of dias) {
         const fecha = format(d, 'yyyy-MM-dd');
         const jornada = jornadaSegundosParaFecha(fecha);
-        if (jornada === 0) {
-          resultado.set(fecha, { fecha, viajesOptimo: 0, m3Optimo: 0, wActual: 0, woOptimo: 0, woRound: 0, diferencia: 0, usedFallback: false });
-          continue;
-        }
+        if (jornada === 0) { resultado.set(fecha, vacio(fecha)); continue; }
 
         const silicesDelDia = tipoSilice && tipoSilice !== 'todos'
           ? [tipoSilice]
           : Array.from(silicesPorFecha.get(fecha) ?? []);
 
-        if (silicesDelDia.length === 0) {
-          resultado.set(fecha, { fecha, viajesOptimo: 0, m3Optimo: 0, wActual: 0, woOptimo: 0, woRound: 0, diferencia: 0, usedFallback: false });
-          continue;
-        }
+        if (silicesDelDia.length === 0) { resultado.set(fecha, vacio(fecha)); continue; }
 
-        let viajesTot = 0, m3Tot = 0, wActualTot = 0, woSuma = 0, woRoundSuma = 0;
+        let nSmallAct = 0, nLargeAct = 0;
+        let viajesAct = 0, m3Act = 0;
+        let viajesOpt = 0, m3Opt = 0, woOptSuma = 0;
+        let nSmallOpt = 0, nLargeOpt = 0;
         let usedFallback = false;
+        const labelsActPorSil: string[] = [];
+        const labelsOptPorSil: string[] = [];
+        const multiSilice = silicesDelDia.length > 1;
 
         for (const sil of silicesDelDia) {
           const placas = placasMap.get(`${fecha}|${sil}`) ?? new Set<string>();
@@ -108,39 +130,55 @@ export const useOptimoDiario = ({ fechaInicio, fechaFin, tipoSilice }: Params) =
           placas.forEach(p => {
             if (getCapacidadVolqueta(p) >= 10) nLarge++; else nSmall++;
           });
-          if (nSmall + nLarge === 0) continue;
 
           const t = tiemposMap.get(`${fecha}|${sil}`);
           if (!t) usedFallback = true;
           const tiempos = t ?? promedioHist;
           if (!tiempos) continue;
 
-          const { viajes, m3Bruto } = calcularOptimoDia({
-            tIda: tiempos.ida,
-            tVuelta: tiempos.vuelta,
-            nSmall,
-            nLarge,
-            jornadaSeg: jornada,
-          });
+          // Actual (con volquetas realmente asignadas)
+          if (nSmall + nLarge > 0) {
+            const real = calcularOptimoDia({
+              tIda: tiempos.ida, tVuelta: tiempos.vuelta,
+              nSmall, nLarge, jornadaSeg: jornada,
+            });
+            nSmallAct += nSmall;
+            nLargeAct += nLarge;
+            viajesAct += real.viajes;
+            m3Act += real.m3Bruto;
+            if (multiSilice) labelsActPorSil.push(`${sil}: ${labelFlota(nSmall, nLarge)}`);
+            else labelsActPorSil.push(labelFlota(nSmall, nLarge));
+          }
 
-          // Wo teórico para esta sílice (asumiendo flota pequeña como referencia)
-          const teo = calcularOptimoTeorico(tiempos.ida, tiempos.vuelta, jornada);
-
-          viajesTot += viajes;
-          m3Tot += m3Bruto;
-          wActualTot += nSmall + nLarge;
-          woSuma += teo.Wo;
-          woRoundSuma += teo.WoRound;
+          // Óptimo teórico (mejor combinación dados los tiempos)
+          const mejor = calcularMejorConfig(tiempos.ida, tiempos.vuelta, jornada);
+          nSmallOpt += mejor.nSmall;
+          nLargeOpt += mejor.nLarge;
+          viajesOpt += mejor.viajes;
+          m3Opt += mejor.m3Bruto;
+          woOptSuma += mejor.Wo;
+          if (multiSilice) labelsOptPorSil.push(`${sil}: ${mejor.label}`);
+          else labelsOptPorSil.push(mejor.label);
         }
 
+        const wActual = nSmallAct + nLargeAct;
+        const woRound = nSmallOpt + nLargeOpt;
         resultado.set(fecha, {
           fecha,
-          viajesOptimo: viajesTot,
-          m3Optimo: Math.round(m3Tot * 100) / 100,
-          wActual: wActualTot,
-          woOptimo: Math.round(woSuma * 100) / 100,
-          woRound: woRoundSuma,
-          diferencia: wActualTot - woRoundSuma,
+          nSmallActual: nSmallAct,
+          nLargeActual: nLargeAct,
+          wActual,
+          configActualLabel: labelsActPorSil.length ? labelsActPorSil.join(' · ') : '—',
+          m3Actual: Math.round(m3Act * 100) / 100,
+          viajesActual: viajesAct,
+          nSmallOptimo: nSmallOpt,
+          nLargeOptimo: nLargeOpt,
+          woRound,
+          configOptimoLabel: labelsOptPorSil.length ? labelsOptPorSil.join(' · ') : '—',
+          m3Optimo: Math.round(m3Opt * 100) / 100,
+          viajesOptimo: viajesOpt,
+          woOptimo: Math.round(woOptSuma * 100) / 100,
+          diferencia: wActual - woRound,
           usedFallback,
         });
       }
