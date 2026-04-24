@@ -1,13 +1,17 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
-import { calcularOptimoDia, jornadaSegundosParaFecha } from '@/lib/simulador';
+import { calcularOptimoDia, calcularOptimoTeorico, jornadaSegundosParaFecha } from '@/lib/simulador';
 import { getCapacidadVolqueta } from '@/lib/volquetas';
 import { eachDayOfInterval, format, parseISO } from 'date-fns';
 
 export interface OptimoPorDia {
   fecha: string;
   viajesOptimo: number;
-  m3Optimo: number;     // "Cant m³ fase 1/día" del Excel (sin PF)
+  m3Optimo: number;       // "Cant m³ fase 1/día" del Excel (sin PF)
+  wActual: number;        // volquetas reales asignadas ese día
+  woOptimo: number;       // Wo = volquetas necesarias para saturar (decimal)
+  woRound: number;        // ceil(Wo) = mínimo entero para saturar
+  diferencia: number;     // wActual - woRound (+ = de más, - = faltan)
   usedFallback: boolean;
 }
 
@@ -82,7 +86,7 @@ export const useOptimoDiario = ({ fechaInicio, fechaFin, tipoSilice }: Params) =
         const fecha = format(d, 'yyyy-MM-dd');
         const jornada = jornadaSegundosParaFecha(fecha);
         if (jornada === 0) {
-          resultado.set(fecha, { fecha, viajesOptimo: 0, m3Optimo: 0, usedFallback: false });
+          resultado.set(fecha, { fecha, viajesOptimo: 0, m3Optimo: 0, wActual: 0, woOptimo: 0, woRound: 0, diferencia: 0, usedFallback: false });
           continue;
         }
 
@@ -91,11 +95,11 @@ export const useOptimoDiario = ({ fechaInicio, fechaFin, tipoSilice }: Params) =
           : Array.from(silicesPorFecha.get(fecha) ?? []);
 
         if (silicesDelDia.length === 0) {
-          resultado.set(fecha, { fecha, viajesOptimo: 0, m3Optimo: 0, usedFallback: false });
+          resultado.set(fecha, { fecha, viajesOptimo: 0, m3Optimo: 0, wActual: 0, woOptimo: 0, woRound: 0, diferencia: 0, usedFallback: false });
           continue;
         }
 
-        let viajesTot = 0, m3Tot = 0;
+        let viajesTot = 0, m3Tot = 0, wActualTot = 0, woSuma = 0, woRoundSuma = 0;
         let usedFallback = false;
 
         for (const sil of silicesDelDia) {
@@ -118,14 +122,25 @@ export const useOptimoDiario = ({ fechaInicio, fechaFin, tipoSilice }: Params) =
             nLarge,
             jornadaSeg: jornada,
           });
+
+          // Wo teórico para esta sílice (asumiendo flota pequeña como referencia)
+          const teo = calcularOptimoTeorico(tiempos.ida, tiempos.vuelta, jornada);
+
           viajesTot += viajes;
           m3Tot += m3Bruto;
+          wActualTot += nSmall + nLarge;
+          woSuma += teo.Wo;
+          woRoundSuma += teo.WoRound;
         }
 
         resultado.set(fecha, {
           fecha,
           viajesOptimo: viajesTot,
           m3Optimo: Math.round(m3Tot * 100) / 100,
+          wActual: wActualTot,
+          woOptimo: Math.round(woSuma * 100) / 100,
+          woRound: woRoundSuma,
+          diferencia: wActualTot - woRoundSuma,
           usedFallback,
         });
       }
