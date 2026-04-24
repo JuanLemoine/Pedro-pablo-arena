@@ -28,20 +28,24 @@ const TooltipPersonalizado = ({ active, payload, label }: any) => {
   if (!d) return null;
   const dif = d.diferencia as number;
   return (
-    <div className="bg-white border border-slate-200 rounded-lg shadow-lg p-3 text-xs space-y-1.5">
+    <div className="bg-white border border-slate-200 rounded-lg shadow-lg p-3 text-xs space-y-1.5 max-w-[300px]">
       <p className="font-semibold text-slate-700">{label}</p>
-      <div className="flex items-center gap-2">
-        <div className="w-2.5 h-2.5 rounded-full bg-slate-500" />
-        <span className="text-slate-500">Volquetas reales:</span>
-        <span className="font-bold text-slate-800">{d.wActual}</span>
+      <div className="flex items-start gap-2">
+        <div className="w-2.5 h-2.5 mt-1 rounded-full bg-slate-500 shrink-0" />
+        <div className="flex-1">
+          <div><span className="text-slate-500">Flota real:</span> <span className="font-bold text-slate-800">{d.wActual}</span></div>
+          <div className="text-slate-500 text-[11px]">{d.configActualLabel} · {d.m3Actual} m³</div>
+        </div>
       </div>
-      <div className="flex items-center gap-2">
-        <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
-        <span className="text-slate-500">Wo (óptimo):</span>
-        <span className="font-bold text-slate-800">{d.woOptimo} → mín. {d.woRound}</span>
+      <div className="flex items-start gap-2">
+        <div className="w-2.5 h-2.5 mt-1 rounded-full bg-blue-500 shrink-0" />
+        <div className="flex-1">
+          <div><span className="text-slate-500">Flota óptima:</span> <span className="font-bold text-slate-800">{d.woRound}</span></div>
+          <div className="text-slate-500 text-[11px]">{d.configOptimoLabel} · {d.m3Optimo} m³</div>
+        </div>
       </div>
-      <div className={`flex items-center gap-2 font-semibold ${dif > 0 ? 'text-orange-600' : dif < 0 ? 'text-red-600' : 'text-green-600'}`}>
-        <span>{dif > 0 ? `+${dif} de más` : dif < 0 ? `${dif} faltan` : '✓ Exacto'}</span>
+      <div className={`font-semibold ${dif > 0 ? 'text-orange-600' : dif < 0 ? 'text-red-600' : 'text-green-600'}`}>
+        {dif > 0 ? `+${dif} de más` : dif < 0 ? `${dif} faltan` : '✓ Exacto'}
       </div>
     </div>
   );

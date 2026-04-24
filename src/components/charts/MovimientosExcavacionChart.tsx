@@ -25,21 +25,33 @@ const TooltipPersonalizado = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   const mov = payload.find((p: any) => p.dataKey === 'movimientos');
   const optimo = payload.find((p: any) => p.dataKey === 'optimo');
+  const d = payload[0]?.payload;
   return (
-    <div className="bg-white border border-slate-200 rounded-lg shadow-lg p-3 text-xs space-y-1">
+    <div className="bg-white border border-slate-200 rounded-lg shadow-lg p-3 text-xs space-y-1.5 max-w-[300px]">
       <p className="font-semibold text-slate-700">{label}</p>
       {mov && (
         <div className="flex items-center gap-2">
           <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-          <span className="text-slate-500">Movimientos:</span>
+          <span className="text-slate-500">Movimientos reales:</span>
           <span className="font-bold text-slate-800">{mov.value}</span>
         </div>
       )}
+      {d?.configActualLabel && d.configActualLabel !== '—' && (
+        <div className="flex items-start gap-2">
+          <div className="w-2.5 h-2.5 mt-1 rounded-full bg-slate-400 shrink-0" />
+          <div>
+            <div className="text-slate-500">Flota usada: <span className="font-semibold text-slate-700">{d.configActualLabel}</span></div>
+            <div className="text-slate-500 text-[11px]">Haría {d.viajesActual} viajes</div>
+          </div>
+        </div>
+      )}
       {optimo && optimo.value > 0 && (
-        <div className="flex items-center gap-2">
-          <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
-          <span className="text-slate-500">Óptimo (simulador):</span>
-          <span className="font-bold text-slate-800">{optimo.value}</span>
+        <div className="flex items-start gap-2">
+          <div className="w-2.5 h-2.5 mt-1 rounded-full bg-blue-500 shrink-0" />
+          <div>
+            <div><span className="text-slate-500">Óptimo:</span> <span className="font-bold text-slate-800">{optimo.value} viajes</span></div>
+            <div className="text-slate-500 text-[11px]">Config ideal: {d?.configOptimoLabel ?? '—'}</div>
+          </div>
         </div>
       )}
     </div>
@@ -58,10 +70,16 @@ const MovimientosExcavacionChart = ({ tipoSilice, fechaInicio, fechaFin }: Props
     tipoSilice,
   });
 
-  const diasConOptimo = (data?.dias ?? []).map(d => ({
-    ...d,
-    optimo: optimoMap?.get(d.fecha)?.viajesOptimo ?? 0,
-  }));
+  const diasConOptimo = (data?.dias ?? []).map(d => {
+    const o = optimoMap?.get(d.fecha);
+    return {
+      ...d,
+      optimo: o?.viajesOptimo ?? 0,
+      configOptimoLabel: o?.configOptimoLabel ?? '—',
+      configActualLabel: o?.configActualLabel ?? '—',
+      viajesActual: o?.viajesActual ?? 0,
+    };
+  });
 
   const diasOptimo = diasConOptimo.filter(d => d.optimo > 0);
   const optimoPromedio = diasOptimo.length > 0

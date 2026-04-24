@@ -26,8 +26,9 @@ const TooltipPersonalizado = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   const producido = payload.find((p: any) => p.dataKey === 'producido');
   const optimo = payload.find((p: any) => p.dataKey === 'optimo');
+  const d = payload[0]?.payload;
   return (
-    <div className="bg-white border border-slate-200 rounded-lg shadow-lg p-3 text-xs space-y-1">
+    <div className="bg-white border border-slate-200 rounded-lg shadow-lg p-3 text-xs space-y-1.5 max-w-[300px]">
       <p className="font-semibold text-slate-700">{label}</p>
       {producido && (
         <div className="flex items-center gap-2">
@@ -38,13 +39,22 @@ const TooltipPersonalizado = ({ active, payload, label }: any) => {
           </span>
         </div>
       )}
+      {d?.configActualLabel && d.configActualLabel !== '—' && (
+        <div className="flex items-start gap-2">
+          <div className="w-2.5 h-2.5 mt-1 rounded-full bg-slate-400 shrink-0" />
+          <div>
+            <div className="text-slate-500">Flota usada: <span className="font-semibold text-slate-700">{d.configActualLabel}</span></div>
+            <div className="text-slate-500 text-[11px]">Produciría {d.m3Actual} m³</div>
+          </div>
+        </div>
+      )}
       {optimo && optimo.value > 0 && (
-        <div className="flex items-center gap-2">
-          <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
-          <span className="text-slate-500">Óptimo (simulador):</span>
-          <span className="font-bold text-slate-800">
-            {Number(optimo.value).toLocaleString(undefined, { maximumFractionDigits: 2 })} m³
-          </span>
+        <div className="flex items-start gap-2">
+          <div className="w-2.5 h-2.5 mt-1 rounded-full bg-blue-500 shrink-0" />
+          <div>
+            <div><span className="text-slate-500">Óptimo:</span> <span className="font-bold text-slate-800">{Number(optimo.value).toLocaleString(undefined, { maximumFractionDigits: 2 })} m³</span></div>
+            <div className="text-slate-500 text-[11px]">Config ideal: {d?.configOptimoLabel ?? '—'}</div>
+          </div>
         </div>
       )}
     </div>
@@ -72,10 +82,16 @@ const ProduccionDiariaLineChart = ({ tipoSilice = 'todos', fechaInicio, fechaFin
   });
 
   // Fusionar óptimo con datos por fecha
-  const datosConOptimo = (data?.datos ?? []).map(d => ({
-    ...d,
-    optimo: optimoMap?.get(d.fecha)?.m3Optimo ?? 0,
-  }));
+  const datosConOptimo = (data?.datos ?? []).map(d => {
+    const o = optimoMap?.get(d.fecha);
+    return {
+      ...d,
+      optimo: o?.m3Optimo ?? 0,
+      configOptimoLabel: o?.configOptimoLabel ?? '—',
+      configActualLabel: o?.configActualLabel ?? '—',
+      m3Actual: o?.m3Actual ?? 0,
+    };
+  });
 
   // Promedio del óptimo (sólo días con óptimo > 0)
   const diasOptimo = datosConOptimo.filter(d => d.optimo > 0);
