@@ -192,7 +192,11 @@ const SimHomogenea = () => {
                   <TableCell className="text-right">{fmtM3(r.productoFinalZarandaS)}</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell>Producto final en residuos (70%)</TableCell>
+                  <TableCell>
+                    {producto === 'Pozo'
+                      ? `Producto final en residuos de ${residuosPozo} (70%)`
+                      : 'Producto final en residuos (70%)'}
+                  </TableCell>
                   <TableCell className="text-right">{fmtM3(r.productoEnResiduosLV)}</TableCell>
                   <TableCell className="text-right">{fmtM3(r.productoEnResiduosS)}</TableCell>
                 </TableRow>
@@ -405,7 +409,11 @@ const SimMixta = () => {
                   <TableCell className="text-right">{fmtM3(r.productoFinalZarandaS)}</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell>Producto final en residuos</TableCell>
+                  <TableCell>
+                    {producto === 'Pozo'
+                      ? `Producto final en residuos de ${residuosPozo}`
+                      : 'Producto final en residuos'}
+                  </TableCell>
                   <TableCell className="text-right">{fmtM3(r.productoEnResiduosLV)}</TableCell>
                   <TableCell className="text-right">{fmtM3(r.productoEnResiduosS)}</TableCell>
                 </TableRow>
