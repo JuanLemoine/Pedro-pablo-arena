@@ -137,6 +137,17 @@ const Tiempos = () => {
         </Button>
       </div>
 
+      {/* Instrucción importante */}
+      <div className="flex items-start gap-3 p-4 rounded-lg bg-blue-50 border border-blue-200">
+        <AlertTriangle className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
+        <div className="space-y-1">
+          <p className="font-medium text-blue-900">Nota importante</p>
+          <p className="text-sm text-blue-800">
+            En caso de que no se registren nuevos tiempos, el sistema tendrá en cuenta los tiempos del último período registrado para los cálculos de producción.
+          </p>
+        </div>
+      </div>
+
       {/* Estadísticas rápidas */}
       {tiempos.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
