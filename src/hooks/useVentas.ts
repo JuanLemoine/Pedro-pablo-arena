@@ -62,13 +62,12 @@ export const useUpdateVenta = () => {
         .from('ventas')
         .update(venta)
         .eq('id', id)
-        .select()
-        .single();
+        .select();
 
       if (error) {
         throw new Error(error.message);
       }
-      return data;
+      return data?.[0] || ({} as Venta);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ventas'] });

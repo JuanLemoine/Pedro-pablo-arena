@@ -63,13 +63,12 @@ export const useUpdateMovimiento = () => {
         .from('movimientos')
         .update(movimiento)
         .eq('id', id)
-        .select()
-        .single();
+        .select();
 
       if (error) {
         throw new Error(error.message);
       }
-      return data;
+      return data?.[0] || ({} as Movimiento);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['movimientos'] });

@@ -48,10 +48,9 @@ export const useUpdateTiempo = () => {
         .from('tiempos')
         .update(tiempo)
         .eq('id', id)
-        .select()
-        .single();
+        .select();
       if (error) throw new Error(error.message);
-      return data;
+      return data?.[0] || ({} as Tiempo);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tiempos'] });
