@@ -54,16 +54,44 @@ export const useCreateMovimiento = () => {
   });
 };
 
+export const useUpdateMovimiento = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, movimiento }: { id: string; movimiento: Omit<MovimientoInsert, 'usuario_id'> }): Promise<Movimiento> => {
+      const { data, error } = await supabase
+        .from('movimientos')
+        .update(movimiento)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) {
+        throw new Error(error.message);
+      }
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['movimientos'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+      toast.success('Movimiento actualizado exitosamente');
+    },
+    onError: (error: Error) => {
+      toast.error(`Error al actualizar: ${error.message}`);
+    }
+  });
+};
+
 export const useDeleteMovimiento = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (id: string): Promise<void> => {
       const { error } = await supabase
         .from('movimientos')
         .delete()
         .eq('id', id);
-      
+
       if (error) {
         throw new Error(error.message);
       }

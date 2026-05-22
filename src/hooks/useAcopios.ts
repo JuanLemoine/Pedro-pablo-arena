@@ -53,16 +53,44 @@ export const useCreateAcopios = () => {
   });
 };
 
+export const useUpdateAcopio = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, acopio }: { id: string; acopio: Omit<AcopioInsert, 'usuario_id'> }): Promise<Acopio> => {
+      const { data, error } = await supabase
+        .from('acopios')
+        .update(acopio)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) {
+        throw new Error(error.message);
+      }
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['acopios'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+      toast.success('Registro de acopio actualizado exitosamente');
+    },
+    onError: (error: Error) => {
+      toast.error(`Error al actualizar: ${error.message}`);
+    }
+  });
+};
+
 export const useDeleteAcopio = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (id: string): Promise<void> => {
       const { error } = await supabase
         .from('acopios')
         .delete()
         .eq('id', id);
-      
+
       if (error) {
         throw new Error(error.message);
       }

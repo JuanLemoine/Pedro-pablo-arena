@@ -40,6 +40,29 @@ export const useCreateTiempo = () => {
   });
 };
 
+export const useUpdateTiempo = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, tiempo }: { id: string; tiempo: Omit<TiempoInsert, 'usuario_id'> }): Promise<Tiempo> => {
+      const { data, error } = await supabase
+        .from('tiempos')
+        .update(tiempo)
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tiempos'] });
+      toast.success('Tiempo actualizado exitosamente');
+    },
+    onError: (error: Error) => {
+      toast.error(`Error al actualizar: ${error.message}`);
+    },
+  });
+};
+
 export const useDeleteTiempo = () => {
   const queryClient = useQueryClient();
   return useMutation({

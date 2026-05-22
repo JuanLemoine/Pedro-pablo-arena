@@ -11,10 +11,10 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, Search, Trash2, Save, CalendarIcon, Loader2, Timer, TrendingUp, ArrowRight, ArrowLeft, Clock, AlertTriangle } from 'lucide-react';
+import { Plus, Search, Trash2, Save, CalendarIcon, Loader2, Timer, TrendingUp, ArrowRight, ArrowLeft, Clock, AlertTriangle, Edit } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { useTiempos, useCreateTiempo, useDeleteTiempo } from '@/hooks/useTiempos';
+import { useTiempos, useCreateTiempo, useDeleteTiempo, useUpdateTiempo } from '@/hooks/useTiempos';
 
 interface TiempoForm {
   fecha: Date;
@@ -51,11 +51,13 @@ const getSiliceBadge = (silice: string) => {
 const Tiempos = () => {
   const { data: tiempos = [], isLoading, error } = useTiempos();
   const createTiempo = useCreateTiempo();
+  const updateTiempo = useUpdateTiempo();
   const deleteTiempo = useDeleteTiempo();
 
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<TiempoForm>(getEmptyForm());
 
   const setF = (campo: keyof TiempoForm, valor: string | Date) =>
@@ -74,26 +76,57 @@ const Tiempos = () => {
       return;
     }
     const fechaStr = format(form.fecha, 'yyyy-MM-dd');
-    const duplicado = tiempos.find(t => t.fecha === fechaStr && t.silice === form.silice);
+    const duplicado = tiempos.find(t => t.fecha === fechaStr && t.silice === form.silice && t.id !== editingId);
     if (duplicado) {
       toast.error(`Ya existe un registro de ${form.silice} para el ${format(form.fecha, 'dd/MM/yyyy', { locale: es })}. Solo se permite uno por fecha y tipo de sílice.`);
       return;
     }
-    createTiempo.mutate(
-      {
-        fecha: fechaStr,
-        silice: form.silice,
-        tiempo_ida: ida,
-        tiempo_vuelta: vuelta,
-        notas: form.notas || null,
-      },
-      {
+
+    const tiempoData = {
+      fecha: fechaStr,
+      silice: form.silice,
+      tiempo_ida: ida,
+      tiempo_vuelta: vuelta,
+      notas: form.notas || null,
+    };
+
+    if (editingId) {
+      updateTiempo.mutate(
+        { id: editingId, tiempo: tiempoData },
+        {
+          onSuccess: () => {
+            setForm(getEmptyForm());
+            setShowForm(false);
+            setEditingId(null);
+          },
+        }
+      );
+    } else {
+      createTiempo.mutate(tiempoData, {
         onSuccess: () => {
           setForm(getEmptyForm());
           setShowForm(false);
         },
-      }
-    );
+      });
+    }
+  };
+
+  const handleEdit = (tiempo: typeof tiempos[0]) => {
+    setEditingId(tiempo.id);
+    setForm({
+      fecha: new Date(tiempo.fecha),
+      silice: tiempo.silice,
+      tiempo_ida: tiempo.tiempo_ida.toString(),
+      tiempo_vuelta: tiempo.tiempo_vuelta.toString(),
+      notas: tiempo.notas || '',
+    });
+    setShowForm(true);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setForm(getEmptyForm());
+    setShowForm(false);
   };
 
   const yaExiste = form.silice
@@ -193,9 +226,9 @@ const Tiempos = () => {
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Timer className="h-5 w-5 text-primary" />
-              Registrar Tiempo de Ruta
+              {editingId ? 'Editar Tiempo de Ruta' : 'Registrar Tiempo de Ruta'}
             </CardTitle>
-            <CardDescription>Los tiempos se registran en segundos</CardDescription>
+            <CardDescription>{editingId ? 'Actualiza los datos del registro de tiempo' : 'Los tiempos se registran en segundos'}</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-5">
@@ -307,12 +340,12 @@ const Tiempos = () => {
               </div>
 
               <div className="flex gap-3 justify-end pt-2 border-t">
-                <Button type="button" variant="outline" onClick={() => { setShowForm(false); setForm(getEmptyForm()); }}>
+                <Button type="button" variant="outline" onClick={handleCancelEdit}>
                   Cancelar
                 </Button>
-                <Button type="submit" className="gap-2" disabled={createTiempo.isPending || yaExiste}>
-                  {createTiempo.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                  Guardar Registro
+                <Button type="submit" className="gap-2" disabled={(createTiempo.isPending || updateTiempo.isPending) || (yaExiste && !editingId)}>
+                  {(createTiempo.isPending || updateTiempo.isPending) ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  {editingId ? 'Actualizar Registro' : 'Guardar Registro'}
                 </Button>
               </div>
             </form>
@@ -362,13 +395,13 @@ const Tiempos = () => {
                       <span className="flex items-center justify-end gap-1"><Clock className="h-3.5 w-3.5 text-green-500" />Ciclo total</span>
                     </TableHead>
                     <TableHead>Notas</TableHead>
-                    <TableHead></TableHead>
+                    <TableHead className="text-center">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filtered.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
+                      <TableCell colSpan={8} className="text-center py-10 text-muted-foreground">
                         <Timer className="h-10 w-10 mx-auto mb-2 opacity-40" />
                         <p>No hay registros de tiempos aún</p>
                       </TableCell>
@@ -392,15 +425,25 @@ const Tiempos = () => {
                         <TableCell className="text-muted-foreground text-sm max-w-[200px] truncate">
                           {t.notas || '—'}
                         </TableCell>
-                        <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => deleteTiempo.mutate(t.id)}
-                            className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                        <TableCell className="text-center">
+                          <div className="flex gap-2 justify-center">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEdit(t)}
+                              className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => deleteTiempo.mutate(t.id)}
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))

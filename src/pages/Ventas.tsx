@@ -12,10 +12,10 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, Search, FileText, Trash2, Save, Warehouse, CalendarIcon, Loader2, User, AlertCircle } from 'lucide-react';
+import { Plus, Search, FileText, Trash2, Save, Warehouse, CalendarIcon, Loader2, User, AlertCircle, Edit } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { useVentas, useCreateVentas } from '@/hooks/useVentas';
+import { useVentas, useCreateVentas, useUpdateVenta, useDeleteVenta } from '@/hooks/useVentas';
 import { usePlacasClientes, formatearPlaca, validarPlaca } from '@/hooks/usePlacaCliente';
 
 type TipoTransaccion = 'Venta' | 'Donación' | 'Transferencia';
@@ -50,10 +50,13 @@ const Ventas = () => {
   const navigate = useNavigate();
   const { data: ventas = [], isLoading, error } = useVentas();
   const createVentas = useCreateVentas();
+  const updateVenta = useUpdateVenta();
+  const deleteVenta = useDeleteVenta();
   const { data: placasClientes = new Map() } = usePlacasClientes();
 
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [ventasEnCurso, setVentasEnCurso] = useState<VentaForm[]>([getEmptyForm()]);
   const [openCalendars, setOpenCalendars] = useState<boolean[]>([false]);
 
@@ -106,9 +109,9 @@ const Ventas = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const ventasValidas = ventasEnCurso.filter(validarVenta);
-    
+
     if (ventasValidas.length === 0) {
       toast.error('Por favor complete todos los campos requeridos en al menos una venta');
       return;
@@ -132,13 +135,53 @@ const Ventas = () => {
       concepto: venta.tipoTransaccion === 'Donación' ? (venta.concepto || null) : null,
     }));
 
-    createVentas.mutate(nuevasVentas, {
-      onSuccess: () => {
-        setVentasEnCurso([getEmptyForm()]);
-        setOpenCalendars([false]);
-        setShowForm(false);
-      }
-    });
+    if (editingId) {
+      updateVenta.mutate(
+        { id: editingId, venta: nuevasVentas[0] },
+        {
+          onSuccess: () => {
+            setVentasEnCurso([getEmptyForm()]);
+            setOpenCalendars([false]);
+            setShowForm(false);
+            setEditingId(null);
+          }
+        }
+      );
+    } else {
+      createVentas.mutate(nuevasVentas, {
+        onSuccess: () => {
+          setVentasEnCurso([getEmptyForm()]);
+          setOpenCalendars([false]);
+          setShowForm(false);
+        }
+      });
+    }
+  };
+
+  const handleEdit = (venta: typeof ventas[0]) => {
+    setEditingId(venta.id);
+    const ventaForm: VentaForm = {
+      fecha: new Date(venta.fecha),
+      silice: venta.silice,
+      recibo: venta.recibo,
+      placa: venta.placa,
+      nombreCliente: (venta as any).nombre_cliente || '',
+      cantidadM3: venta.cantidad_m3.toString(),
+      valorTotal: venta.valor_total.toString(),
+      fuente: venta.fuente,
+      tipoTransaccion: (venta as any).tipo_transaccion || 'Venta',
+      concepto: venta.concepto || '',
+    };
+    setVentasEnCurso([ventaForm]);
+    setOpenCalendars([false]);
+    setShowForm(true);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setVentasEnCurso([getEmptyForm()]);
+    setOpenCalendars([false]);
+    setShowForm(false);
   };
 
   const filteredVentas = ventas.filter(venta =>
@@ -188,8 +231,8 @@ const Ventas = () => {
       {showForm && (
         <Card className="shadow-card animate-slide-up border-primary/20">
           <CardHeader>
-            <CardTitle className="text-lg">Registrar Ventas</CardTitle>
-            <CardDescription>Puede agregar múltiples ventas a la vez</CardDescription>
+            <CardTitle className="text-lg">{editingId ? 'Editar Venta' : 'Registrar Ventas'}</CardTitle>
+            <CardDescription>{editingId ? 'Actualiza los datos de la venta' : 'Puede agregar múltiples ventas a la vez'}</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -397,25 +440,21 @@ const Ventas = () => {
 
               {/* Botones de acción */}
               <div className="flex flex-col sm:flex-row gap-3 justify-between pt-4 border-t">
-                <Button type="button" variant="outline" onClick={agregarFilaVenta} className="gap-2">
+                <Button type="button" variant="outline" onClick={agregarFilaVenta} className="gap-2" disabled={editingId ? true : false}>
                   <Plus className="h-4 w-4" />
                   Agregar otra venta
                 </Button>
                 <div className="flex gap-3">
-                <Button type="button" variant="outline" onClick={() => {
-                    setShowForm(false);
-                    setVentasEnCurso([getEmptyForm()]);
-                    setOpenCalendars([false]);
-                  }}>
+                <Button type="button" variant="outline" onClick={handleCancelEdit}>
                     Cancelar
                   </Button>
-                  <Button type="submit" className="gap-2" disabled={createVentas.isPending}>
-                    {createVentas.isPending ? (
+                  <Button type="submit" className="gap-2" disabled={createVentas.isPending || updateVenta.isPending}>
+                    {(createVentas.isPending || updateVenta.isPending) ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <Save className="h-4 w-4" />
                     )}
-                    Guardar {ventasEnCurso.length > 1 ? `(${ventasEnCurso.length})` : 'Venta'}
+                    {editingId ? 'Actualizar Venta' : `Guardar ${ventasEnCurso.length > 1 ? `(${ventasEnCurso.length})` : 'Venta'}`}
                   </Button>
                 </div>
               </div>
@@ -468,12 +507,13 @@ const Ventas = () => {
                     <TableHead>Fuente</TableHead>
                     <TableHead>Tipo</TableHead>
                     <TableHead>Concepto</TableHead>
+                    <TableHead className="text-center">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredVentas.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
                         No hay ventas registradas
                       </TableCell>
                     </TableRow>
@@ -509,6 +549,26 @@ const Ventas = () => {
                           })()}
                         </TableCell>
                         <TableCell className="text-muted-foreground">{venta.concepto || '-'}</TableCell>
+                        <TableCell className="text-center">
+                          <div className="flex gap-2 justify-center">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEdit(venta)}
+                              className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => deleteVenta.mutate(venta.id)}
+                              className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
                       </TableRow>
                     ))
                   )}

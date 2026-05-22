@@ -53,16 +53,44 @@ export const useCreateVentas = () => {
   });
 };
 
+export const useUpdateVenta = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, venta }: { id: string; venta: Omit<VentaInsert, 'usuario_id'> }): Promise<Venta> => {
+      const { data, error } = await supabase
+        .from('ventas')
+        .update(venta)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) {
+        throw new Error(error.message);
+      }
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ventas'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+      toast.success('Venta actualizada exitosamente');
+    },
+    onError: (error: Error) => {
+      toast.error(`Error al actualizar: ${error.message}`);
+    }
+  });
+};
+
 export const useDeleteVenta = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (id: string): Promise<void> => {
       const { error } = await supabase
         .from('ventas')
         .delete()
         .eq('id', id);
-      
+
       if (error) {
         throw new Error(error.message);
       }

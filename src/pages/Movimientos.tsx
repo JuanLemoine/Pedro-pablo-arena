@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, Search, ArrowLeftRight, Mountain, Truck, CalendarIcon, Loader2 } from 'lucide-react';
+import { Plus, Search, ArrowLeftRight, Mountain, Truck, CalendarIcon, Loader2, Edit, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Command,
@@ -26,7 +26,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { useMovimientos, useCreateMovimiento } from '@/hooks/useMovimientos';
+import { useMovimientos, useCreateMovimiento, useUpdateMovimiento, useDeleteMovimiento } from '@/hooks/useMovimientos';
 import { usePlacas } from '@/hooks/useVolquetas';
 import { calcularM3PorMovimiento } from '@/lib/volquetas';
 
@@ -80,12 +80,15 @@ const Movimientos = () => {
   const { data: movimientos = [], isLoading, error } = useMovimientos();
   const { data: placas = [] } = usePlacas();
   const createMovimiento = useCreateMovimiento();
-  
+  const updateMovimiento = useUpdateMovimiento();
+  const deleteMovimiento = useDeleteMovimiento();
+
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [openPlaca, setOpenPlaca] = useState(false);
   const [openCalendar, setOpenCalendar] = useState(false);
   const [placaSearch, setPlacaSearch] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     fecha: new Date(),
     mina: '',
@@ -103,13 +106,13 @@ const Movimientos = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.mina || !formData.silice || !formData.placa || !formData.origen || !formData.destino || !formData.cantidad_movimientos) {
       toast.error('Por favor complete todos los campos requeridos');
       return;
     }
 
-    const nuevoMovimiento = {
+    const movimientoData = {
       fecha: format(formData.fecha, 'yyyy-MM-dd'),
       mina: formData.mina,
       silice: formData.silice,
@@ -120,13 +123,49 @@ const Movimientos = () => {
       notas: formData.notas || null,
     };
 
-    createMovimiento.mutate(nuevoMovimiento, {
-      onSuccess: () => {
-        setFormData({ fecha: new Date(), mina: '', silice: '', placa: '', origen: '', destino: '', cantidad_movimientos: '', notas: '' });
-        setPlacaSearch('');
-        setShowForm(false);
-      }
+    if (editingId) {
+      updateMovimiento.mutate(
+        { id: editingId, movimiento: movimientoData },
+        {
+          onSuccess: () => {
+            setFormData({ fecha: new Date(), mina: '', silice: '', placa: '', origen: '', destino: '', cantidad_movimientos: '', notas: '' });
+            setPlacaSearch('');
+            setShowForm(false);
+            setEditingId(null);
+          }
+        }
+      );
+    } else {
+      createMovimiento.mutate(movimientoData, {
+        onSuccess: () => {
+          setFormData({ fecha: new Date(), mina: '', silice: '', placa: '', origen: '', destino: '', cantidad_movimientos: '', notas: '' });
+          setPlacaSearch('');
+          setShowForm(false);
+        }
+      });
+    }
+  };
+
+  const handleEdit = (mov: typeof movimientos[0]) => {
+    setEditingId(mov.id);
+    setFormData({
+      fecha: new Date(mov.fecha),
+      mina: mov.mina,
+      silice: mov.silice,
+      placa: mov.placa,
+      origen: mov.origen,
+      destino: mov.destino,
+      cantidad_movimientos: mov.cantidad_movimientos.toString(),
+      notas: mov.notas || '',
     });
+    setShowForm(true);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setFormData({ fecha: new Date(), mina: '', silice: '', placa: '', origen: '', destino: '', cantidad_movimientos: '', notas: '' });
+    setPlacaSearch('');
+    setShowForm(false);
   };
 
   const filteredMovimientos = movimientos.filter(mov =>
@@ -268,8 +307,8 @@ const Movimientos = () => {
       {showForm && (
         <Card className="shadow-card animate-slide-up border-primary/20">
           <CardHeader>
-            <CardTitle className="text-lg">Registrar Movimiento</CardTitle>
-            <CardDescription>Complete los datos del movimiento interno</CardDescription>
+            <CardTitle className="text-lg">{editingId ? 'Editar Movimiento' : 'Registrar Movimiento'}</CardTitle>
+            <CardDescription>{editingId ? 'Actualiza los datos del movimiento' : 'Complete los datos del movimiento interno'}</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -473,15 +512,17 @@ const Movimientos = () => {
               </div>
               
               <div className="md:col-span-2 lg:col-span-3 flex gap-3 justify-end">
-                <Button type="button" variant="outline" onClick={() => setShowForm(false)}>
+                <Button type="button" variant="outline" onClick={handleCancelEdit}>
                   Cancelar
                 </Button>
-                <Button type="submit" disabled={createMovimiento.isPending}>
-                  {createMovimiento.isPending ? (
+                <Button type="submit" disabled={createMovimiento.isPending || updateMovimiento.isPending}>
+                  {(createMovimiento.isPending || updateMovimiento.isPending) ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Guardando...
                     </>
+                  ) : editingId ? (
+                    'Actualizar Movimiento'
                   ) : (
                     'Guardar Movimiento'
                   )}
@@ -535,12 +576,13 @@ const Movimientos = () => {
                     <TableHead className="text-center">Cantidad Movimientos</TableHead>
                     <TableHead className="text-right">m³ Producidos</TableHead>
                     <TableHead>Arena Producida</TableHead>
+                    <TableHead className="text-center">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredMovimientos.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                         No hay movimientos registrados
                       </TableCell>
                     </TableRow>
@@ -593,6 +635,26 @@ const Movimientos = () => {
                               <span className="text-xs text-muted-foreground">
                                 PF: {(resultado.porcentajePF * 100).toFixed(1)}%
                               </span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <div className="flex gap-2 justify-center">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleEdit(mov)}
+                                className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => deleteMovimiento.mutate(mov.id)}
+                                className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
                             </div>
                           </TableCell>
                         </TableRow>

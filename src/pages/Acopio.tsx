@@ -12,11 +12,11 @@ import { Calendar } from '@/components/ui/calendar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Plus, Search, Truck, Trash2, Save, Check, ChevronsUpDown, ArrowLeft, CalendarIcon, Loader2 } from 'lucide-react';
+import { Plus, Search, Truck, Trash2, Save, Check, ChevronsUpDown, ArrowLeft, CalendarIcon, Loader2, Edit } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { useAcopios, useCreateAcopios } from '@/hooks/useAcopios';
+import { useAcopios, useCreateAcopios, useUpdateAcopio, useDeleteAcopio } from '@/hooks/useAcopios';
 import { usePlacas } from '@/hooks/useVolquetas';
 import { getCapacidadVolqueta, calcularM3Producidos } from '@/lib/volquetas';
 
@@ -41,9 +41,12 @@ const Acopio = () => {
   const { data: acopios = [], isLoading, error } = useAcopios();
   const { data: placas = [] } = usePlacas();
   const createAcopios = useCreateAcopios();
-  
+  const updateAcopio = useUpdateAcopio();
+  const deleteAcopio = useDeleteAcopio();
+
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [acopiosEnCurso, setAcopiosEnCurso] = useState<AcopioForm[]>([getEmptyForm()]);
   const [openPopovers, setOpenPopovers] = useState<boolean[]>([false]);
   const [openCalendars, setOpenCalendars] = useState<boolean[]>([false]);
@@ -86,9 +89,9 @@ const Acopio = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const acopiosValidos = acopiosEnCurso.filter(validarAcopio);
-    
+
     if (acopiosValidos.length === 0) {
       toast.error('Por favor complete todos los campos requeridos en al menos un registro');
       return;
@@ -107,14 +110,52 @@ const Acopio = () => {
       cantidad_viajes: parseInt(acopio.cantidadViajes),
     }));
 
-    createAcopios.mutate(nuevosAcopios, {
-      onSuccess: () => {
-        setAcopiosEnCurso([getEmptyForm()]);
-        setOpenPopovers([false]);
-        setOpenCalendars([false]);
-        setShowForm(false);
-      }
-    });
+    if (editingId) {
+      updateAcopio.mutate(
+        { id: editingId, acopio: nuevosAcopios[0] },
+        {
+          onSuccess: () => {
+            setAcopiosEnCurso([getEmptyForm()]);
+            setOpenPopovers([false]);
+            setOpenCalendars([false]);
+            setShowForm(false);
+            setEditingId(null);
+          }
+        }
+      );
+    } else {
+      createAcopios.mutate(nuevosAcopios, {
+        onSuccess: () => {
+          setAcopiosEnCurso([getEmptyForm()]);
+          setOpenPopovers([false]);
+          setOpenCalendars([false]);
+          setShowForm(false);
+        }
+      });
+    }
+  };
+
+  const handleEdit = (acopio: typeof acopios[0]) => {
+    setEditingId(acopio.id);
+    const acopioForm: AcopioForm = {
+      fecha: new Date(acopio.fecha),
+      fuente: acopio.fuente,
+      silice: acopio.silice,
+      placa: acopio.placa,
+      cantidadViajes: acopio.cantidad_viajes.toString(),
+    };
+    setAcopiosEnCurso([acopioForm]);
+    setOpenPopovers([false]);
+    setOpenCalendars([false]);
+    setShowForm(true);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setAcopiosEnCurso([getEmptyForm()]);
+    setOpenPopovers([false]);
+    setOpenCalendars([false]);
+    setShowForm(false);
   };
 
   const filteredAcopios = acopios.filter(acopio =>
@@ -167,8 +208,8 @@ const Acopio = () => {
       {showForm && (
         <Card className="shadow-card animate-slide-up border-primary/20">
           <CardHeader>
-            <CardTitle className="text-lg">Registrar Acopio</CardTitle>
-            <CardDescription>Registre los viajes realizados por las volquetas de la empresa</CardDescription>
+            <CardTitle className="text-lg">{editingId ? 'Editar Acopio' : 'Registrar Acopio'}</CardTitle>
+            <CardDescription>{editingId ? 'Actualiza los datos del registro de acopio' : 'Registre los viajes realizados por las volquetas de la empresa'}</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -323,26 +364,21 @@ const Acopio = () => {
 
               {/* Botones de acción */}
               <div className="flex flex-col sm:flex-row gap-3 justify-between pt-4 border-t">
-                <Button type="button" variant="outline" onClick={agregarFilaAcopio} className="gap-2">
+                <Button type="button" variant="outline" onClick={agregarFilaAcopio} className="gap-2" disabled={editingId ? true : false}>
                   <Plus className="h-4 w-4" />
                   Agregar otro registro
                 </Button>
                 <div className="flex gap-3">
-                <Button type="button" variant="outline" onClick={() => {
-                    setShowForm(false);
-                    setAcopiosEnCurso([getEmptyForm()]);
-                    setOpenPopovers([false]);
-                    setOpenCalendars([false]);
-                  }}>
+                <Button type="button" variant="outline" onClick={handleCancelEdit}>
                     Cancelar
                   </Button>
-                  <Button type="submit" className="gap-2" disabled={createAcopios.isPending}>
-                    {createAcopios.isPending ? (
+                  <Button type="submit" className="gap-2" disabled={createAcopios.isPending || updateAcopio.isPending}>
+                    {(createAcopios.isPending || updateAcopio.isPending) ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <Save className="h-4 w-4" />
                     )}
-                    Guardar {acopiosEnCurso.length > 1 ? `(${acopiosEnCurso.length})` : 'Registro'}
+                    {editingId ? 'Actualizar Registro' : `Guardar ${acopiosEnCurso.length > 1 ? `(${acopiosEnCurso.length})` : 'Registro'}`}
                   </Button>
                 </div>
               </div>
@@ -420,12 +456,13 @@ const Acopio = () => {
                     <TableHead className="text-right">Viajes</TableHead>
                     <TableHead className="text-right">Capacidad</TableHead>
                     <TableHead className="text-right">m³ Producidos</TableHead>
+                    <TableHead className="text-center">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredAcopios.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                         No hay registros de acopio
                       </TableCell>
                     </TableRow>
@@ -450,6 +487,26 @@ const Acopio = () => {
                           <TableCell className="text-right font-semibold">{acopio.cantidad_viajes}</TableCell>
                           <TableCell className="text-right text-muted-foreground">{capacidad} m³</TableCell>
                           <TableCell className="text-right font-bold text-primary">{m3Producidos.toLocaleString()} m³</TableCell>
+                          <TableCell className="text-center">
+                            <div className="flex gap-2 justify-center">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleEdit(acopio)}
+                                className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => deleteAcopio.mutate(acopio.id)}
+                                className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
                         </TableRow>
                       );
                     })
