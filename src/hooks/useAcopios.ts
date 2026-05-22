@@ -58,23 +58,39 @@ export const useUpdateAcopio = () => {
 
   return useMutation({
     mutationFn: async ({ id, acopio }: { id: string; acopio: Omit<AcopioInsert, 'usuario_id'> }): Promise<Acopio> => {
+      console.log('[useUpdateAcopio] Iniciando actualización para ID:', id);
+      console.log('[useUpdateAcopio] Datos a actualizar:', acopio);
+
       const { data, error } = await supabase
         .from('acopios')
         .update(acopio)
         .eq('id', id)
         .select();
 
+      console.log('[useUpdateAcopio] Respuesta de Supabase - Data:', data);
+      console.log('[useUpdateAcopio] Respuesta de Supabase - Error:', error);
+
       if (error) {
+        console.error('[useUpdateAcopio] Error en actualización:', error.message);
         throw new Error(error.message);
       }
-      return data?.[0] || ({} as Acopio);
+
+      if (!data || data.length === 0) {
+        console.warn('[useUpdateAcopio] Data es null, undefined o array vacío:', data);
+        return {} as Acopio;
+      }
+
+      console.log('[useUpdateAcopio] Retornando primer elemento:', data[0]);
+      return data[0];
     },
     onSuccess: () => {
+      console.log('[useUpdateAcopio] onSuccess - Invalidando queries');
       queryClient.invalidateQueries({ queryKey: ['acopios'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       toast.success('Registro de acopio actualizado exitosamente');
     },
     onError: (error: Error) => {
+      console.error('[useUpdateAcopio] onError:', error.message);
       toast.error(`Error al actualizar: ${error.message}`);
     }
   });

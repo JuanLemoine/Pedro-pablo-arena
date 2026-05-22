@@ -148,6 +148,8 @@ const Acopio = () => {
     setOpenPopovers([false]);
     setOpenCalendars([false]);
     setShowForm(true);
+    // Scroll automático hacia el formulario
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleCancelEdit = () => {

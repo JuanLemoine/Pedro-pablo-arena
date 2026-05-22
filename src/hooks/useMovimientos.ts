@@ -59,23 +59,39 @@ export const useUpdateMovimiento = () => {
 
   return useMutation({
     mutationFn: async ({ id, movimiento }: { id: string; movimiento: Omit<MovimientoInsert, 'usuario_id'> }): Promise<Movimiento> => {
+      console.log('[useUpdateMovimiento] Iniciando actualización para ID:', id);
+      console.log('[useUpdateMovimiento] Datos a actualizar:', movimiento);
+
       const { data, error } = await supabase
         .from('movimientos')
         .update(movimiento)
         .eq('id', id)
         .select();
 
+      console.log('[useUpdateMovimiento] Respuesta de Supabase - Data:', data);
+      console.log('[useUpdateMovimiento] Respuesta de Supabase - Error:', error);
+
       if (error) {
+        console.error('[useUpdateMovimiento] Error en actualización:', error.message);
         throw new Error(error.message);
       }
-      return data?.[0] || ({} as Movimiento);
+
+      if (!data || data.length === 0) {
+        console.warn('[useUpdateMovimiento] Data es null, undefined o array vacío:', data);
+        return {} as Movimiento;
+      }
+
+      console.log('[useUpdateMovimiento] Retornando primer elemento:', data[0]);
+      return data[0];
     },
     onSuccess: () => {
+      console.log('[useUpdateMovimiento] onSuccess - Invalidando queries');
       queryClient.invalidateQueries({ queryKey: ['movimientos'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       toast.success('Movimiento actualizado exitosamente');
     },
     onError: (error: Error) => {
+      console.error('[useUpdateMovimiento] onError:', error.message);
       toast.error(`Error al actualizar: ${error.message}`);
     }
   });

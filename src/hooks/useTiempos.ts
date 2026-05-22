@@ -44,19 +44,38 @@ export const useUpdateTiempo = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, tiempo }: { id: string; tiempo: Omit<TiempoInsert, 'usuario_id'> }): Promise<Tiempo> => {
+      console.log('[useUpdateTiempo] Iniciando actualización para ID:', id);
+      console.log('[useUpdateTiempo] Datos a actualizar:', tiempo);
+
       const { data, error } = await supabase
         .from('tiempos')
         .update(tiempo)
         .eq('id', id)
         .select();
-      if (error) throw new Error(error.message);
-      return data?.[0] || ({} as Tiempo);
+
+      console.log('[useUpdateTiempo] Respuesta de Supabase - Data:', data);
+      console.log('[useUpdateTiempo] Respuesta de Supabase - Error:', error);
+
+      if (error) {
+        console.error('[useUpdateTiempo] Error en actualización:', error.message);
+        throw new Error(error.message);
+      }
+
+      if (!data || data.length === 0) {
+        console.warn('[useUpdateTiempo] Data es null, undefined o array vacío:', data);
+        return {} as Tiempo;
+      }
+
+      console.log('[useUpdateTiempo] Retornando primer elemento:', data[0]);
+      return data[0];
     },
     onSuccess: () => {
+      console.log('[useUpdateTiempo] onSuccess - Invalidando queries');
       queryClient.invalidateQueries({ queryKey: ['tiempos'] });
       toast.success('Tiempo actualizado exitosamente');
     },
     onError: (error: Error) => {
+      console.error('[useUpdateTiempo] onError:', error.message);
       toast.error(`Error al actualizar: ${error.message}`);
     },
   });
