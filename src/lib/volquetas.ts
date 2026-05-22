@@ -1,35 +1,35 @@
 // Capacidad en m³ de cada volqueta
-// Por defecto: 5.50 m³
+// Por defecto: 7 m³
 // SVM306: 13 m³
 
 export const CAPACIDAD_VOLQUETAS: Record<string, number> = {
-  'SAB643': 5.50,
-  'OAJ577': 5.50,
-  'ELJ809': 5.50,
-  'CQN427': 5.50,
-  'ACJ359': 5.50,
-  'FBH108': 5.50,
-  'SBC690': 5.50,
-  'SWQ244': 5.50,
-  'WCS071': 5.50,
-  'AAD005': 5.50,
-  'XGJ399': 5.50,
-  'SKH366': 5.50,
+  'SAB643': 7,
+  'OAJ577': 7,
+  'ELJ809': 7,
+  'CQN427': 7,
+  'ACJ359': 7,
+  'FBH108': 7,
+  'SBC690': 7,
+  'SWQ244': 7,
+  'WCS071': 7,
+  'AAD005': 7,
+  'XGJ399': 7,
+  'SKH366': 7,
   'SVM306': 13.00, // Esta volqueta tiene mayor capacidad
-  'SNZ091': 5.50,
-  'XKJ180': 5.50,
-  'ATA644': 5.50,
-  'IYB806': 5.50,
-  'XKJ802': 5.50,
-  'SNE194': 5.50,
-  'SPM693': 5.50,
-  'MBG720': 5.50,
-  'XFJ040': 5.50,
-  'SBE944': 5.50,
-  'AQJ946': 5.50,
+  'SNZ091': 7,
+  'XKJ180': 7,
+  'ATA644': 7,
+  'IYB806': 7,
+  'XKJ802': 7,
+  'SNE194': 7,
+  'SPM693': 7,
+  'MBG720': 7,
+  'XFJ040': 7,
+  'SBE944': 7,
+  'AQJ946': 7,
 };
 
-export const CAPACIDAD_DEFAULT = 5.50;
+export const CAPACIDAD_DEFAULT = 7;
 
 export const getCapacidadVolqueta = (placa: string): number => {
   return CAPACIDAD_VOLQUETAS[placa.toUpperCase()] || CAPACIDAD_DEFAULT;
