@@ -89,6 +89,7 @@ const Movimientos = () => {
   const [openCalendar, setOpenCalendar] = useState(false);
   const [placaSearch, setPlacaSearch] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [isAddingMultiple, setIsAddingMultiple] = useState(false);
   const [formData, setFormData] = useState({
     fecha: new Date(),
     mina: '',
@@ -124,6 +125,7 @@ const Movimientos = () => {
     };
 
     if (editingId) {
+      // Modo edición: guardar y cerrar
       updateMovimiento.mutate(
         { id: editingId, movimiento: movimientoData },
         {
@@ -132,15 +134,33 @@ const Movimientos = () => {
             setPlacaSearch('');
             setShowForm(false);
             setEditingId(null);
+            setIsAddingMultiple(false);
           }
         }
       );
+    } else if (isAddingMultiple) {
+      // Modo agregar múltiple: guardar y limpiar solo placa y cantidad
+      createMovimiento.mutate(movimientoData, {
+        onSuccess: () => {
+          // Mantener todos los campos excepto placa, cantidad_movimientos y notas
+          setFormData(prev => ({
+            ...prev,
+            placa: '',
+            cantidad_movimientos: '',
+            notas: '',
+          }));
+          setPlacaSearch('');
+          toast.success('Movimiento registrado. Puedes agregar otro.');
+        }
+      });
     } else {
+      // Modo normal: guardar y cerrar
       createMovimiento.mutate(movimientoData, {
         onSuccess: () => {
           setFormData({ fecha: new Date(), mina: '', silice: '', placa: '', origen: '', destino: '', cantidad_movimientos: '', notas: '' });
           setPlacaSearch('');
           setShowForm(false);
+          setIsAddingMultiple(false);
         }
       });
     }
@@ -165,6 +185,7 @@ const Movimientos = () => {
 
   const handleCancelEdit = () => {
     setEditingId(null);
+    setIsAddingMultiple(false);
     setFormData({ fecha: new Date(), mina: '', silice: '', placa: '', origen: '', destino: '', cantidad_movimientos: '', notas: '' });
     setPlacaSearch('');
     setShowForm(false);
@@ -243,7 +264,15 @@ const Movimientos = () => {
           <h1 className="text-3xl font-display font-bold text-foreground">Movimientos Internos</h1>
           <p className="text-muted-foreground mt-1">Registra movimientos de material entre áreas</p>
         </div>
-        <Button onClick={() => setShowForm(!showForm)} className="gap-2">
+        <Button onClick={() => {
+          setShowForm(!showForm);
+          if (showForm) {
+            setIsAddingMultiple(false);
+            setEditingId(null);
+            setFormData({ fecha: new Date(), mina: '', silice: '', placa: '', origen: '', destino: '', cantidad_movimientos: '', notas: '' });
+            setPlacaSearch('');
+          }
+        }} className="gap-2">
           <Plus className="h-4 w-4" />
           Nuevo Movimiento
         </Button>
@@ -513,22 +542,43 @@ const Movimientos = () => {
                 />
               </div>
               
-              <div className="md:col-span-2 lg:col-span-3 flex gap-3 justify-end">
-                <Button type="button" variant="outline" onClick={handleCancelEdit}>
-                  Cancelar
-                </Button>
-                <Button type="submit" disabled={createMovimiento.isPending || updateMovimiento.isPending}>
-                  {(createMovimiento.isPending || updateMovimiento.isPending) ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Guardando...
-                    </>
-                  ) : editingId ? (
-                    'Actualizar Movimiento'
-                  ) : (
-                    'Guardar Movimiento'
-                  )}
-                </Button>
+              <div className="md:col-span-2 lg:col-span-3 flex flex-col gap-3">
+                <div className="flex gap-3 justify-end">
+                  <Button type="button" variant="outline" onClick={handleCancelEdit}>
+                    Cancelar
+                  </Button>
+                  <Button type="submit" disabled={createMovimiento.isPending || updateMovimiento.isPending}>
+                    {(createMovimiento.isPending || updateMovimiento.isPending) ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Guardando...
+                      </>
+                    ) : editingId ? (
+                      'Actualizar Movimiento'
+                    ) : isAddingMultiple ? (
+                      'Guardar y agregar otro'
+                    ) : (
+                      'Guardar Movimiento'
+                    )}
+                  </Button>
+                </div>
+
+                {!editingId && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => {
+                      if (!isAddingMultiple) {
+                        setIsAddingMultiple(true);
+                      } else {
+                        setIsAddingMultiple(false);
+                      }
+                    }}
+                    className="w-full"
+                  >
+                    {isAddingMultiple ? 'Cancelar modo múltiple' : 'Agregar otro movimiento'}
+                  </Button>
+                )}
               </div>
             </form>
           </CardContent>
