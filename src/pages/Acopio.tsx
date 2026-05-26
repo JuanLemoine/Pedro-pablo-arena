@@ -12,7 +12,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Plus, Search, Truck, Trash2, Save, Check, ChevronsUpDown, ArrowLeft, CalendarIcon, Loader2, Edit } from 'lucide-react';
+import { Plus, Search, Truck, Trash2, Save, Check, ChevronsUpDown, ArrowLeft, CalendarIcon, Loader2, Edit, Filter, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -50,6 +50,14 @@ const Acopio = () => {
   const [acopiosEnCurso, setAcopiosEnCurso] = useState<AcopioForm[]>([getEmptyForm()]);
   const [openPopovers, setOpenPopovers] = useState<boolean[]>([false]);
   const [openCalendars, setOpenCalendars] = useState<boolean[]>([false]);
+
+  // Filtros avanzados
+  const [filterSilice, setFilterSilice] = useState('');
+  const [filterFuente, setFilterFuente] = useState('');
+  const [filterPlaca, setFilterPlaca] = useState('');
+  const [filterFechaInicio, setFilterFechaInicio] = useState<Date | null>(null);
+  const [filterFechaFin, setFilterFechaFin] = useState<Date | null>(null);
+  const [openFilterCalendars, setOpenFilterCalendars] = useState({ inicio: false, fin: false });
 
   const agregarFilaAcopio = () => {
     setAcopiosEnCurso([...acopiosEnCurso, getEmptyForm()]);
@@ -160,11 +168,29 @@ const Acopio = () => {
     setShowForm(false);
   };
 
-  const filteredAcopios = acopios.filter(acopio =>
-    acopio.placa.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    acopio.fuente.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    acopio.silice.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const aplicarFiltros = (data: typeof acopios) => {
+    return data.filter(acopio => {
+      // Filtro de búsqueda rápida
+      const searchMatch =
+        acopio.placa.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        acopio.fuente.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        acopio.silice.toLowerCase().includes(searchTerm.toLowerCase());
+
+      // Filtros avanzados
+      const siliceMatch = !filterSilice || acopio.silice === filterSilice;
+      const fuenteMatch = !filterFuente || acopio.fuente === filterFuente;
+      const placaMatch = !filterPlaca || acopio.placa.toLowerCase().includes(filterPlaca.toLowerCase());
+
+      const fecha = new Date(acopio.fecha);
+      const fechaMatch =
+        (!filterFechaInicio || fecha >= filterFechaInicio) &&
+        (!filterFechaFin || fecha <= filterFechaFin);
+
+      return searchMatch && siliceMatch && fuenteMatch && placaMatch && fechaMatch;
+    });
+  };
+
+  const filteredAcopios = aplicarFiltros(acopios);
 
   const getFuenteBadgeClass = (fuente: string) => {
     switch (fuente) {
@@ -205,6 +231,128 @@ const Acopio = () => {
           Nuevo Registro
         </Button>
       </div>
+
+      {/* Filtros Avanzados */}
+      <Card className="shadow-card bg-slate-50 border-slate-200">
+        <CardHeader>
+          <div className="flex items-center gap-2 mb-4">
+            <Filter className="h-5 w-5 text-primary" />
+            <CardTitle className="text-base">Filtros Avanzados</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            {/* Sílice */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold text-slate-700">Sílice</Label>
+              <Select value={filterSilice} onValueChange={setFilterSilice}>
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Todas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Todas</SelectItem>
+                  <SelectItem value="Silice A - Peña">Silice A - Peña</SelectItem>
+                  <SelectItem value="Silice B - Pozo">Silice B - Pozo</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Fuente */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold text-slate-700">Fuente</Label>
+              <Select value={filterFuente} onValueChange={setFilterFuente}>
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Todas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Todas</SelectItem>
+                  <SelectItem value="Zaranda">Zaranda</SelectItem>
+                  <SelectItem value="Trituradora">Trituradora</SelectItem>
+                  <SelectItem value="Clasificadora">Clasificadora</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Placa */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold text-slate-700">Placa</Label>
+              <Input
+                placeholder="Buscar placa..."
+                value={filterPlaca}
+                onChange={(e) => setFilterPlaca(e.target.value)}
+                className="h-9"
+              />
+            </div>
+
+            {/* Fecha Inicio */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold text-slate-700">Fecha Inicio</Label>
+              <Popover open={openFilterCalendars.inicio} onOpenChange={(open) => setOpenFilterCalendars({ ...openFilterCalendars, inicio: open })}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="h-9 w-full justify-start text-left font-normal">
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {filterFechaInicio ? format(filterFechaInicio, "dd/MM/yyyy") : "Desde"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={filterFechaInicio || undefined}
+                    onSelect={(date) => {
+                      setFilterFechaInicio(date || null);
+                      setOpenFilterCalendars({ ...openFilterCalendars, inicio: false });
+                    }}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {/* Fecha Fin */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold text-slate-700">Fecha Fin</Label>
+              <Popover open={openFilterCalendars.fin} onOpenChange={(open) => setOpenFilterCalendars({ ...openFilterCalendars, fin: open })}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="h-9 w-full justify-start text-left font-normal">
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {filterFechaFin ? format(filterFechaFin, "dd/MM/yyyy") : "Hasta"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={filterFechaFin || undefined}
+                    onSelect={(date) => {
+                      setFilterFechaFin(date || null);
+                      setOpenFilterCalendars({ ...openFilterCalendars, fin: false });
+                    }}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {/* Botón Limpiar Filtros */}
+            <div className="space-y-2 flex items-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setFilterSilice('');
+                  setFilterFuente('');
+                  setFilterPlaca('');
+                  setFilterFechaInicio(null);
+                  setFilterFechaFin(null);
+                }}
+                className="w-full gap-2"
+              >
+                <X className="h-4 w-4" />
+                Limpiar
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Form */}
       {showForm && (
@@ -390,13 +538,13 @@ const Acopio = () => {
       )}
 
       {/* Resumen de producción */}
-      {!isLoading && acopios.length > 0 && (
+      {!isLoading && filteredAcopios.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Card className="shadow-card bg-amber-50 border-amber-200">
             <CardContent className="p-4">
               <p className="text-sm text-amber-700">Total Viajes</p>
               <p className="text-2xl font-bold text-amber-800">
-                {acopios.reduce((sum, a) => sum + a.cantidad_viajes, 0)}
+                {filteredAcopios.reduce((sum, a) => sum + a.cantidad_viajes, 0)}
               </p>
             </CardContent>
           </Card>
@@ -404,14 +552,14 @@ const Acopio = () => {
             <CardContent className="p-4">
               <p className="text-sm text-blue-700">m³ Producidos</p>
               <p className="text-2xl font-bold text-blue-800">
-                {calcularM3Producidos(acopios).toLocaleString()} m³
+                {calcularM3Producidos(filteredAcopios).toLocaleString()} m³
               </p>
             </CardContent>
           </Card>
           <Card className="shadow-card bg-green-50 border-green-200">
             <CardContent className="p-4">
               <p className="text-sm text-green-700">Registros</p>
-              <p className="text-2xl font-bold text-green-800">{acopios.length}</p>
+              <p className="text-2xl font-bold text-green-800">{filteredAcopios.length}</p>
             </CardContent>
           </Card>
         </div>

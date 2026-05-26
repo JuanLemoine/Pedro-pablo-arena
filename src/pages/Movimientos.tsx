@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, Search, ArrowLeftRight, Mountain, Truck, CalendarIcon, Loader2, Edit, Trash2 } from 'lucide-react';
+import { Plus, Search, ArrowLeftRight, Mountain, Truck, CalendarIcon, Loader2, Edit, Trash2, Filter, X } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Command,
@@ -100,6 +100,16 @@ const Movimientos = () => {
     cantidad_movimientos: '',
     notas: '',
   });
+
+  // Filtros avanzados
+  const [filterMina, setFilterMina] = useState('');
+  const [filterSilice, setFilterSilice] = useState('');
+  const [filterOrigen, setFilterOrigen] = useState('');
+  const [filterDestino, setFilterDestino] = useState('');
+  const [filterPlaca, setFilterPlaca] = useState('');
+  const [filterFechaInicio, setFilterFechaInicio] = useState<Date | null>(null);
+  const [filterFechaFin, setFilterFechaFin] = useState<Date | null>(null);
+  const [openFilterCalendars, setOpenFilterCalendars] = useState({ inicio: false, fin: false });
 
   const filteredPlacas = placas.filter(placa =>
     placa.toLowerCase().includes(placaSearch.toLowerCase())
@@ -191,13 +201,33 @@ const Movimientos = () => {
     setShowForm(false);
   };
 
-  const filteredMovimientos = movimientos.filter(mov =>
-    mov.mina.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    mov.silice.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    mov.placa.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    mov.origen.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    mov.destino.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const aplicarFiltros = (data: typeof movimientos) => {
+    return data.filter(mov => {
+      // Filtro de búsqueda rápida
+      const searchMatch =
+        mov.mina.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        mov.silice.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        mov.placa.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        mov.origen.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        mov.destino.toLowerCase().includes(searchTerm.toLowerCase());
+
+      // Filtros avanzados
+      const minaMatch = !filterMina || mov.mina === filterMina;
+      const siliceMatch = !filterSilice || mov.silice === filterSilice;
+      const origenMatch = !filterOrigen || mov.origen === filterOrigen;
+      const destinoMatch = !filterDestino || mov.destino === filterDestino;
+      const placaMatch = !filterPlaca || mov.placa.toLowerCase().includes(filterPlaca.toLowerCase());
+
+      const fecha = new Date(mov.fecha);
+      const fechaMatch =
+        (!filterFechaInicio || fecha >= filterFechaInicio) &&
+        (!filterFechaFin || fecha <= filterFechaFin);
+
+      return searchMatch && minaMatch && siliceMatch && origenMatch && destinoMatch && placaMatch && fechaMatch;
+    });
+  };
+
+  const filteredMovimientos = aplicarFiltros(movimientos);
 
   const getMinaBadge = (mina: string) => {
     const colors: Record<string, string> = {
@@ -278,6 +308,164 @@ const Movimientos = () => {
         </Button>
       </div>
 
+      {/* Filtros Avanzados */}
+      <Card className="shadow-card bg-slate-50 border-slate-200">
+        <CardHeader>
+          <div className="flex items-center gap-2 mb-4">
+            <Filter className="h-5 w-5 text-primary" />
+            <CardTitle className="text-base">Filtros Avanzados</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Mina */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold text-slate-700">Mina</Label>
+              <Select value={filterMina} onValueChange={setFilterMina}>
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Todas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Todas</SelectItem>
+                  {MINAS.map((mina) => (
+                    <SelectItem key={mina} value={mina}>{mina}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Sílice */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold text-slate-700">Sílice</Label>
+              <Select value={filterSilice} onValueChange={setFilterSilice}>
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Todas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Todas</SelectItem>
+                  {SILICES.map((silice) => (
+                    <SelectItem key={silice} value={silice}>{silice}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Origen */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold text-slate-700">Origen</Label>
+              <Select value={filterOrigen} onValueChange={setFilterOrigen}>
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Todos</SelectItem>
+                  <SelectItem value="Punto de excavación">Punto de excavación</SelectItem>
+                  <SelectItem value="Zaranda">Zaranda</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Destino */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold text-slate-700">Destino</Label>
+              <Select value={filterDestino} onValueChange={setFilterDestino}>
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Todos</SelectItem>
+                  <SelectItem value="Trituradora">Trituradora</SelectItem>
+                  <SelectItem value="Clasificadora">Clasificadora</SelectItem>
+                  <SelectItem value="Zaranda">Zaranda</SelectItem>
+                  <SelectItem value="Repaso">Repaso</SelectItem>
+                  <SelectItem value="Revolver">Revolver</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Placa */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold text-slate-700">Placa</Label>
+              <Input
+                placeholder="Buscar placa..."
+                value={filterPlaca}
+                onChange={(e) => setFilterPlaca(e.target.value)}
+                className="h-9"
+              />
+            </div>
+
+            {/* Fecha Inicio */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold text-slate-700">Fecha Inicio</Label>
+              <Popover open={openFilterCalendars.inicio} onOpenChange={(open) => setOpenFilterCalendars({ ...openFilterCalendars, inicio: open })}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="h-9 w-full justify-start text-left font-normal">
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {filterFechaInicio ? format(filterFechaInicio, "dd/MM/yyyy") : "Desde"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={filterFechaInicio || undefined}
+                    onSelect={(date) => {
+                      setFilterFechaInicio(date || null);
+                      setOpenFilterCalendars({ ...openFilterCalendars, inicio: false });
+                    }}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {/* Fecha Fin */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold text-slate-700">Fecha Fin</Label>
+              <Popover open={openFilterCalendars.fin} onOpenChange={(open) => setOpenFilterCalendars({ ...openFilterCalendars, fin: open })}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="h-9 w-full justify-start text-left font-normal">
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {filterFechaFin ? format(filterFechaFin, "dd/MM/yyyy") : "Hasta"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={filterFechaFin || undefined}
+                    onSelect={(date) => {
+                      setFilterFechaFin(date || null);
+                      setOpenFilterCalendars({ ...openFilterCalendars, fin: false });
+                    }}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {/* Botón Limpiar Filtros */}
+            <div className="space-y-2 flex items-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setFilterMina('');
+                  setFilterSilice('');
+                  setFilterOrigen('');
+                  setFilterDestino('');
+                  setFilterPlaca('');
+                  setFilterFechaInicio(null);
+                  setFilterFechaFin(null);
+                }}
+                className="w-full gap-2"
+              >
+                <X className="h-4 w-4" />
+                Limpiar
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="shadow-card bg-amber-50 border-amber-200">
@@ -287,11 +475,11 @@ const Movimientos = () => {
             </div>
             <div>
               <p className="text-sm text-amber-700">Minas Activas</p>
-              <p className="text-2xl font-bold text-amber-800">{MINAS.length}</p>
+              <p className="text-2xl font-bold text-amber-800">{new Set(filteredMovimientos.map(m => m.mina)).size}</p>
             </div>
           </CardContent>
         </Card>
-        
+
         <Card className="shadow-card bg-blue-50 border-blue-200">
           <CardContent className="p-4 flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center">
@@ -299,11 +487,11 @@ const Movimientos = () => {
             </div>
             <div>
               <p className="text-sm text-blue-700">Volquetas</p>
-              <p className="text-2xl font-bold text-blue-800">{placas.length}</p>
+              <p className="text-2xl font-bold text-blue-800">{new Set(filteredMovimientos.map(m => m.placa)).size}</p>
             </div>
           </CardContent>
         </Card>
-        
+
         <Card className="shadow-card bg-green-50 border-green-200">
           <CardContent className="p-4 flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-green-500/20 flex items-center justify-center">
@@ -311,7 +499,7 @@ const Movimientos = () => {
             </div>
             <div>
               <p className="text-sm text-green-700">Movimientos</p>
-              <p className="text-2xl font-bold text-green-800">{movimientos.length}</p>
+              <p className="text-2xl font-bold text-green-800">{filteredMovimientos.length}</p>
             </div>
           </CardContent>
         </Card>
@@ -324,7 +512,7 @@ const Movimientos = () => {
             <div>
               <p className="text-sm text-purple-700">m³ Producidos</p>
               <p className="text-2xl font-bold text-purple-800">
-                {movimientos.reduce((sum, m) => {
+                {filteredMovimientos.reduce((sum, m) => {
                   const resultado = calcularM3PorMovimiento(m.placa, m.silice, m.origen, m.destino);
                   return sum + (resultado.m3Producidos * m.cantidad_movimientos);
                 }, 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}

@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, Search, Trash2, Save, CalendarIcon, Loader2, Timer, TrendingUp, ArrowRight, ArrowLeft, Clock, AlertTriangle, Edit } from 'lucide-react';
+import { Plus, Search, Trash2, Save, CalendarIcon, Loader2, Timer, TrendingUp, ArrowRight, ArrowLeft, Clock, AlertTriangle, Edit, Filter, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useTiempos, useCreateTiempo, useDeleteTiempo, useUpdateTiempo } from '@/hooks/useTiempos';
@@ -59,6 +59,12 @@ const Tiempos = () => {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<TiempoForm>(getEmptyForm());
+
+  // Filtros avanzados
+  const [filterSilice, setFilterSilice] = useState('');
+  const [filterFechaInicio, setFilterFechaInicio] = useState<Date | null>(null);
+  const [filterFechaFin, setFilterFechaFin] = useState<Date | null>(null);
+  const [openFilterCalendars, setOpenFilterCalendars] = useState({ inicio: false, fin: false });
 
   const setF = (campo: keyof TiempoForm, valor: string | Date) =>
     setForm(prev => ({ ...prev, [campo]: valor }));
@@ -135,18 +141,34 @@ const Tiempos = () => {
     ? tiempos.some(t => t.fecha === format(form.fecha, 'yyyy-MM-dd') && t.silice === form.silice)
     : false;
 
-  const filtered = tiempos.filter(t =>
-    t.silice.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    t.fecha.includes(searchTerm) ||
-    (t.notas || '').toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const aplicarFiltros = (data: typeof tiempos) => {
+    return data.filter(t => {
+      // Filtro de búsqueda rápida
+      const searchMatch =
+        t.silice.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        t.fecha.includes(searchTerm) ||
+        (t.notas || '').toLowerCase().includes(searchTerm.toLowerCase());
 
-  // Estadísticas rápidas
-  const promedioIda = tiempos.length > 0
-    ? Math.round(tiempos.reduce((s, t) => s + t.tiempo_ida, 0) / tiempos.length)
+      // Filtros avanzados
+      const siliceMatch = !filterSilice || t.silice === filterSilice;
+
+      const fecha = new Date(t.fecha);
+      const fechaMatch =
+        (!filterFechaInicio || fecha >= filterFechaInicio) &&
+        (!filterFechaFin || fecha <= filterFechaFin);
+
+      return searchMatch && siliceMatch && fechaMatch;
+    });
+  };
+
+  const filtered = aplicarFiltros(tiempos);
+
+  // Estadísticas rápidas (basadas en datos filtrados)
+  const promedioIda = filtered.length > 0
+    ? Math.round(filtered.reduce((s, t) => s + t.tiempo_ida, 0) / filtered.length)
     : 0;
-  const promedioVuelta = tiempos.length > 0
-    ? Math.round(tiempos.reduce((s, t) => s + t.tiempo_vuelta, 0) / tiempos.length)
+  const promedioVuelta = filtered.length > 0
+    ? Math.round(filtered.reduce((s, t) => s + t.tiempo_vuelta, 0) / filtered.length)
     : 0;
   const promedioCiclo = promedioIda + promedioVuelta;
 
@@ -182,6 +204,99 @@ const Tiempos = () => {
           </p>
         </div>
       </div>
+
+      {/* Filtros Avanzados */}
+      <Card className="shadow-card bg-slate-50 border-slate-200">
+        <CardHeader>
+          <div className="flex items-center gap-2 mb-4">
+            <Filter className="h-5 w-5 text-primary" />
+            <CardTitle className="text-base">Filtros Avanzados</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Sílice */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold text-slate-700">Sílice</Label>
+              <Select value={filterSilice} onValueChange={setFilterSilice}>
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Todas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Todas</SelectItem>
+                  <SelectItem value="Silice A - Peña">Silice A - Peña</SelectItem>
+                  <SelectItem value="Silice B - Pozo">Silice B - Pozo</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Fecha Inicio */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold text-slate-700">Fecha Inicio</Label>
+              <Popover open={openFilterCalendars.inicio} onOpenChange={(open) => setOpenFilterCalendars({ ...openFilterCalendars, inicio: open })}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="h-9 w-full justify-start text-left font-normal">
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {filterFechaInicio ? format(filterFechaInicio, "dd/MM/yyyy") : "Desde"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={filterFechaInicio || undefined}
+                    onSelect={(date) => {
+                      setFilterFechaInicio(date || null);
+                      setOpenFilterCalendars({ ...openFilterCalendars, inicio: false });
+                    }}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {/* Fecha Fin */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold text-slate-700">Fecha Fin</Label>
+              <Popover open={openFilterCalendars.fin} onOpenChange={(open) => setOpenFilterCalendars({ ...openFilterCalendars, fin: open })}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="h-9 w-full justify-start text-left font-normal">
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {filterFechaFin ? format(filterFechaFin, "dd/MM/yyyy") : "Hasta"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={filterFechaFin || undefined}
+                    onSelect={(date) => {
+                      setFilterFechaFin(date || null);
+                      setOpenFilterCalendars({ ...openFilterCalendars, fin: false });
+                    }}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {/* Botón Limpiar Filtros */}
+            <div className="space-y-2 flex items-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setFilterSilice('');
+                  setFilterFechaInicio(null);
+                  setFilterFechaFin(null);
+                }}
+                className="w-full gap-2"
+              >
+                <X className="h-4 w-4" />
+                Limpiar
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Estadísticas rápidas */}
       {tiempos.length > 0 && (
