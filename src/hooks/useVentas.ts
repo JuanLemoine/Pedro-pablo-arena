@@ -14,11 +14,8 @@ export const useVentas = () => {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('[useVentas] Error fetching ventas:', error);
         throw new Error(error.message);
       }
-      console.log('[useVentas] Datos obtenidos:', data?.length, 'registros');
-      console.log('[useVentas] Primera venta:', data?.[0]);
       return data || [];
     }
   });
