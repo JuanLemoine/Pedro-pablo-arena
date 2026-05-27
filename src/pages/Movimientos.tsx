@@ -218,7 +218,7 @@ const Movimientos = () => {
       const destinoMatch = !filterDestino || mov.destino === filterDestino;
       const placaMatch = !filterPlaca || mov.placa.toLowerCase().includes(filterPlaca.toLowerCase());
 
-      const fecha = new Date(mov.fecha);
+      const fecha = new Date(mov.fecha + 'T00:00:00');
       const fechaMatch =
         (!filterFechaInicio || fecha >= filterFechaInicio) &&
         (!filterFechaFin || fecha <= filterFechaFin);

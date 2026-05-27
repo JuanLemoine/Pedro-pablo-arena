@@ -152,7 +152,7 @@ const Tiempos = () => {
       // Filtros avanzados
       const siliceMatch = !filterSilice || t.silice === filterSilice;
 
-      const fecha = new Date(t.fecha);
+      const fecha = new Date(t.fecha + 'T00:00:00');
       const fechaMatch =
         (!filterFechaInicio || fecha >= filterFechaInicio) &&
         (!filterFechaFin || fecha <= filterFechaFin);

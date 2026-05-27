@@ -181,7 +181,7 @@ const Acopio = () => {
       const fuenteMatch = !filterFuente || acopio.fuente === filterFuente;
       const placaMatch = !filterPlaca || acopio.placa.toLowerCase().includes(filterPlaca.toLowerCase());
 
-      const fecha = new Date(acopio.fecha);
+      const fecha = new Date(acopio.fecha + 'T00:00:00');
       const fechaMatch =
         (!filterFechaInicio || fecha >= filterFechaInicio) &&
         (!filterFechaFin || fecha <= filterFechaFin);

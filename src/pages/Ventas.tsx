@@ -209,7 +209,7 @@ const Ventas = () => {
         venta.placa.toLowerCase().includes(filterPlacaCliente.toLowerCase()) ||
         ((venta as any).nombre_cliente || '').toLowerCase().includes(filterPlacaCliente.toLowerCase());
 
-      const fecha = new Date(venta.fecha);
+      const fecha = new Date(venta.fecha + 'T00:00:00');
       const fechaMatch =
         (!filterFechaInicio || fecha >= filterFechaInicio) &&
         (!filterFechaFin || fecha <= filterFechaFin);
