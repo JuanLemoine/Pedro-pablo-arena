@@ -195,7 +195,17 @@ const Ventas = () => {
   };
 
   const aplicarFiltros = (data: typeof ventas) => {
-    return data.filter(venta => {
+    console.log('[Ventas] Aplicando filtros a', data.length, 'registros');
+    console.log('[Ventas] Filtros activos:', {
+      searchTerm,
+      filterSilice,
+      filterTipoTransaccion,
+      filterPlacaCliente,
+      filterFechaInicio,
+      filterFechaFin
+    });
+
+    const resultado = data.filter(venta => {
       // Filtro de búsqueda rápida
       const searchMatch =
         venta.recibo.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -216,6 +226,9 @@ const Ventas = () => {
 
       return searchMatch && siliceMatch && tipoMatch && placaClienteMatch && fechaMatch;
     });
+
+    console.log('[Ventas] Resultado de filtros:', resultado.length, 'registros después de filtrar');
+    return resultado;
   };
 
   const filteredVentas = aplicarFiltros(ventas);
