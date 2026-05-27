@@ -250,6 +250,8 @@ const Ventas = () => {
     );
   }
 
+  console.log('[Ventas] Renderizando con:', { ventasTotal: ventas.length, isLoading, error, filteredVentasLength: filteredVentas.length });
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
