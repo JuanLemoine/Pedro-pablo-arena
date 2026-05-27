@@ -326,7 +326,6 @@ const Movimientos = () => {
                   <SelectValue placeholder="Todas" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todas</SelectItem>
                   {MINAS.map((mina) => (
                     <SelectItem key={mina} value={mina}>{mina}</SelectItem>
                   ))}
@@ -342,7 +341,6 @@ const Movimientos = () => {
                   <SelectValue placeholder="Todas" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todas</SelectItem>
                   {SILICES.map((silice) => (
                     <SelectItem key={silice} value={silice}>{silice}</SelectItem>
                   ))}
@@ -358,7 +356,6 @@ const Movimientos = () => {
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos</SelectItem>
                   <SelectItem value="Punto de excavación">Punto de excavación</SelectItem>
                   <SelectItem value="Zaranda">Zaranda</SelectItem>
                 </SelectContent>
@@ -373,7 +370,6 @@ const Movimientos = () => {
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos</SelectItem>
                   <SelectItem value="Trituradora">Trituradora</SelectItem>
                   <SelectItem value="Clasificadora">Clasificadora</SelectItem>
                   <SelectItem value="Zaranda">Zaranda</SelectItem>

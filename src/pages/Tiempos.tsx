@@ -223,7 +223,6 @@ const Tiempos = () => {
                   <SelectValue placeholder="Todas" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todas</SelectItem>
                   <SelectItem value="Silice A - Peña">Silice A - Peña</SelectItem>
                   <SelectItem value="Silice B - Pozo">Silice B - Pozo</SelectItem>
                 </SelectContent>

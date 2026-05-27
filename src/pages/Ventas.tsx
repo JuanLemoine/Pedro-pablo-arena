@@ -275,7 +275,6 @@ const Ventas = () => {
                   <SelectValue placeholder="Todas" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todas</SelectItem>
                   <SelectItem value="Silice A - Peña">Silice A - Peña</SelectItem>
                   <SelectItem value="Silice B - Pozo">Silice B - Pozo</SelectItem>
                 </SelectContent>
@@ -290,7 +289,6 @@ const Ventas = () => {
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos</SelectItem>
                   <SelectItem value="Venta">Venta</SelectItem>
                   <SelectItem value="Donación">Donación</SelectItem>
                   <SelectItem value="Transferencia">Transferencia</SelectItem>
