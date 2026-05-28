@@ -11,9 +11,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, Search, FileText, Trash2, Save, Warehouse, CalendarIcon, Loader2, User, AlertCircle, Edit, Filter, X, Check, ChevronsUpDown } from 'lucide-react';
+import { Plus, Search, FileText, Trash2, Save, Warehouse, CalendarIcon, Loader2, User, AlertCircle, Edit, Filter, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useVentas, useCreateVentas, useUpdateVenta, useDeleteVenta } from '@/hooks/useVentas';
@@ -61,7 +60,6 @@ const Ventas = () => {
   const [ventasEnCurso, setVentasEnCurso] = useState<VentaForm[]>([getEmptyForm()]);
   const [openCalendars, setOpenCalendars] = useState<boolean[]>([false]);
   const [openClientePopovers, setOpenClientePopovers] = useState<boolean[]>([false]);
-  const [clienteSearchText, setClienteSearchText] = useState<string[]>([]);
 
   // Filtros avanzados
   const [filterSilice, setFilterSilice] = useState('');
@@ -75,7 +73,6 @@ const Ventas = () => {
     setVentasEnCurso([...ventasEnCurso, getEmptyForm()]);
     setOpenCalendars([...openCalendars, false]);
     setOpenClientePopovers([...openClientePopovers, false]);
-    setClienteSearchText([...clienteSearchText, '']);
   };
 
   const eliminarFilaVenta = (index: number) => {
@@ -83,7 +80,6 @@ const Ventas = () => {
       setVentasEnCurso(ventasEnCurso.filter((_, i) => i !== index));
       setOpenCalendars(openCalendars.filter((_, i) => i !== index));
       setOpenClientePopovers(openClientePopovers.filter((_, i) => i !== index));
-      setClienteSearchText(clienteSearchText.filter((_, i) => i !== index));
     }
   };
 
@@ -161,7 +157,6 @@ const Ventas = () => {
             setVentasEnCurso([getEmptyForm()]);
             setOpenCalendars([false]);
             setOpenClientePopovers([false]);
-            setClienteSearchText(['']);
             setShowForm(false);
             setEditingId(null);
           }
@@ -505,84 +500,34 @@ const Ventas = () => {
 
                   <div className="space-y-1">
                     <Label className="lg:hidden text-xs">Nombre Cliente</Label>
-                    <Popover open={openClientePopovers[index]} onOpenChange={(open) => setClientePopoverOpen(index, open)}>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          role="combobox"
-                          aria-expanded={openClientePopovers[index]}
-                          className="w-full justify-between font-normal"
-                        >
-                          <div className="flex items-center gap-1 truncate">
-                            <User className="h-4 w-4 text-muted-foreground shrink-0" />
-                            <span className="truncate">{venta.nombreCliente || "Seleccionar cliente..."}</span>
-                          </div>
-                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-[200px] p-0">
-                        <Command onValueChange={(value) => {
-                          const newSearch = [...clienteSearchText];
-                          newSearch[index] = value;
-                          setClienteSearchText(newSearch);
-                        }}>
-                          <CommandInput placeholder="Buscar o escribir cliente..." />
-                          <CommandList>
-                            <CommandEmpty>No se encontró el cliente.</CommandEmpty>
-                            {validarPlaca(venta.placa) && placasClientes.has(venta.placa) && (
-                              <CommandGroup heading="Clientes sugeridos">
-                                {placasClientes.get(venta.placa)!.map((cliente) => (
-                                  <CommandItem
-                                    key={cliente}
-                                    value={cliente}
-                                    onSelect={(currentValue) => {
-                                      actualizarVenta(index, 'nombreCliente', currentValue === venta.nombreCliente ? '' : currentValue);
-                                      setClientePopoverOpen(index, false);
-                                      // Clear search text
-                                      const newSearch = [...clienteSearchText];
-                                      newSearch[index] = '';
-                                      setClienteSearchText(newSearch);
-                                    }}
-                                  >
-                                    <Check
-                                      className={cn(
-                                        "mr-2 h-4 w-4",
-                                        venta.nombreCliente === cliente ? "opacity-100" : "opacity-0"
-                                      )}
-                                    />
-                                    {cliente}
-                                  </CommandItem>
-                                ))}
-                              </CommandGroup>
+                    <div className="relative">
+                      <User className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Nombre del cliente"
+                        value={venta.nombreCliente}
+                        onChange={(e) => actualizarVenta(index, 'nombreCliente', e.target.value)}
+                        className="pl-8"
+                      />
+                    </div>
+                    {validarPlaca(venta.placa) && placasClientes.has(venta.placa) && (
+                      <div className="flex flex-wrap gap-1 pt-1">
+                        {placasClientes.get(venta.placa)!.map((cliente) => (
+                          <button
+                            key={cliente}
+                            type="button"
+                            onClick={() => actualizarVenta(index, 'nombreCliente', cliente)}
+                            className={cn(
+                              "text-xs px-2 py-0.5 rounded-full border transition-colors",
+                              venta.nombreCliente === cliente
+                                ? "bg-primary text-primary-foreground border-primary"
+                                : "bg-muted text-muted-foreground border-border hover:bg-primary/10 hover:text-primary hover:border-primary"
                             )}
-                            {clienteSearchText[index] &&
-                             (!validarPlaca(venta.placa) ||
-                              !placasClientes.has(venta.placa) ||
-                              !placasClientes.get(venta.placa)!.includes(clienteSearchText[index])) && (
-                              <CommandItem
-                                value={clienteSearchText[index]}
-                                onSelect={(currentValue) => {
-                                  actualizarVenta(index, 'nombreCliente', currentValue);
-                                  setClientePopoverOpen(index, false);
-                                  // Clear search text
-                                  const newSearch = [...clienteSearchText];
-                                  newSearch[index] = '';
-                                  setClienteSearchText(newSearch);
-                                }}
-                              >
-                                <Check
-                                  className={cn(
-                                    "mr-2 h-4 w-4",
-                                    venta.nombreCliente === clienteSearchText[index] ? "opacity-100" : "opacity-0"
-                                  )}
-                                />
-                                Usar: "{clienteSearchText[index]}"
-                              </CommandItem>
-                            )}
-                          </CommandList>
-                        </Command>
-                      </PopoverContent>
-                    </Popover>
+                          >
+                            {cliente}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   
                   <div className="space-y-1">
