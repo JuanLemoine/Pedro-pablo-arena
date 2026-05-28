@@ -61,6 +61,7 @@ const Ventas = () => {
   const [ventasEnCurso, setVentasEnCurso] = useState<VentaForm[]>([getEmptyForm()]);
   const [openCalendars, setOpenCalendars] = useState<boolean[]>([false]);
   const [openClientePopovers, setOpenClientePopovers] = useState<boolean[]>([false]);
+  const [clienteSearchText, setClienteSearchText] = useState<string[]>([]);
 
   // Filtros avanzados
   const [filterSilice, setFilterSilice] = useState('');
@@ -74,6 +75,7 @@ const Ventas = () => {
     setVentasEnCurso([...ventasEnCurso, getEmptyForm()]);
     setOpenCalendars([...openCalendars, false]);
     setOpenClientePopovers([...openClientePopovers, false]);
+    setClienteSearchText([...clienteSearchText, '']);
   };
 
   const eliminarFilaVenta = (index: number) => {
@@ -81,6 +83,7 @@ const Ventas = () => {
       setVentasEnCurso(ventasEnCurso.filter((_, i) => i !== index));
       setOpenCalendars(openCalendars.filter((_, i) => i !== index));
       setOpenClientePopovers(openClientePopovers.filter((_, i) => i !== index));
+      setClienteSearchText(clienteSearchText.filter((_, i) => i !== index));
     }
   };
 
@@ -158,6 +161,7 @@ const Ventas = () => {
             setVentasEnCurso([getEmptyForm()]);
             setOpenCalendars([false]);
             setOpenClientePopovers([false]);
+            setClienteSearchText(['']);
             setShowForm(false);
             setEditingId(null);
           }
@@ -169,6 +173,7 @@ const Ventas = () => {
           setVentasEnCurso([getEmptyForm()]);
           setOpenCalendars([false]);
           setOpenClientePopovers([false]);
+          setClienteSearchText(['']);
           setShowForm(false);
         }
       });
@@ -192,6 +197,7 @@ const Ventas = () => {
     setVentasEnCurso([ventaForm]);
     setOpenCalendars([false]);
     setOpenClientePopovers([false]);
+    setClienteSearchText(['']);
     setShowForm(true);
     // Scroll automático hacia el formulario
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -202,6 +208,7 @@ const Ventas = () => {
     setVentasEnCurso([getEmptyForm()]);
     setOpenCalendars([false]);
     setOpenClientePopovers([false]);
+    setClienteSearchText(['']);
     setShowForm(false);
   };
 
@@ -269,124 +276,126 @@ const Ventas = () => {
       </div>
 
       {/* Filtros Avanzados */}
-      <Card className="shadow-card bg-slate-50 border-slate-200">
-        <CardHeader>
-          <div className="flex items-center gap-2 mb-4">
-            <Filter className="h-5 w-5 text-primary" />
-            <CardTitle className="text-base">Filtros Avanzados</CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-            {/* Sílice */}
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold text-slate-700">Sílice</Label>
-              <Select value={filterSilice} onValueChange={setFilterSilice}>
-                <SelectTrigger className="h-9">
-                  <SelectValue placeholder="Todas" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Silice A - Peña">Silice A - Peña</SelectItem>
-                  <SelectItem value="Silice B - Pozo">Silice B - Pozo</SelectItem>
-                </SelectContent>
-              </Select>
+      {!showForm && (
+        <Card className="shadow-card bg-slate-50 border-slate-200">
+          <CardHeader>
+            <div className="flex items-center gap-2 mb-4">
+              <Filter className="h-5 w-5 text-primary" />
+              <CardTitle className="text-base">Filtros Avanzados</CardTitle>
             </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+              {/* Sílice */}
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold text-slate-700">Sílice</Label>
+                <Select value={filterSilice} onValueChange={setFilterSilice}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="Todas" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Silice A - Peña">Silice A - Peña</SelectItem>
+                    <SelectItem value="Silice B - Pozo">Silice B - Pozo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-            {/* Tipo de Transacción */}
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold text-slate-700">Tipo de Transacción</Label>
-              <Select value={filterTipoTransaccion} onValueChange={setFilterTipoTransaccion}>
-                <SelectTrigger className="h-9">
-                  <SelectValue placeholder="Todos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Venta">Venta</SelectItem>
-                  <SelectItem value="Donación">Donación</SelectItem>
-                  <SelectItem value="Transferencia">Transferencia</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+              {/* Tipo de Transacción */}
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold text-slate-700">Tipo de Transacción</Label>
+                <Select value={filterTipoTransaccion} onValueChange={setFilterTipoTransaccion}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="Todos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Venta">Venta</SelectItem>
+                    <SelectItem value="Donación">Donación</SelectItem>
+                    <SelectItem value="Transferencia">Transferencia</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-            {/* Placa/Cliente */}
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold text-slate-700">Placa/Cliente</Label>
-              <Input
-                placeholder="Buscar placa o cliente..."
-                value={filterPlacaCliente}
-                onChange={(e) => setFilterPlacaCliente(e.target.value)}
-                className="h-9"
-              />
-            </div>
-
-            {/* Fecha Inicio */}
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold text-slate-700">Fecha Inicio</Label>
-              <Popover open={openFilterCalendars.inicio} onOpenChange={(open) => setOpenFilterCalendars({ ...openFilterCalendars, inicio: open })}>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="h-9 w-full justify-start text-left font-normal">
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {filterFechaInicio ? format(filterFechaInicio, "dd/MM/yyyy") : "Desde"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={filterFechaInicio || undefined}
-                    onSelect={(date) => {
-                      setFilterFechaInicio(date || null);
-                      setOpenFilterCalendars({ ...openFilterCalendars, inicio: false });
-                    }}
-                    initialFocus
+              {/* Placa/Cliente */}
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold text-slate-700">Placa/Cliente</Label>
+                  <Input
+                    placeholder="Buscar placa o cliente..."
+                    value={filterPlacaCliente}
+                    onChange={(e) => setFilterPlacaCliente(e.target.value)}
+                    className="h-9"
                   />
-                </PopoverContent>
-              </Popover>
-            </div>
+                </div>
 
-            {/* Fecha Fin */}
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold text-slate-700">Fecha Fin</Label>
-              <Popover open={openFilterCalendars.fin} onOpenChange={(open) => setOpenFilterCalendars({ ...openFilterCalendars, fin: open })}>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="h-9 w-full justify-start text-left font-normal">
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {filterFechaFin ? format(filterFechaFin, "dd/MM/yyyy") : "Hasta"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={filterFechaFin || undefined}
-                    onSelect={(date) => {
-                      setFilterFechaFin(date || null);
-                      setOpenFilterCalendars({ ...openFilterCalendars, fin: false });
+                {/* Fecha Inicio */}
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold text-slate-700">Fecha Inicio</Label>
+                  <Popover open={openFilterCalendars.inicio} onOpenChange={(open) => setOpenFilterCalendars({ ...openFilterCalendars, inicio: open })}>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="h-9 w-full justify-start text-left font-normal">
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {filterFechaInicio ? format(filterFechaInicio, "dd/MM/yyyy") : "Desde"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={filterFechaInicio || undefined}
+                        onSelect={(date) => {
+                          setFilterFechaInicio(date || null);
+                          setOpenFilterCalendars({ ...openFilterCalendars, inicio: false });
+                        }}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                {/* Fecha Fin */}
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold text-slate-700">Fecha Fin</Label>
+                  <Popover open={openFilterCalendars.fin} onOpenChange={(open) => setOpenFilterCalendars({ ...openFilterCalendars, fin: open })}>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="h-9 w-full justify-start text-left font-normal">
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {filterFechaFin ? format(filterFechaFin, "dd/MM/yyyy") : "Hasta"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={filterFechaFin || undefined}
+                        onSelect={(date) => {
+                          setFilterFechaFin(date || null);
+                          setOpenFilterCalendars({ ...openFilterCalendars, fin: false });
+                        }}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                {/* Botón Limpiar Filtros */}
+                <div className="space-y-2 flex items-end">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setFilterSilice('');
+                      setFilterTipoTransaccion('');
+                      setFilterPlacaCliente('');
+                      setFilterFechaInicio(null);
+                      setFilterFechaFin(null);
                     }}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-
-            {/* Botón Limpiar Filtros */}
-            <div className="space-y-2 flex items-end">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setFilterSilice('');
-                  setFilterTipoTransaccion('');
-                  setFilterPlacaCliente('');
-                  setFilterFechaInicio(null);
-                  setFilterFechaFin(null);
-                }}
-                className="w-full gap-2"
-              >
-                <X className="h-4 w-4" />
-                Limpiar
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+                    className="w-full gap-2"
+                  >
+                    <X className="h-4 w-4" />
+                    Limpiar
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
       {/* Form */}
       {showForm && (
@@ -512,7 +521,11 @@ const Ventas = () => {
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-[200px] p-0">
-                        <Command>
+                        <Command onValueChange={(value) => {
+                          const newSearch = [...clienteSearchText];
+                          newSearch[index] = value;
+                          setClienteSearchText(newSearch);
+                        }}>
                           <CommandInput placeholder="Buscar o escribir cliente..." />
                           <CommandList>
                             <CommandEmpty>No se encontró el cliente.</CommandEmpty>
@@ -525,6 +538,10 @@ const Ventas = () => {
                                     onSelect={(currentValue) => {
                                       actualizarVenta(index, 'nombreCliente', currentValue === venta.nombreCliente ? '' : currentValue);
                                       setClientePopoverOpen(index, false);
+                                      // Clear search text
+                                      const newSearch = [...clienteSearchText];
+                                      newSearch[index] = '';
+                                      setClienteSearchText(newSearch);
                                     }}
                                   >
                                     <Check
@@ -537,6 +554,30 @@ const Ventas = () => {
                                   </CommandItem>
                                 ))}
                               </CommandGroup>
+                            )}
+                            {clienteSearchText[index] &&
+                             (!validarPlaca(venta.placa) ||
+                              !placasClientes.has(venta.placa) ||
+                              !placasClientes.get(venta.placa)!.includes(clienteSearchText[index])) && (
+                              <CommandItem
+                                value={clienteSearchText[index]}
+                                onSelect={(currentValue) => {
+                                  actualizarVenta(index, 'nombreCliente', currentValue);
+                                  setClientePopoverOpen(index, false);
+                                  // Clear search text
+                                  const newSearch = [...clienteSearchText];
+                                  newSearch[index] = '';
+                                  setClienteSearchText(newSearch);
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    venta.nombreCliente === clienteSearchText[index] ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                Usar: "{clienteSearchText[index]}"
+                              </CommandItem>
                             )}
                           </CommandList>
                         </Command>
