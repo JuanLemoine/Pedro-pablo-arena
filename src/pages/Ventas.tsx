@@ -11,8 +11,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, Search, FileText, Trash2, Save, Warehouse, CalendarIcon, Loader2, User, AlertCircle, Edit, Filter, X } from 'lucide-react';
+import { Plus, Search, FileText, Trash2, Save, Warehouse, CalendarIcon, Loader2, User, AlertCircle, Edit, Filter, X, Check, ChevronsUpDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useVentas, useCreateVentas, useUpdateVenta, useDeleteVenta } from '@/hooks/useVentas';
@@ -59,6 +60,7 @@ const Ventas = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [ventasEnCurso, setVentasEnCurso] = useState<VentaForm[]>([getEmptyForm()]);
   const [openCalendars, setOpenCalendars] = useState<boolean[]>([false]);
+  const [openClientePopovers, setOpenClientePopovers] = useState<boolean[]>([false]);
 
   // Filtros avanzados
   const [filterSilice, setFilterSilice] = useState('');
@@ -71,12 +73,14 @@ const Ventas = () => {
   const agregarFilaVenta = () => {
     setVentasEnCurso([...ventasEnCurso, getEmptyForm()]);
     setOpenCalendars([...openCalendars, false]);
+    setOpenClientePopovers([...openClientePopovers, false]);
   };
 
   const eliminarFilaVenta = (index: number) => {
     if (ventasEnCurso.length > 1) {
       setVentasEnCurso(ventasEnCurso.filter((_, i) => i !== index));
       setOpenCalendars(openCalendars.filter((_, i) => i !== index));
+      setOpenClientePopovers(openClientePopovers.filter((_, i) => i !== index));
     }
   };
 
@@ -90,10 +94,7 @@ const Ventas = () => {
     const placa = formatearPlaca(valor);
     const nuevasVentas = [...ventasEnCurso];
     nuevasVentas[index] = { ...nuevasVentas[index], placa };
-    // Si la placa es válida y hay un nombre registrado, autocompletar
-    if (validarPlaca(placa) && placasClientes.has(placa) && !nuevasVentas[index].nombreCliente) {
-      nuevasVentas[index].nombreCliente = placasClientes.get(placa)!;
-    }
+    // No auto-completar más - el usuario selecciona del combobox de clientes
     setVentasEnCurso(nuevasVentas);
   };
 
@@ -101,6 +102,12 @@ const Ventas = () => {
     const newOpenCalendars = [...openCalendars];
     newOpenCalendars[index] = open;
     setOpenCalendars(newOpenCalendars);
+  };
+
+  const setClientePopoverOpen = (index: number, open: boolean) => {
+    const newOpen = [...openClientePopovers];
+    newOpen[index] = open;
+    setOpenClientePopovers(newOpen);
   };
 
   const validarVenta = (venta: VentaForm): boolean => {
@@ -150,6 +157,7 @@ const Ventas = () => {
           onSuccess: () => {
             setVentasEnCurso([getEmptyForm()]);
             setOpenCalendars([false]);
+            setOpenClientePopovers([false]);
             setShowForm(false);
             setEditingId(null);
           }
@@ -160,6 +168,7 @@ const Ventas = () => {
         onSuccess: () => {
           setVentasEnCurso([getEmptyForm()]);
           setOpenCalendars([false]);
+          setOpenClientePopovers([false]);
           setShowForm(false);
         }
       });
@@ -182,6 +191,7 @@ const Ventas = () => {
     };
     setVentasEnCurso([ventaForm]);
     setOpenCalendars([false]);
+    setOpenClientePopovers([false]);
     setShowForm(true);
     // Scroll automático hacia el formulario
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -191,6 +201,7 @@ const Ventas = () => {
     setEditingId(null);
     setVentasEnCurso([getEmptyForm()]);
     setOpenCalendars([false]);
+    setOpenClientePopovers([false]);
     setShowForm(false);
   };
 
@@ -484,24 +495,53 @@ const Ventas = () => {
                   </div>
 
                   <div className="space-y-1">
-                    <Label className="lg:hidden text-xs">
-                      Nombre Cliente
-                      {validarPlaca(venta.placa) && placasClientes.has(venta.placa) && (
-                        <span className="ml-1 text-green-600 text-[10px]">✓ cliente conocido</span>
-                      )}
-                    </Label>
-                    <div className="relative">
-                      <User className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                      <Input
-                        placeholder="Nombre del cliente"
-                        value={venta.nombreCliente}
-                        onChange={(e) => actualizarVenta(index, 'nombreCliente', e.target.value)}
-                        className={cn(
-                          'pl-8',
-                          validarPlaca(venta.placa) && placasClientes.has(venta.placa) && venta.nombreCliente === placasClientes.get(venta.placa) && 'border-green-300 bg-green-50/50'
-                        )}
-                      />
-                    </div>
+                    <Label className="lg:hidden text-xs">Nombre Cliente</Label>
+                    <Popover open={openClientePopovers[index]} onOpenChange={(open) => setClientePopoverOpen(index, open)}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={openClientePopovers[index]}
+                          className="w-full justify-between font-normal"
+                        >
+                          <div className="flex items-center gap-1 truncate">
+                            <User className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <span className="truncate">{venta.nombreCliente || "Seleccionar cliente..."}</span>
+                          </div>
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[200px] p-0">
+                        <Command>
+                          <CommandInput placeholder="Buscar o escribir cliente..." />
+                          <CommandList>
+                            <CommandEmpty>No se encontró el cliente.</CommandEmpty>
+                            {validarPlaca(venta.placa) && placasClientes.has(venta.placa) && (
+                              <CommandGroup heading="Clientes sugeridos">
+                                {placasClientes.get(venta.placa)!.map((cliente) => (
+                                  <CommandItem
+                                    key={cliente}
+                                    value={cliente}
+                                    onSelect={(currentValue) => {
+                                      actualizarVenta(index, 'nombreCliente', currentValue === venta.nombreCliente ? '' : currentValue);
+                                      setClientePopoverOpen(index, false);
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        venta.nombreCliente === cliente ? "opacity-100" : "opacity-0"
+                                      )}
+                                    />
+                                    {cliente}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            )}
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                   </div>
                   
                   <div className="space-y-1">

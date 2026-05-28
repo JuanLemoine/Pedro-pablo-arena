@@ -15,11 +15,11 @@ export const formatearPlaca = (valor: string): string => {
   return letras + numeros;
 };
 
-/** Devuelve un mapa de placa → nombre_cliente a partir de todas las ventas */
+/** Devuelve un mapa de placa → [array de nombres_clientes] a partir de todas las ventas */
 export const usePlacasClientes = () => {
   return useQuery({
     queryKey: ['placas-clientes'],
-    queryFn: async (): Promise<Map<string, string>> => {
+    queryFn: async (): Promise<Map<string, string[]>> => {
       const { data, error } = await supabase
         .from('ventas')
         .select('placa, nombre_cliente')
@@ -28,13 +28,25 @@ export const usePlacasClientes = () => {
 
       if (error) throw new Error(error.message);
 
-      const mapa = new Map<string, string>();
+      const mapa = new Map<string, Set<string>>();
+
+      // Usar Set para deduplicar clientes por placa, ordenados por recencia
       data?.forEach(v => {
-        if (v.nombre_cliente && !mapa.has(v.placa)) {
-          mapa.set(v.placa, v.nombre_cliente);
+        if (v.nombre_cliente) {
+          if (!mapa.has(v.placa)) {
+            mapa.set(v.placa, new Set());
+          }
+          mapa.get(v.placa)!.add(v.nombre_cliente);
         }
       });
-      return mapa;
+
+      // Convertir Sets a Arrays
+      const resultado = new Map<string, string[]>();
+      mapa.forEach((clientes, placa) => {
+        resultado.set(placa, Array.from(clientes));
+      });
+
+      return resultado;
     },
     staleTime: 30000,
   });
