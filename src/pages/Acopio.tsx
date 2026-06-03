@@ -358,8 +358,18 @@ const Acopio = () => {
       {showForm && (
         <Card className="shadow-card animate-slide-up border-primary/20">
           <CardHeader>
-            <CardTitle className="text-lg">{editingId ? 'Editar Acopio' : 'Registrar Acopio'}</CardTitle>
-            <CardDescription>{editingId ? 'Actualiza los datos del registro de acopio' : 'Registre los viajes realizados por las volquetas de la empresa'}</CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-lg">{editingId ? 'Editar Acopio' : 'Registrar Acopio'}</CardTitle>
+                <CardDescription>{editingId ? 'Actualiza los datos del registro de acopio' : 'Registre los viajes realizados por las volquetas de la empresa'}</CardDescription>
+              </div>
+              {!editingId && (
+                <Button type="button" variant="secondary" onClick={agregarFilaAcopio} className="gap-2 shrink-0">
+                  <Plus className="h-4 w-4" />
+                  Agregar otro registro
+                </Button>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -513,11 +523,7 @@ const Acopio = () => {
               ))}
 
               {/* Botones de acción */}
-              <div className="flex flex-col sm:flex-row gap-3 justify-between pt-4 border-t">
-                <Button type="button" variant="outline" onClick={agregarFilaAcopio} className="gap-2" disabled={editingId ? true : false}>
-                  <Plus className="h-4 w-4" />
-                  Agregar otro registro
-                </Button>
+              <div className="flex flex-col sm:flex-row gap-3 justify-end pt-4 border-t">
                 <div className="flex gap-3">
                 <Button type="button" variant="outline" onClick={handleCancelEdit}>
                     Cancelar
