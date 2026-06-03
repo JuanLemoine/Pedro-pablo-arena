@@ -309,6 +309,7 @@ const Movimientos = () => {
       </div>
 
       {/* Filtros Avanzados */}
+      {!showForm && (
       <Card className="shadow-card bg-slate-50 border-slate-200">
         <CardHeader>
           <div className="flex items-center gap-2 mb-4">
@@ -461,6 +462,7 @@ const Movimientos = () => {
           </div>
         </CardContent>
       </Card>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

@@ -233,6 +233,7 @@ const Acopio = () => {
       </div>
 
       {/* Filtros Avanzados */}
+      {!showForm && (
       <Card className="shadow-card bg-slate-50 border-slate-200">
         <CardHeader>
           <div className="flex items-center gap-2 mb-4">
@@ -351,6 +352,7 @@ const Acopio = () => {
           </div>
         </CardContent>
       </Card>
+      )}
 
       {/* Form */}
       {showForm && (
