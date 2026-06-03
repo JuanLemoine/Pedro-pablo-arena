@@ -524,8 +524,23 @@ const Movimientos = () => {
       {showForm && (
         <Card className="shadow-card animate-slide-up border-primary/20">
           <CardHeader>
-            <CardTitle className="text-lg">{editingId ? 'Editar Movimiento' : 'Registrar Movimiento'}</CardTitle>
-            <CardDescription>{editingId ? 'Actualiza los datos del movimiento' : 'Complete los datos del movimiento interno'}</CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-lg">{editingId ? 'Editar Movimiento' : 'Registrar Movimiento'}</CardTitle>
+                <CardDescription>{editingId ? 'Actualiza los datos del movimiento' : 'Complete los datos del movimiento interno'}</CardDescription>
+              </div>
+              {!editingId && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setIsAddingMultiple(!isAddingMultiple)}
+                  className="gap-2 shrink-0"
+                >
+                  <Plus className="h-4 w-4" />
+                  {isAddingMultiple ? 'Cancelar modo múltiple' : 'Agregar otro movimiento'}
+                </Button>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -749,22 +764,6 @@ const Movimientos = () => {
                   </Button>
                 </div>
 
-                {!editingId && (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => {
-                      if (!isAddingMultiple) {
-                        setIsAddingMultiple(true);
-                      } else {
-                        setIsAddingMultiple(false);
-                      }
-                    }}
-                    className="w-full"
-                  >
-                    {isAddingMultiple ? 'Cancelar modo múltiple' : 'Agregar otro movimiento'}
-                  </Button>
-                )}
               </div>
             </form>
           </CardContent>
