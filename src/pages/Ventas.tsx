@@ -192,7 +192,6 @@ const Ventas = () => {
     setVentasEnCurso([ventaForm]);
     setOpenCalendars([false]);
     setOpenClientePopovers([false]);
-    setClienteSearchText(['']);
     setShowForm(true);
     // Scroll automático hacia el formulario
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -203,7 +202,6 @@ const Ventas = () => {
     setVentasEnCurso([getEmptyForm()]);
     setOpenCalendars([false]);
     setOpenClientePopovers([false]);
-    setClienteSearchText(['']);
     setShowForm(false);
   };
 
