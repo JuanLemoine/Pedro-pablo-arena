@@ -168,7 +168,7 @@ const Ventas = () => {
           setVentasEnCurso([getEmptyForm()]);
           setOpenCalendars([false]);
           setOpenClientePopovers([false]);
-          setClienteSearchText(['']);
+
           setShowForm(false);
         }
       });
