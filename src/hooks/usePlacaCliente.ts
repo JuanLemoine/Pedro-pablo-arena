@@ -7,15 +7,18 @@ export const PLACA_REGEX = /^[A-Z]{3}[0-9]{3}$/;
 export const validarPlaca = (placa: string): boolean => PLACA_REGEX.test(placa);
 
 export const formatearPlaca = (valor: string): string => {
-  // Mantener solo letras y números, eliminar todo lo demás
   const limpio = valor.toUpperCase().replace(/[^A-Z0-9]/g, '');
-  // Limitar a 6 caracteres: los primeros 3 deben ser letras, los siguientes 3 números
   const letras = limpio.slice(0, 3).replace(/[^A-Z]/g, '');
   const numeros = limpio.slice(3, 6).replace(/[^0-9]/g, '');
   return letras + numeros;
 };
 
-/** Devuelve un mapa de placa → [array de nombres_clientes] a partir de todas las ventas */
+export interface ClienteInfo {
+  nombre: string;
+  nit: string;
+}
+
+/** Devuelve un mapa de placa → [array de nombres_clientes] */
 export const usePlacasClientes = () => {
   return useQuery({
     queryKey: ['placas-clientes'],
@@ -29,24 +32,49 @@ export const usePlacasClientes = () => {
       if (error) throw new Error(error.message);
 
       const mapa = new Map<string, Set<string>>();
-
-      // Usar Set para deduplicar clientes por placa, ordenados por recencia
       data?.forEach(v => {
         if (v.nombre_cliente) {
-          if (!mapa.has(v.placa)) {
-            mapa.set(v.placa, new Set());
-          }
+          if (!mapa.has(v.placa)) mapa.set(v.placa, new Set());
           mapa.get(v.placa)!.add(v.nombre_cliente);
         }
       });
 
-      // Convertir Sets a Arrays
       const resultado = new Map<string, string[]>();
       mapa.forEach((clientes, placa) => {
         resultado.set(placa, Array.from(clientes));
       });
 
       return resultado;
+    },
+    staleTime: 30000,
+  });
+};
+
+/**
+ * Devuelve todos los clientes únicos con su NIT más reciente.
+ * Usado para autocompletado en el campo nombre_cliente.
+ */
+export const useClientesInfo = () => {
+  return useQuery({
+    queryKey: ['clientes-info'],
+    queryFn: async (): Promise<ClienteInfo[]> => {
+      const { data, error } = await supabase
+        .from('ventas')
+        .select('nombre_cliente, nit_cliente')
+        .not('nombre_cliente', 'is', null)
+        .order('created_at', { ascending: false });
+
+      if (error) throw new Error(error.message);
+
+      // Deduplicar por nombre, conservando el NIT más reciente
+      const mapa = new Map<string, string>();
+      data?.forEach(v => {
+        if (v.nombre_cliente && !mapa.has(v.nombre_cliente)) {
+          mapa.set(v.nombre_cliente, v.nit_cliente || '');
+        }
+      });
+
+      return Array.from(mapa.entries()).map(([nombre, nit]) => ({ nombre, nit }));
     },
     staleTime: 30000,
   });

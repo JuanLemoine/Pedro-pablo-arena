@@ -16,7 +16,7 @@ import { Plus, Search, FileText, Trash2, Save, Warehouse, CalendarIcon, Loader2,
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useVentas, useCreateVentas, useUpdateVenta, useDeleteVenta } from '@/hooks/useVentas';
-import { usePlacasClientes, formatearPlaca, validarPlaca } from '@/hooks/usePlacaCliente';
+import { usePlacasClientes, useClientesInfo, formatearPlaca, validarPlaca } from '@/hooks/usePlacaCliente';
 
 type TipoTransaccion = 'Venta' | 'Donación' | 'Transferencia';
 
@@ -26,6 +26,7 @@ interface VentaForm {
   recibo: string;
   placa: string;
   nombreCliente: string;
+  nitCliente: string;
   cantidadM3: string;
   valorTotal: string;
   fuente: string;
@@ -39,6 +40,7 @@ const getEmptyForm = (): VentaForm => ({
   recibo: '',
   placa: '',
   nombreCliente: '',
+  nitCliente: '',
   cantidadM3: '',
   valorTotal: '',
   fuente: '',
@@ -53,8 +55,10 @@ const Ventas = () => {
   const updateVenta = useUpdateVenta();
   const deleteVenta = useDeleteVenta();
   const { data: placasClientes = new Map() } = usePlacasClientes();
+  const { data: clientesInfo = [] } = useClientesInfo();
 
   const [showForm, setShowForm] = useState(false);
+  const [autocompleteIndex, setAutocompleteIndex] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [ventasEnCurso, setVentasEnCurso] = useState<VentaForm[]>([getEmptyForm()]);
@@ -146,6 +150,7 @@ const Ventas = () => {
       fuente: venta.fuente,
       tipo_transaccion: venta.tipoTransaccion,
       nombre_cliente: venta.nombreCliente || null,
+      nit_cliente: venta.nitCliente || null,
       concepto: venta.tipoTransaccion === 'Donación' ? (venta.concepto || null) : null,
     }));
 
@@ -183,6 +188,7 @@ const Ventas = () => {
       recibo: venta.recibo,
       placa: venta.placa,
       nombreCliente: (venta as any).nombre_cliente || '',
+      nitCliente: (venta as any).nit_cliente || '',
       cantidadM3: venta.cantidad_m3.toString(),
       valorTotal: venta.valor_total.toString(),
       fuente: venta.fuente,
@@ -410,12 +416,13 @@ const Ventas = () => {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Encabezados de columnas */}
-              <div className="hidden lg:grid lg:grid-cols-11 gap-3 text-sm font-medium text-muted-foreground pb-2 border-b">
+              <div className="hidden lg:grid lg:grid-cols-12 gap-3 text-sm font-medium text-muted-foreground pb-2 border-b">
                 <div>Fecha *</div>
                 <div>Sílice *</div>
                 <div>N° Recibo *</div>
                 <div>Placa *</div>
                 <div>Cliente</div>
+                <div>NIT</div>
                 <div>Cantidad (m³) *</div>
                 <div>Valor Total ($) *</div>
                 <div>Fuente *</div>
@@ -426,7 +433,7 @@ const Ventas = () => {
 
               {/* Filas de ventas */}
               {ventasEnCurso.map((venta, index) => (
-                <div key={index} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-11 gap-3 p-3 bg-muted/30 rounded-lg">
+                <div key={index} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 p-3 bg-muted/30 rounded-lg">
                   <div className="space-y-1">
                     <Label className="lg:hidden text-xs">Fecha *</Label>
                     <Popover open={openCalendars[index]} onOpenChange={(open) => setCalendarOpen(index, open)}>
@@ -506,24 +513,62 @@ const Ventas = () => {
                     )}
                   </div>
 
+                  {/* Nombre Cliente con autocompletado */}
                   <div className="space-y-1">
                     <Label className="lg:hidden text-xs">Nombre Cliente</Label>
                     <div className="relative">
-                      <User className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <User className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
                       <Input
                         placeholder="Nombre del cliente"
                         value={venta.nombreCliente}
-                        onChange={(e) => actualizarVenta(index, 'nombreCliente', e.target.value)}
+                        onChange={(e) => {
+                          actualizarVenta(index, 'nombreCliente', e.target.value);
+                          setAutocompleteIndex(index);
+                        }}
+                        onFocus={() => setAutocompleteIndex(index)}
+                        onBlur={() => setTimeout(() => setAutocompleteIndex(null), 150)}
                         className="pl-8"
+                        autoComplete="off"
                       />
+                      {/* Dropdown autocompletado */}
+                      {autocompleteIndex === index && venta.nombreCliente.length > 0 && (() => {
+                        const matches = clientesInfo.filter(c =>
+                          c.nombre.toLowerCase().includes(venta.nombreCliente.toLowerCase()) &&
+                          c.nombre.toLowerCase() !== venta.nombreCliente.toLowerCase()
+                        );
+                        return matches.length > 0 ? (
+                          <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-popover border border-border rounded-md shadow-lg max-h-40 overflow-y-auto">
+                            {matches.map((c) => (
+                              <button
+                                key={c.nombre}
+                                type="button"
+                                onMouseDown={() => {
+                                  actualizarVenta(index, 'nombreCliente', c.nombre);
+                                  actualizarVenta(index, 'nitCliente', c.nit);
+                                  setAutocompleteIndex(null);
+                                }}
+                                className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex flex-col"
+                              >
+                                <span className="font-medium">{c.nombre}</span>
+                                {c.nit && <span className="text-xs text-muted-foreground">NIT: {c.nit}</span>}
+                              </button>
+                            ))}
+                          </div>
+                        ) : null;
+                      })()}
                     </div>
+                    {/* Chips de sugerencias por placa */}
                     {validarPlaca(venta.placa) && placasClientes.has(venta.placa) && (
                       <div className="flex flex-wrap gap-1 pt-1">
                         {placasClientes.get(venta.placa)!.map((cliente) => (
                           <button
                             key={cliente}
                             type="button"
-                            onClick={() => actualizarVenta(index, 'nombreCliente', cliente)}
+                            onClick={() => {
+                              actualizarVenta(index, 'nombreCliente', cliente);
+                              const info = clientesInfo.find(c => c.nombre === cliente);
+                              if (info?.nit) actualizarVenta(index, 'nitCliente', info.nit);
+                            }}
                             className={cn(
                               "text-xs px-2 py-0.5 rounded-full border transition-colors",
                               venta.nombreCliente === cliente
@@ -536,6 +581,16 @@ const Ventas = () => {
                         ))}
                       </div>
                     )}
+                  </div>
+
+                  {/* NIT Cliente */}
+                  <div className="space-y-1">
+                    <Label className="lg:hidden text-xs">NIT Cliente</Label>
+                    <Input
+                      placeholder="NIT del cliente"
+                      value={venta.nitCliente}
+                      onChange={(e) => actualizarVenta(index, 'nitCliente', e.target.value)}
+                    />
                   </div>
                   
                   <div className="space-y-1">
@@ -682,6 +737,7 @@ const Ventas = () => {
                     <TableHead>N° Recibo</TableHead>
                     <TableHead>Placa</TableHead>
                     <TableHead>Cliente</TableHead>
+                    <TableHead>NIT</TableHead>
                     <TableHead className="text-right">Cantidad (m³)</TableHead>
                     <TableHead className="text-right">Valor Total</TableHead>
                     <TableHead>Fuente</TableHead>
@@ -693,7 +749,7 @@ const Ventas = () => {
                 <TableBody>
                   {filteredVentas.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
                         No hay ventas registradas
                       </TableCell>
                     </TableRow>
@@ -708,6 +764,9 @@ const Ventas = () => {
                           {(venta as any).nombre_cliente
                             ? <span className="flex items-center gap-1"><User className="h-3 w-3" />{(venta as any).nombre_cliente}</span>
                             : <span className="text-muted-foreground/40">—</span>}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-sm">
+                          {(venta as any).nit_cliente || <span className="text-muted-foreground/40">—</span>}
                         </TableCell>
                         <TableCell className="text-right">{venta.cantidad_m3} m³</TableCell>
                         <TableCell className="text-right font-semibold">${Number(venta.valor_total).toLocaleString()}</TableCell>
