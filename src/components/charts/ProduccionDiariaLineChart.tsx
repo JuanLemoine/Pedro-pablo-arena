@@ -35,7 +35,7 @@ const TooltipPersonalizado = ({ active, payload, label }: any) => {
           <div className="w-2.5 h-2.5 rounded-full bg-amber-500" />
           <span className="text-slate-500">Producido:</span>
           <span className="font-bold text-slate-800">
-            {Number(producido.value).toLocaleString(undefined, { maximumFractionDigits: 2 })} m³
+            {Number(producido.value).toLocaleString('es-CO', { maximumFractionDigits: 2 })} m³
           </span>
         </div>
       )}
@@ -52,7 +52,7 @@ const TooltipPersonalizado = ({ active, payload, label }: any) => {
         <div className="flex items-start gap-2">
           <div className="w-2.5 h-2.5 mt-1 rounded-full bg-blue-500 shrink-0" />
           <div>
-            <div><span className="text-slate-500">Óptimo:</span> <span className="font-bold text-slate-800">{Number(optimo.value).toLocaleString(undefined, { maximumFractionDigits: 2 })} m³</span></div>
+            <div><span className="text-slate-500">Óptimo:</span> <span className="font-bold text-slate-800">{Number(optimo.value).toLocaleString('es-CO', { maximumFractionDigits: 2 })} m³</span></div>
             <div className="text-slate-500 text-[11px]">Config ideal: {d?.configOptimoLabel ?? '—'}</div>
           </div>
         </div>
@@ -121,20 +121,20 @@ const ProduccionDiariaLineChart = ({ tipoSilice = 'todos', fechaInicio, fechaFin
               <div className="text-right">
                 <p className="text-xs text-muted-foreground">Total</p>
                 <p className="font-bold text-amber-600">
-                  {data.totalProducido.toLocaleString(undefined, { maximumFractionDigits: 1 })} m³
+                  {data.totalProducido.toLocaleString('es-CO', { maximumFractionDigits: 1 })} m³
                 </p>
               </div>
               <div className="text-right">
                 <p className="text-xs text-muted-foreground">Óptimo prom./día</p>
                 <p className="font-bold text-blue-600">
-                  {optimoPromedio.toLocaleString(undefined, { maximumFractionDigits: 1 })} m³
+                  {optimoPromedio.toLocaleString('es-CO', { maximumFractionDigits: 1 })} m³
                 </p>
               </div>
               {diaPico && maximo > 0 && (
                 <div className="text-right">
                   <p className="text-xs text-muted-foreground">Pico</p>
                   <p className="font-bold text-green-600">
-                    {maximo.toLocaleString(undefined, { maximumFractionDigits: 1 })} m³
+                    {maximo.toLocaleString('es-CO', { maximumFractionDigits: 1 })} m³
                   </p>
                   <p className="text-[10px] text-muted-foreground">{diaPico.fechaLabel}</p>
                 </div>

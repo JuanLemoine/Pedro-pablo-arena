@@ -513,7 +513,7 @@ const Movimientos = () => {
                 {filteredMovimientos.reduce((sum, m) => {
                   const resultado = calcularM3PorMovimiento(m.placa, m.silice, m.origen, m.destino);
                   return sum + (resultado.m3Producidos * m.cantidad_movimientos);
-                }, 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                }, 0).toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </p>
             </div>
           </CardContent>

@@ -224,7 +224,7 @@ const ProyeccionProduccion = () => {
                   m³ Producidos
                 </div>
                 <p className="text-xl font-bold text-blue-800">
-                  {data.m3ProducidosReal.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                  {data.m3ProducidosReal.toLocaleString('es-CO', { maximumFractionDigits: 0 })}
                 </p>
                 <p className="text-xs text-blue-600">
                   en {data.diasTranscurridos} días
@@ -250,7 +250,7 @@ const ProyeccionProduccion = () => {
                   Proyección Mes
                 </div>
                 <p className="text-xl font-bold text-amber-800">
-                  {data.proyeccion.m3ProyectadoMes.toLocaleString(undefined, { maximumFractionDigits: 0 })} m³
+                  {data.proyeccion.m3ProyectadoMes.toLocaleString('es-CO', { maximumFractionDigits: 0 })} m³
                 </p>
                 <p className="text-xs text-amber-600">
                   al ritmo actual
@@ -266,7 +266,7 @@ const ProyeccionProduccion = () => {
                   Ritmo de Producción
                 </div>
                 <p className="text-lg font-bold">
-                  {data.proyeccion.promedioM3PorDia.toLocaleString(undefined, { maximumFractionDigits: 0 })} m³/día
+                  {data.proyeccion.promedioM3PorDia.toLocaleString('es-CO', { maximumFractionDigits: 0 })} m³/día
                 </p>
                 <p className="text-xs">
                   {getRitmoTexto(data.proyeccion.ritmoActual)}
@@ -292,7 +292,7 @@ const ProyeccionProduccion = () => {
                   <div className="flex justify-between text-sm mb-1">
                     <span className="text-slate-600">Tu proyección mensual</span>
                     <span className="font-semibold text-blue-600">
-                      {data.proyeccion.m3ProyectadoMes.toLocaleString(undefined, { maximumFractionDigits: 0 })} m³
+                      {data.proyeccion.m3ProyectadoMes.toLocaleString('es-CO', { maximumFractionDigits: 0 })} m³
                     </span>
                   </div>
                   <Progress 
@@ -306,7 +306,7 @@ const ProyeccionProduccion = () => {
                   <div className="flex justify-between text-sm mb-1">
                     <span className="text-slate-600">Producción óptima (modelo)</span>
                     <span className="font-semibold text-green-600">
-                      {data.produccionOptima.m3PorMes.toLocaleString(undefined, { maximumFractionDigits: 0 })} m³
+                      {data.produccionOptima.m3PorMes.toLocaleString('es-CO', { maximumFractionDigits: 0 })} m³
                     </span>
                   </div>
                   <Progress 
@@ -321,7 +321,7 @@ const ProyeccionProduccion = () => {
                     <ArrowUpRight className="h-5 w-5 text-green-600" />
                     <div>
                       <p className="text-sm font-medium text-green-700">
-                        Potencial de mejora: +{data.comparacion.potencialMejora.toLocaleString(undefined, { maximumFractionDigits: 0 })} m³/mes
+                        Potencial de mejora: +{data.comparacion.potencialMejora.toLocaleString('es-CO', { maximumFractionDigits: 0 })} m³/mes
                       </p>
                       <p className="text-xs text-green-600">
                         Con configuración óptima: {data.configuracionOptima.numVolquetasGrandes} volquetas grandes + {data.configuracionOptima.numVolquetasPequenas} pequeñas
@@ -404,7 +404,7 @@ const ProyeccionProduccion = () => {
                 {data.metricas.brechaM3 > 0 && (
                   <div className="mt-3 pt-3 border-t border-current/20">
                     <p className="text-xs">
-                      <span className="font-medium">Brecha actual:</span> {data.metricas.brechaM3.toLocaleString(undefined, { maximumFractionDigits: 0 })} m³ 
+                      <span className="font-medium">Brecha actual:</span> {data.metricas.brechaM3.toLocaleString('es-CO', { maximumFractionDigits: 0 })} m³ 
                       ({data.metricas.brechaViajes} viajes)
                     </p>
                   </div>
@@ -453,7 +453,7 @@ const ProyeccionProduccion = () => {
                   <div className="flex justify-between pt-2 border-t">
                     <span className="text-slate-600 font-medium">Producción esperada</span>
                     <span className="font-bold text-slate-800">
-                      {data.produccionConfigActual.m3PorMes.toLocaleString()} m³/mes
+                      {data.produccionConfigActual.m3PorMes.toLocaleString('es-CO')} m³/mes
                     </span>
                   </div>
                 </div>
@@ -483,7 +483,7 @@ const ProyeccionProduccion = () => {
                   <div className="flex justify-between pt-2 border-t border-green-200">
                     <span className="text-green-700 font-medium">Producción óptima</span>
                     <span className="font-bold text-green-800">
-                      {data.produccionOptima.m3PorMes.toLocaleString()} m³/mes
+                      {data.produccionOptima.m3PorMes.toLocaleString('es-CO')} m³/mes
                     </span>
                   </div>
                 </div>

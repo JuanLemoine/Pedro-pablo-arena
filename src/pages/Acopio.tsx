@@ -558,7 +558,7 @@ const Acopio = () => {
             <CardContent className="p-4">
               <p className="text-sm text-blue-700">m³ Producidos</p>
               <p className="text-2xl font-bold text-blue-800">
-                {calcularM3Producidos(filteredAcopios).toLocaleString()} m³
+                {calcularM3Producidos(filteredAcopios).toLocaleString('es-CO')} m³
               </p>
             </CardContent>
           </Card>
@@ -642,7 +642,7 @@ const Acopio = () => {
                           <TableCell className="font-mono">{acopio.placa}</TableCell>
                           <TableCell className="text-right font-semibold">{acopio.cantidad_viajes}</TableCell>
                           <TableCell className="text-right text-muted-foreground">{capacidad} m³</TableCell>
-                          <TableCell className="text-right font-bold text-primary">{m3Producidos.toLocaleString()} m³</TableCell>
+                          <TableCell className="text-right font-bold text-primary">{m3Producidos.toLocaleString('es-CO')} m³</TableCell>
                           <TableCell className="text-center">
                             <div className="flex gap-2 justify-center">
                               <Button

@@ -52,7 +52,7 @@ const ProduccionPorFlujoChart = () => {
               )}
             </p>
             <p className="text-blue-600">
-              Producción: <span className="font-bold">{data.m3.toLocaleString()} m³</span>
+              Producción: <span className="font-bold">{data.m3.toLocaleString('es-CO')} m³</span>
             </p>
             <p className="text-purple-600">
               Viajes: <span className="font-bold">{data.viajes}</span>
@@ -175,7 +175,7 @@ const ProduccionPorFlujoChart = () => {
                       <span className="truncate">{flujo.fullName}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold">{flujo.m3.toLocaleString()} m³</span>
+                      <span className="font-semibold">{flujo.m3.toLocaleString('es-CO')} m³</span>
                       <span className="text-muted-foreground">({flujo.viajes} viajes)</span>
                     </div>
                   </div>

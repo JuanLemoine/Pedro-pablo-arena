@@ -120,10 +120,10 @@ const Dashboard = () => {
   const diferencia = stats ? stats.m3Producidos - stats.m3Vendidos : 0;
 
   const statCards = [
-    { title: 'Ventas del Período', value: stats ? `$${stats.ventasMes.toLocaleString()}` : '$0', icon: DollarSign, color: 'text-green-600', bgColor: 'bg-green-500/10' },
-    { title: 'm³ Vendidos', value: stats ? `${stats.m3Vendidos.toLocaleString()} m³` : '0 m³', icon: BarChart3, color: 'text-blue-600', bgColor: 'bg-blue-500/10' },
-    { title: 'm³ Producidos', value: stats ? `${stats.m3Producidos.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m³` : '0 m³', icon: Package, color: 'text-amber-600', bgColor: 'bg-amber-500/10' },
-    { title: 'm³ Granzón', value: stats ? `${stats.m3Granzon.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m³` : '0 m³', icon: Layers, color: 'text-orange-600', bgColor: 'bg-orange-500/10' },
+    { title: 'Ventas del Período', value: stats ? `$${stats.ventasMes.toLocaleString('es-CO')}` : '$0', icon: DollarSign, color: 'text-green-600', bgColor: 'bg-green-500/10' },
+    { title: 'm³ Vendidos', value: stats ? `${stats.m3Vendidos.toLocaleString('es-CO')} m³` : '0 m³', icon: BarChart3, color: 'text-blue-600', bgColor: 'bg-blue-500/10' },
+    { title: 'm³ Producidos', value: stats ? `${stats.m3Producidos.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m³` : '0 m³', icon: Package, color: 'text-amber-600', bgColor: 'bg-amber-500/10' },
+    { title: 'm³ Granzón', value: stats ? `${stats.m3Granzon.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m³` : '0 m³', icon: Layers, color: 'text-orange-600', bgColor: 'bg-orange-500/10' },
     { title: 'Total Viajes', value: stats?.totalViajes.toString() || '0', icon: Truck, color: 'text-purple-600', bgColor: 'bg-purple-500/10' },
   ];
 
@@ -232,9 +232,9 @@ const Dashboard = () => {
               <>
                 <div className="grid grid-cols-2 gap-2">
                   <ResumenChip label="Registros" value={resumen.ventas.totalRegistros.toString()} color="bg-green-50 border-green-200" />
-                  <ResumenChip label="Valor total" value={`$${resumen.ventas.totalValor.toLocaleString()}`} color="bg-emerald-50 border-emerald-200" />
-                  <ResumenChip label="m³ facturados" value={`${resumen.ventas.totalM3Vendidos.toLocaleString(undefined, { maximumFractionDigits: 1 })} m³`} color="bg-blue-50 border-blue-200" />
-                  <ResumenChip label="m³ entregados" value={`${resumen.ventas.totalM3Entregados.toLocaleString(undefined, { maximumFractionDigits: 1 })} m³`} color="bg-sky-50 border-sky-200" />
+                  <ResumenChip label="Valor total" value={`$${resumen.ventas.totalValor.toLocaleString('es-CO')}`} color="bg-emerald-50 border-emerald-200" />
+                  <ResumenChip label="m³ facturados" value={`${resumen.ventas.totalM3Vendidos.toLocaleString('es-CO', { maximumFractionDigits: 1 })} m³`} color="bg-blue-50 border-blue-200" />
+                  <ResumenChip label="m³ entregados" value={`${resumen.ventas.totalM3Entregados.toLocaleString('es-CO', { maximumFractionDigits: 1 })} m³`} color="bg-sky-50 border-sky-200" />
                 </div>
                 <p className="text-[10px] text-muted-foreground">+1 m³ de yapa por venta · {resumen.ventas.totalRegistros} venta(s)</p>
                 {resumen.ventas.porTipo.length > 0 && (
@@ -246,7 +246,7 @@ const Dashboard = () => {
                           t.tipo === 'Donación' ? 'bg-purple-50 text-purple-700 border-purple-200' :
                           t.tipo === 'Transferencia' ? 'bg-blue-50 text-blue-700 border-blue-200' :
                           'bg-green-50 text-green-700 border-green-200')}>
-                          {t.tipo}: {t.registros} · ${t.valor.toLocaleString()}
+                          {t.tipo}: {t.registros} · ${t.valor.toLocaleString('es-CO')}
                         </Badge>
                       ))}
                     </div>
@@ -259,7 +259,7 @@ const Dashboard = () => {
                       {resumen.ventas.porSilice.map(s => (
                         <Badge key={s.silice} variant="outline" className={cn('text-xs',
                           s.silice.includes('A') ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-purple-50 text-purple-700 border-purple-200')}>
-                          {s.silice.replace('Silice ', '')}: fact. {s.m3Vendidos.toLocaleString(undefined, { maximumFractionDigits: 1 })} · entregado {s.m3Entregados.toLocaleString(undefined, { maximumFractionDigits: 1 })} m³
+                          {s.silice.replace('Silice ', '')}: fact. {s.m3Vendidos.toLocaleString('es-CO', { maximumFractionDigits: 1 })} · entregado {s.m3Entregados.toLocaleString('es-CO', { maximumFractionDigits: 1 })} m³
                         </Badge>
                       ))}
                     </div>
@@ -289,8 +289,8 @@ const Dashboard = () => {
                 <div className="grid grid-cols-2 gap-2">
                   <ResumenChip label="Registros" value={resumen.acopio.totalRegistros.toString()} color="bg-amber-50 border-amber-200" />
                   <ResumenChip label="Viajes" value={resumen.acopio.totalViajes.toString()} color="bg-orange-50 border-orange-200" />
-                  <ResumenChip label="m³ brutos" value={resumen.acopio.totalM3.toLocaleString(undefined, { maximumFractionDigits: 1 })} color="bg-yellow-50 border-yellow-200" />
-                  <ResumenChip label="Valor acopio" value={`$${resumen.acopio.totalValor.toLocaleString()}`} color="bg-green-50 border-green-200" />
+                  <ResumenChip label="m³ brutos" value={resumen.acopio.totalM3.toLocaleString('es-CO', { maximumFractionDigits: 1 })} color="bg-yellow-50 border-yellow-200" />
+                  <ResumenChip label="Valor acopio" value={`$${resumen.acopio.totalValor.toLocaleString('es-CO')}`} color="bg-green-50 border-green-200" />
                 </div>
                 {resumen.acopio.porSilice.length > 0 && (
                   <div className="space-y-1">
@@ -299,7 +299,7 @@ const Dashboard = () => {
                       {resumen.acopio.porSilice.map(s => (
                         <Badge key={s.silice} variant="outline" className={cn('text-xs',
                           s.silice.includes('A') ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-purple-50 text-purple-700 border-purple-200')}>
-                          {s.silice.replace('Silice ', '')}: {s.m3.toLocaleString(undefined, { maximumFractionDigits: 1 })} m³ · ${s.valor.toLocaleString()}
+                          {s.silice.replace('Silice ', '')}: {s.m3.toLocaleString('es-CO', { maximumFractionDigits: 1 })} m³ · ${s.valor.toLocaleString('es-CO')}
                         </Badge>
                       ))}
                     </div>
@@ -342,19 +342,19 @@ const Dashboard = () => {
               <>
                 <div className="p-4 rounded-xl bg-teal-50 border border-teal-200 text-center">
                   <p className="text-xs text-teal-600 mb-1">Ingreso total del período</p>
-                  <p className="text-3xl font-bold text-teal-800">${resumen.totalCombinado.toLocaleString()}</p>
+                  <p className="text-3xl font-bold text-teal-800">${resumen.totalCombinado.toLocaleString('es-CO')}</p>
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-xs">
                     <span className="flex items-center gap-1.5 text-green-700"><ShoppingCart className="h-3 w-3" /> Ventas</span>
-                    <span className="font-semibold">${resumen.ventas.totalValor.toLocaleString()}</span>
+                    <span className="font-semibold">${resumen.ventas.totalValor.toLocaleString('es-CO')}</span>
                   </div>
                   <div className="w-full bg-muted rounded-full h-1.5">
                     <div className="bg-green-500 h-1.5 rounded-full" style={{ width: resumen.totalCombinado > 0 ? `${(resumen.ventas.totalValor / resumen.totalCombinado) * 100}%` : '0%' }} />
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="flex items-center gap-1.5 text-amber-700"><Warehouse className="h-3 w-3" /> Acopio</span>
-                    <span className="font-semibold">${resumen.acopio.totalValor.toLocaleString()}</span>
+                    <span className="font-semibold">${resumen.acopio.totalValor.toLocaleString('es-CO')}</span>
                   </div>
                   <div className="w-full bg-muted rounded-full h-1.5">
                     <div className="bg-amber-500 h-1.5 rounded-full" style={{ width: resumen.totalCombinado > 0 ? `${(resumen.acopio.totalValor / resumen.totalCombinado) * 100}%` : '0%' }} />
@@ -381,7 +381,7 @@ const Dashboard = () => {
                 <div className="grid grid-cols-3 gap-2">
                   <ResumenChip label="Registros" value={resumen.movimientos.totalRegistros.toString()} color="bg-purple-50 border-purple-200" />
                   <ResumenChip label="Movimientos" value={resumen.movimientos.totalMovimientos.toString()} color="bg-violet-50 border-violet-200" />
-                  <ResumenChip label="m³ prod." value={resumen.movimientos.totalM3Producidos.toLocaleString(undefined, { maximumFractionDigits: 1 })} color="bg-indigo-50 border-indigo-200" />
+                  <ResumenChip label="m³ prod." value={resumen.movimientos.totalM3Producidos.toLocaleString('es-CO', { maximumFractionDigits: 1 })} color="bg-indigo-50 border-indigo-200" />
                 </div>
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   m³ de arena procesada aplicando los factores de producción (PF) por tipo de movimiento.
@@ -435,14 +435,14 @@ const Dashboard = () => {
                         <div className="flex items-center gap-4 shrink-0 text-sm tabular-nums">
                           <div className="text-right">
                             <span className="text-muted-foreground text-xs">Facturado </span>
-                            <span className="font-medium">{f.m3Facturados.toLocaleString(undefined, { maximumFractionDigits: 1 })} m³</span>
+                            <span className="font-medium">{f.m3Facturados.toLocaleString('es-CO', { maximumFractionDigits: 1 })} m³</span>
                           </div>
                           <div className="text-right">
                             <span className="text-muted-foreground text-xs">Entregado </span>
-                            <span className="font-medium text-sky-700">{f.m3Entregados.toLocaleString(undefined, { maximumFractionDigits: 1 })} m³</span>
+                            <span className="font-medium text-sky-700">{f.m3Entregados.toLocaleString('es-CO', { maximumFractionDigits: 1 })} m³</span>
                           </div>
                           <div className="text-right min-w-[90px]">
-                            <span className="font-semibold text-green-700">${f.valorTotal.toLocaleString()}</span>
+                            <span className="font-semibold text-green-700">${f.valorTotal.toLocaleString('es-CO')}</span>
                           </div>
                           <span className={`text-xs font-semibold w-9 text-right ${col.text}`}>{pct}%</span>
                         </div>
@@ -528,13 +528,13 @@ const Dashboard = () => {
                         <Badge variant="secondary" className="text-xs">{c.totalCompras}</Badge>
                       </td>
                       <td className="py-3 pr-4 text-right tabular-nums">
-                        {c.m3Facturados.toLocaleString(undefined, { maximumFractionDigits: 1 })} m³
+                        {c.m3Facturados.toLocaleString('es-CO', { maximumFractionDigits: 1 })} m³
                       </td>
                       <td className="py-3 pr-4 text-right tabular-nums text-sky-700 font-medium">
-                        {c.m3Entregados.toLocaleString(undefined, { maximumFractionDigits: 1 })} m³
+                        {c.m3Entregados.toLocaleString('es-CO', { maximumFractionDigits: 1 })} m³
                       </td>
                       <td className="py-3 pr-4 text-right tabular-nums font-semibold text-green-700">
-                        ${c.valorTotal.toLocaleString()}
+                        ${c.valorTotal.toLocaleString('es-CO')}
                       </td>
                       <td className="py-3 pr-4">
                         <div className="flex flex-wrap gap-1">
@@ -607,7 +607,7 @@ const Dashboard = () => {
                     <span className="text-sm font-medium text-amber-700">Producido</span>
                   </div>
                   <p className="text-2xl font-bold text-amber-800">
-                    {stats?.m3Producidos.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m³
+                    {stats?.m3Producidos.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m³
                   </p>
                   <p className="text-xs text-amber-600 mt-1">{stats?.totalViajes} viajes registrados</p>
                 </div>
@@ -617,7 +617,7 @@ const Dashboard = () => {
                     <span className="text-sm font-medium text-orange-700">Granzón</span>
                   </div>
                   <p className="text-2xl font-bold text-orange-800">
-                    {stats?.m3Granzon.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m³
+                    {stats?.m3Granzon.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m³
                   </p>
                   <p className="text-xs text-orange-600 mt-1">Residuo grueso de zaranda (9.9%)</p>
                 </div>
@@ -626,7 +626,7 @@ const Dashboard = () => {
                     <BarChart3 className="h-5 w-5 text-blue-600" />
                     <span className="text-sm font-medium text-blue-700">Vendido</span>
                   </div>
-                  <p className="text-2xl font-bold text-blue-800">{stats?.m3Vendidos.toLocaleString()} m³</p>
+                  <p className="text-2xl font-bold text-blue-800">{stats?.m3Vendidos.toLocaleString('es-CO')} m³</p>
                   <p className="text-xs text-blue-600 mt-1">En el período</p>
                 </div>
                 <div className={`p-4 rounded-xl ${diferencia >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'} border`}>
@@ -637,7 +637,7 @@ const Dashboard = () => {
                     </span>
                   </div>
                   <p className={`text-2xl font-bold ${diferencia >= 0 ? 'text-green-800' : 'text-red-800'}`}>
-                    {Math.abs(diferencia).toLocaleString()} m³
+                    {Math.abs(diferencia).toLocaleString('es-CO')} m³
                   </p>
                   <p className={`text-xs ${diferencia >= 0 ? 'text-green-600' : 'text-red-600'} mt-1`}>
                     {diferencia >= 0 ? 'En inventario' : 'Vendido más de lo producido'}
@@ -714,7 +714,7 @@ const Dashboard = () => {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-semibold text-foreground">${Number(sale.valor_total).toLocaleString()}</p>
+                    <p className="font-semibold text-foreground">${Number(sale.valor_total).toLocaleString('es-CO')}</p>
                     <p className="text-xs text-muted-foreground">{sale.fecha}</p>
                   </div>
                 </div>

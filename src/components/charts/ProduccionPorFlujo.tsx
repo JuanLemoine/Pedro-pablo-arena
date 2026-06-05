@@ -331,19 +331,19 @@ const ProduccionPorFlujo = () => {
               <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
                 <p className="text-xs text-blue-600">m³ Producidos</p>
                 <p className="text-xl font-bold text-blue-800">
-                  {data.totales.m3Producidos.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  {data.totales.m3Producidos.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </p>
               </div>
               <div className="p-3 rounded-lg bg-green-50 border border-green-200">
                 <p className="text-xs text-green-600">m³ Vendidos</p>
                 <p className="text-xl font-bold text-green-800">
-                  {data.totales.m3Vendidos.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  {data.totales.m3Vendidos.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </p>
               </div>
               <div className="p-3 rounded-lg bg-purple-50 border border-purple-200">
                 <p className="text-xs text-purple-600">Valor Ventas</p>
                 <p className="text-xl font-bold text-purple-800">
-                  ${data.totales.valorVentas.toLocaleString()}
+                  ${data.totales.valorVentas.toLocaleString('es-CO')}
                 </p>
               </div>
             </div>
@@ -406,7 +406,7 @@ const ProduccionPorFlujo = () => {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right font-bold text-primary">
-                        {flujo.m3Producidos.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m³
+                        {flujo.m3Producidos.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m³
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">

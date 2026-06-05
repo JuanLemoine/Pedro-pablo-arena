@@ -769,7 +769,7 @@ const Ventas = () => {
                           {(venta as any).nit_cliente || <span className="text-muted-foreground/40">—</span>}
                         </TableCell>
                         <TableCell className="text-right">{venta.cantidad_m3} m³</TableCell>
-                        <TableCell className="text-right font-semibold">${Number(venta.valor_total).toLocaleString()}</TableCell>
+                        <TableCell className="text-right font-semibold">${Number(venta.valor_total).toLocaleString('es-CO')}</TableCell>
                         <TableCell>
                           <Badge variant="outline" className={venta.fuente === 'Zaranda' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-gray-100 text-gray-700 border-gray-200'}>
                             {venta.fuente}

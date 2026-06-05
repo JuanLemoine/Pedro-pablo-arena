@@ -49,13 +49,13 @@ const ProduccionVentasChart = ({ tipoSilice = 'todos', fechaInicio, fechaFin }: 
               <div className="text-right">
                 <p className="text-xs text-muted-foreground">Producido</p>
                 <p className="font-bold text-amber-600">
-                  {data.totalProducido.toLocaleString(undefined, { maximumFractionDigits: 1 })} m³
+                  {data.totalProducido.toLocaleString('es-CO', { maximumFractionDigits: 1 })} m³
                 </p>
               </div>
               <div className="text-right">
                 <p className="text-xs text-muted-foreground">Vendido</p>
                 <p className="font-bold text-blue-600">
-                  {data.totalVendido.toLocaleString(undefined, { maximumFractionDigits: 1 })} m³
+                  {data.totalVendido.toLocaleString('es-CO', { maximumFractionDigits: 1 })} m³
                 </p>
               </div>
             </div>
@@ -103,7 +103,7 @@ const ProduccionVentasChart = ({ tipoSilice = 'todos', fechaInicio, fechaFin }: 
                     fontSize: 12,
                   }}
                   formatter={(value: number, name: string) => [
-                    `${value.toLocaleString(undefined, { maximumFractionDigits: 2 })} m³`,
+                    `${value.toLocaleString('es-CO', { maximumFractionDigits: 2 })} m³`,
                     name === 'producido' ? 'Producido' : 'Vendido',
                   ]}
                   labelFormatter={label => `Día: ${label}`}

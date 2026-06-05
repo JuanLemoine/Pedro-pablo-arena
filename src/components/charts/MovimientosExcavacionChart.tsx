@@ -103,7 +103,7 @@ const MovimientosExcavacionChart = ({ tipoSilice, fechaInicio, fechaFin }: Props
             <div className="flex gap-4 text-sm shrink-0">
               <div className="text-right">
                 <p className="text-xs text-muted-foreground">Total</p>
-                <p className="font-bold text-emerald-600">{data.totalMovimientos.toLocaleString()}</p>
+                <p className="font-bold text-emerald-600">{data.totalMovimientos.toLocaleString('es-CO')}</p>
               </div>
               <div className="text-right">
                 <p className="text-xs text-muted-foreground">Óptimo prom./día</p>
