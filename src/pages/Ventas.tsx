@@ -61,6 +61,7 @@ const Ventas = () => {
 
   const [showForm, setShowForm] = useState(false);
   const [autocompleteIndex, setAutocompleteIndex] = useState<number | null>(null);
+  const [autocompleteplacaIndex, setAutocompletePlacaIndex] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [ventasEnCurso, setVentasEnCurso] = useState<VentaForm[]>([getEmptyForm()]);
@@ -493,8 +494,14 @@ const Ventas = () => {
                       <Input
                         placeholder="BMW345"
                         value={venta.placa}
-                        onChange={(e) => actualizarPlaca(index, e.target.value)}
+                        onChange={(e) => {
+                          actualizarPlaca(index, e.target.value);
+                          setAutocompletePlacaIndex(index);
+                        }}
+                        onFocus={() => setAutocompletePlacaIndex(index)}
+                        onBlur={() => setTimeout(() => setAutocompletePlacaIndex(null), 150)}
                         maxLength={6}
+                        autoComplete="off"
                         className={cn(
                           'uppercase font-mono tracking-widest pr-8',
                           venta.placa.length === 6 && !validarPlaca(venta.placa) && 'border-red-400 focus-visible:ring-red-400'
@@ -503,6 +510,29 @@ const Ventas = () => {
                       {venta.placa.length === 6 && !validarPlaca(venta.placa) && (
                         <AlertCircle className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-red-500" />
                       )}
+                      {/* Dropdown autocompletado de placas */}
+                      {autocompleteplacaIndex === index && venta.placa.length > 0 && (() => {
+                        const matches = Array.from(placasClientes.keys()).filter(p =>
+                          p.includes(venta.placa.toUpperCase()) && p !== venta.placa.toUpperCase()
+                        );
+                        return matches.length > 0 ? (
+                          <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-popover border border-border rounded-md shadow-lg max-h-40 overflow-y-auto">
+                            {matches.map((placa) => (
+                              <button
+                                key={placa}
+                                type="button"
+                                onMouseDown={() => {
+                                  actualizarPlaca(index, placa);
+                                  setAutocompletePlacaIndex(null);
+                                }}
+                                className="w-full text-left px-3 py-2 text-sm hover:bg-muted font-mono tracking-widest"
+                              >
+                                {placa}
+                              </button>
+                            ))}
+                          </div>
+                        ) : null;
+                      })()}
                     </div>
                     {venta.placa.length === 6 && !validarPlaca(venta.placa) && (
                       <p className="text-xs text-red-500">3 letras + 3 números (ej. BMW345)</p>
