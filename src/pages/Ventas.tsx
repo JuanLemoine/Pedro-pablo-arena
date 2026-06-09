@@ -633,6 +633,7 @@ const Ventas = () => {
                         <SelectItem value="Bancolombia">Bancolombia</SelectItem>
                         <SelectItem value="Davivienda">Davivienda</SelectItem>
                         <SelectItem value="Crédito">Crédito</SelectItem>
+                        <SelectItem value="Anticipo">Anticipo</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
