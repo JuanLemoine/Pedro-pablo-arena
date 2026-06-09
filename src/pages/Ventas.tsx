@@ -27,6 +27,7 @@ interface VentaForm {
   placa: string;
   nombreCliente: string;
   nitCliente: string;
+  banco: string;
   cantidadM3: string;
   valorTotal: string;
   fuente: string;
@@ -41,6 +42,7 @@ const getEmptyForm = (): VentaForm => ({
   placa: '',
   nombreCliente: '',
   nitCliente: '',
+  banco: '',
   cantidadM3: '',
   valorTotal: '',
   fuente: '',
@@ -151,6 +153,7 @@ const Ventas = () => {
       tipo_transaccion: venta.tipoTransaccion,
       nombre_cliente: venta.nombreCliente || null,
       nit_cliente: venta.nitCliente || null,
+      banco: venta.banco || null,
       concepto: venta.tipoTransaccion === 'Donación' ? (venta.concepto || null) : null,
     }));
 
@@ -189,6 +192,7 @@ const Ventas = () => {
       placa: venta.placa,
       nombreCliente: (venta as any).nombre_cliente || '',
       nitCliente: (venta as any).nit_cliente || '',
+      banco: (venta as any).banco || '',
       cantidadM3: venta.cantidad_m3.toString(),
       valorTotal: venta.valor_total.toString(),
       fuente: venta.fuente,
@@ -416,13 +420,14 @@ const Ventas = () => {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Encabezados de columnas */}
-              <div className="hidden lg:grid lg:grid-cols-12 gap-3 text-sm font-medium text-muted-foreground pb-2 border-b">
+              <div className="hidden lg:grid lg:grid-cols-13 gap-3 text-sm font-medium text-muted-foreground pb-2 border-b">
                 <div>Fecha *</div>
                 <div>Sílice *</div>
                 <div>N° Recibo *</div>
                 <div>Placa *</div>
                 <div>Cliente</div>
                 <div>NIT</div>
+                <div>Banco</div>
                 <div>Cantidad (m³) *</div>
                 <div>Valor Total ($) *</div>
                 <div>Fuente *</div>
@@ -433,7 +438,7 @@ const Ventas = () => {
 
               {/* Filas de ventas */}
               {ventasEnCurso.map((venta, index) => (
-                <div key={index} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 p-3 bg-muted/30 rounded-lg">
+                <div key={index} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-13 gap-3 p-3 bg-muted/30 rounded-lg">
                   <div className="space-y-1">
                     <Label className="lg:hidden text-xs">Fecha *</Label>
                     <Popover open={openCalendars[index]} onOpenChange={(open) => setCalendarOpen(index, open)}>
@@ -593,6 +598,21 @@ const Ventas = () => {
                     />
                   </div>
                   
+                  {/* Banco */}
+                  <div className="space-y-1">
+                    <Label className="lg:hidden text-xs">Banco</Label>
+                    <Select value={venta.banco} onValueChange={(v) => actualizarVenta(index, 'banco', v)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Banco" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Bancolombia">Bancolombia</SelectItem>
+                        <SelectItem value="Davivienda">Davivienda</SelectItem>
+                        <SelectItem value="Crédito">Crédito</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
                   <div className="space-y-1">
                     <Label className="lg:hidden text-xs">Cantidad (m³) *</Label>
                     <Input
@@ -738,6 +758,7 @@ const Ventas = () => {
                     <TableHead>Placa</TableHead>
                     <TableHead>Cliente</TableHead>
                     <TableHead>NIT</TableHead>
+                    <TableHead>Banco</TableHead>
                     <TableHead className="text-right">Cantidad (m³)</TableHead>
                     <TableHead className="text-right">Valor Total</TableHead>
                     <TableHead>Fuente</TableHead>
@@ -749,7 +770,7 @@ const Ventas = () => {
                 <TableBody>
                   {filteredVentas.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={13} className="text-center py-8 text-muted-foreground">
                         No hay ventas registradas
                       </TableCell>
                     </TableRow>
@@ -767,6 +788,17 @@ const Ventas = () => {
                         </TableCell>
                         <TableCell className="text-muted-foreground text-sm">
                           {(venta as any).nit_cliente || <span className="text-muted-foreground/40">—</span>}
+                        </TableCell>
+                        <TableCell>
+                          {(venta as any).banco ? (
+                            <Badge variant="outline" className={
+                              (venta as any).banco === 'Bancolombia' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                              (venta as any).banco === 'Davivienda' ? 'bg-red-50 text-red-700 border-red-200' :
+                              'bg-slate-50 text-slate-700 border-slate-200'
+                            }>
+                              {(venta as any).banco}
+                            </Badge>
+                          ) : <span className="text-muted-foreground/40">—</span>}
                         </TableCell>
                         <TableCell className="text-right">{venta.cantidad_m3} m³</TableCell>
                         <TableCell className="text-right font-semibold">${Number(venta.valor_total).toLocaleString('es-CO')}</TableCell>
