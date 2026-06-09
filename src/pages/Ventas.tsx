@@ -425,7 +425,7 @@ const Ventas = () => {
               {ventasEnCurso.map((venta, index) => (
                 <div key={index} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-13 gap-3 p-3 bg-muted/30 rounded-lg">
                   <div className="space-y-1">
-                    <Label className="lg:hidden text-xs">Fecha *</Label>
+                    <Label className="text-xs">Fecha *</Label>
                     <Popover open={openCalendars[index]} onOpenChange={(open) => setCalendarOpen(index, open)}>
                       <PopoverTrigger asChild>
                         <Button
@@ -457,7 +457,7 @@ const Ventas = () => {
                   </div>
                   
                   <div className="space-y-1">
-                    <Label className="lg:hidden text-xs">Sílice *</Label>
+                    <Label className="text-xs">Sílice *</Label>
                     <Select
                       value={venta.silice}
                       onValueChange={(value) => actualizarVenta(index, 'silice', value)}
@@ -473,7 +473,7 @@ const Ventas = () => {
                   </div>
                   
                   <div className="space-y-1">
-                    <Label className="lg:hidden text-xs">N° Recibo *</Label>
+                    <Label className="text-xs">N° Recibo *</Label>
                     <Input
                       placeholder="001"
                       value={venta.recibo}
@@ -482,7 +482,7 @@ const Ventas = () => {
                   </div>
                   
                   <div className="space-y-1">
-                    <Label className="lg:hidden text-xs">Placa Volqueta *</Label>
+                    <Label className="text-xs">Placa Volqueta *</Label>
                     <div className="relative">
                       <Input
                         placeholder="BMW345"
@@ -505,7 +505,7 @@ const Ventas = () => {
 
                   {/* Nombre Cliente con autocompletado */}
                   <div className="space-y-1">
-                    <Label className="lg:hidden text-xs">Nombre Cliente</Label>
+                    <Label className="text-xs">Nombre Cliente</Label>
                     <div className="relative">
                       <User className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
                       <Input
@@ -579,7 +579,7 @@ const Ventas = () => {
 
                   {/* NIT Cliente */}
                   <div className="space-y-1">
-                    <Label className="lg:hidden text-xs">NIT Cliente</Label>
+                    <Label className="text-xs">NIT Cliente</Label>
                     <Input
                       placeholder="NIT del cliente"
                       value={venta.nitCliente}
@@ -589,7 +589,7 @@ const Ventas = () => {
                   
                   {/* Banco */}
                   <div className="space-y-1">
-                    <Label className="lg:hidden text-xs">Banco</Label>
+                    <Label className="text-xs">Banco</Label>
                     <Select value={venta.banco} onValueChange={(v) => actualizarVenta(index, 'banco', v)}>
                       <SelectTrigger>
                         <SelectValue placeholder="Banco" />
@@ -603,7 +603,7 @@ const Ventas = () => {
                   </div>
 
                   <div className="space-y-1">
-                    <Label className="lg:hidden text-xs">Cantidad (m³) *</Label>
+                    <Label className="text-xs">Cantidad (m³) *</Label>
                     <Input
                       type="number"
                       placeholder="0"
@@ -613,7 +613,7 @@ const Ventas = () => {
                   </div>
                   
                   <div className="space-y-1">
-                    <Label className="lg:hidden text-xs">Valor Total ($) *</Label>
+                    <Label className="text-xs">Valor Total ($) *</Label>
                     <Input
                       type="number"
                       placeholder="0"
@@ -623,7 +623,7 @@ const Ventas = () => {
                   </div>
                   
                   <div className="space-y-1">
-                    <Label className="lg:hidden text-xs">Fuente *</Label>
+                    <Label className="text-xs">Fuente *</Label>
                     <Select
                       value={venta.fuente}
                       onValueChange={(value) => actualizarVenta(index, 'fuente', value)}
@@ -640,7 +640,7 @@ const Ventas = () => {
                   </div>
                   
                   <div className="space-y-1">
-                    <Label className="lg:hidden text-xs">Tipo Transacción *</Label>
+                    <Label className="text-xs">Tipo Transacción *</Label>
                     <Select
                       value={venta.tipoTransaccion}
                       onValueChange={(value) => actualizarVenta(index, 'tipoTransaccion', value as TipoTransaccion)}
@@ -657,7 +657,7 @@ const Ventas = () => {
                   </div>
 
                   <div className="space-y-1">
-                    <Label className="lg:hidden text-xs">Concepto <span className="text-muted-foreground text-[10px]">(solo donación)</span></Label>
+                    <Label className="text-xs">Concepto <span className="text-muted-foreground text-[10px]">(solo donación)</span></Label>
                     {venta.tipoTransaccion === 'Donación' ? (
                       <Input
                         placeholder="Descripción de la donación"
