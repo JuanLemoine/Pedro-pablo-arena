@@ -95,6 +95,12 @@ const Ventas = () => {
     setVentasEnCurso(nuevasVentas);
   };
 
+  const actualizarVentaMultiple = (index: number, campos: Partial<VentaForm>) => {
+    const nuevasVentas = [...ventasEnCurso];
+    nuevasVentas[index] = { ...nuevasVentas[index], ...campos };
+    setVentasEnCurso(nuevasVentas);
+  };
+
   const actualizarPlaca = (index: number, valor: string) => {
     const placa = formatearPlaca(valor);
     const nuevasVentas = [...ventasEnCurso];
@@ -513,11 +519,12 @@ const Ventas = () => {
                         value={venta.nombreCliente}
                         onChange={(e) => {
                           const nombre = e.target.value;
-                          actualizarVenta(index, 'nombreCliente', nombre);
-                          setAutocompleteIndex(index);
-                          // Auto-fill NIT si el nombre escrito coincide exactamente con un cliente conocido
                           const match = clientesInfo.find(c => c.nombre.toLowerCase() === nombre.toLowerCase());
-                          if (match?.nit) actualizarVenta(index, 'nitCliente', match.nit);
+                          actualizarVentaMultiple(index, {
+                            nombreCliente: nombre,
+                            ...(match?.nit ? { nitCliente: match.nit } : {}),
+                          });
+                          setAutocompleteIndex(index);
                         }}
                         onFocus={() => setAutocompleteIndex(index)}
                         onBlur={() => setTimeout(() => setAutocompleteIndex(null), 150)}
@@ -537,8 +544,7 @@ const Ventas = () => {
                                 key={c.nombre}
                                 type="button"
                                 onMouseDown={() => {
-                                  actualizarVenta(index, 'nombreCliente', c.nombre);
-                                  actualizarVenta(index, 'nitCliente', c.nit);
+                                  actualizarVentaMultiple(index, { nombreCliente: c.nombre, nitCliente: c.nit });
                                   setAutocompleteIndex(null);
                                 }}
                                 className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex flex-col"
@@ -559,9 +565,8 @@ const Ventas = () => {
                             key={cliente}
                             type="button"
                             onClick={() => {
-                              actualizarVenta(index, 'nombreCliente', cliente);
                               const info = clientesInfo.find(c => c.nombre === cliente);
-                              if (info?.nit) actualizarVenta(index, 'nitCliente', info.nit);
+                              actualizarVentaMultiple(index, { nombreCliente: cliente, nitCliente: info?.nit || '' });
                             }}
                             className={cn(
                               "text-xs px-2 py-0.5 rounded-full border transition-colors",
