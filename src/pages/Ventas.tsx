@@ -527,8 +527,12 @@ const Ventas = () => {
                         placeholder="Nombre del cliente"
                         value={venta.nombreCliente}
                         onChange={(e) => {
-                          actualizarVenta(index, 'nombreCliente', e.target.value);
+                          const nombre = e.target.value;
+                          actualizarVenta(index, 'nombreCliente', nombre);
                           setAutocompleteIndex(index);
+                          // Auto-fill NIT si el nombre escrito coincide exactamente con un cliente conocido
+                          const match = clientesInfo.find(c => c.nombre.toLowerCase() === nombre.toLowerCase());
+                          if (match?.nit) actualizarVenta(index, 'nitCliente', match.nit);
                         }}
                         onFocus={() => setAutocompleteIndex(index)}
                         onBlur={() => setTimeout(() => setAutocompleteIndex(null), 150)}
