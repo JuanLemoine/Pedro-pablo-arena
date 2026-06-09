@@ -11,7 +11,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, Search, ArrowLeftRight, Mountain, Truck, CalendarIcon, Loader2, Edit, Trash2, Filter, X } from 'lucide-react';
+import { Plus, Search, ArrowLeftRight, Mountain, Truck, CalendarIcon, Loader2, Edit, Trash2, Filter, X, Download } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { toast } from 'sonner';
 import {
   Command,
@@ -228,6 +229,27 @@ const Movimientos = () => {
   };
 
   const filteredMovimientos = aplicarFiltros(movimientos);
+
+  const exportarExcel = () => {
+    const datos = filteredMovimientos.map(m => {
+      const resultado = calcularM3PorMovimiento(m.silice, m.origen, m.destino);
+      return {
+        'Fecha': m.fecha,
+        'Mina': m.mina,
+        'Sílice': m.silice,
+        'Placa': m.placa,
+        'Origen': m.origen,
+        'Destino': m.destino,
+        'Cantidad Movimientos': m.cantidad_movimientos,
+        'm³ Producidos': resultado ? (resultado.m3Producidos * m.cantidad_movimientos).toFixed(2) : '',
+        'Notas': m.notas || '',
+      };
+    });
+    const ws = XLSX.utils.json_to_sheet(datos);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Movimientos');
+    XLSX.writeFile(wb, `movimientos_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+  };
 
   const getMinaBadge = (mina: string) => {
     const colors: Record<string, string> = {
@@ -781,14 +803,20 @@ const Movimientos = () => {
               </CardTitle>
               <CardDescription>{filteredMovimientos.length} registros encontrados</CardDescription>
             </div>
-            <div className="relative w-full sm:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar movimientos..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9"
-              />
+            <div className="flex gap-2 w-full sm:w-auto">
+              <div className="relative flex-1 sm:w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar movimientos..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <Button variant="outline" onClick={exportarExcel} className="gap-2 shrink-0">
+                <Download className="h-4 w-4" />
+                Excel
+              </Button>
             </div>
           </div>
         </CardHeader>

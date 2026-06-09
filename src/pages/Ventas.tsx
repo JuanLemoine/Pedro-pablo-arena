@@ -12,7 +12,8 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, Search, FileText, Trash2, Save, Warehouse, CalendarIcon, Loader2, User, AlertCircle, Edit, Filter, X } from 'lucide-react';
+import { Plus, Search, FileText, Trash2, Save, Warehouse, CalendarIcon, Loader2, User, AlertCircle, Edit, Filter, X, Download } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useVentas, useCreateVentas, useUpdateVenta, useDeleteVenta } from '@/hooks/useVentas';
@@ -247,6 +248,27 @@ const Ventas = () => {
   };
 
   const filteredVentas = aplicarFiltros(ventas);
+
+  const exportarExcel = () => {
+    const datos = filteredVentas.map(v => ({
+      'Fecha': v.fecha,
+      'Sílice': v.silice,
+      'N° Recibo': v.recibo,
+      'Placa': v.placa,
+      'Cliente': (v as any).nombre_cliente || '',
+      'NIT': (v as any).nit_cliente || '',
+      'Banco': (v as any).banco || '',
+      'Cantidad m³': v.cantidad_m3,
+      'Valor Total': v.valor_total,
+      'Fuente': v.fuente,
+      'Tipo': (v as any).tipo_transaccion || 'Venta',
+      'Concepto': v.concepto || '',
+    }));
+    const ws = XLSX.utils.json_to_sheet(datos);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Ventas');
+    XLSX.writeFile(wb, `ventas_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+  };
 
   const getSiliceBadge = (silice: string) => {
     const isA = silice.includes('A');
@@ -754,14 +776,20 @@ const Ventas = () => {
               </CardTitle>
               <CardDescription>{filteredVentas.length} registros encontrados</CardDescription>
             </div>
-            <div className="relative w-full sm:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por recibo, placa..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9"
-              />
+            <div className="flex gap-2 w-full sm:w-auto">
+              <div className="relative flex-1 sm:w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por recibo, placa..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <Button variant="outline" onClick={exportarExcel} className="gap-2 shrink-0">
+                <Download className="h-4 w-4" />
+                Excel
+              </Button>
             </div>
           </div>
         </CardHeader>

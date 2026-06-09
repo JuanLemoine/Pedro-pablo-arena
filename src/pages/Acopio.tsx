@@ -12,7 +12,8 @@ import { Calendar } from '@/components/ui/calendar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Plus, Search, Truck, Trash2, Save, Check, ChevronsUpDown, ArrowLeft, CalendarIcon, Loader2, Edit, Filter, X } from 'lucide-react';
+import { Plus, Search, Truck, Trash2, Save, Check, ChevronsUpDown, ArrowLeft, CalendarIcon, Loader2, Edit, Filter, X, Download } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -191,6 +192,21 @@ const Acopio = () => {
   };
 
   const filteredAcopios = aplicarFiltros(acopios);
+
+  const exportarExcel = () => {
+    const datos = filteredAcopios.map(a => ({
+      'Fecha': a.fecha,
+      'Fuente': a.fuente,
+      'Sílice': a.silice,
+      'Placa': a.placa,
+      'Cantidad Viajes': a.cantidad_viajes,
+      'm³ Producidos': calcularM3Producidos([a]),
+    }));
+    const ws = XLSX.utils.json_to_sheet(datos);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Acopio');
+    XLSX.writeFile(wb, `acopio_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+  };
 
   const getFuenteBadgeClass = (fuente: string) => {
     switch (fuente) {
@@ -582,14 +598,20 @@ const Acopio = () => {
               </CardTitle>
               <CardDescription>{filteredAcopios.length} registros encontrados</CardDescription>
             </div>
-            <div className="relative w-full sm:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por placa, fuente..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9"
-              />
+            <div className="flex gap-2 w-full sm:w-auto">
+              <div className="relative flex-1 sm:w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por placa, fuente..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <Button variant="outline" onClick={exportarExcel} className="gap-2 shrink-0">
+                <Download className="h-4 w-4" />
+                Excel
+              </Button>
             </div>
           </div>
         </CardHeader>
