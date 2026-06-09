@@ -420,21 +420,6 @@ const Ventas = () => {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Encabezados de columnas */}
-              <div className="hidden lg:grid lg:grid-cols-13 gap-3 text-sm font-medium text-muted-foreground pb-2 border-b">
-                <div>Fecha *</div>
-                <div>Sílice *</div>
-                <div>N° Recibo *</div>
-                <div>Placa *</div>
-                <div>Cliente</div>
-                <div>NIT</div>
-                <div>Banco</div>
-                <div>Cantidad (m³) *</div>
-                <div>Valor Total ($) *</div>
-                <div>Fuente *</div>
-                <div>Tipo *</div>
-                <div>Concepto <span className="text-xs text-muted-foreground/70">(donación)</span></div>
-                <div></div>
-              </div>
 
               {/* Filas de ventas */}
               {ventasEnCurso.map((venta, index) => (
