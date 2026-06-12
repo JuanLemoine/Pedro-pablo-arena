@@ -26,6 +26,7 @@ import {
   BadgeDollarSign,
   Users,
   User,
+  Wallet,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useDashboardStats } from '@/hooks/useDashboardStats';
@@ -555,6 +556,51 @@ const Dashboard = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* ── Saldos de Anticipo ──────────────────────────────────────────────── */}
+      {resumen && resumen.anticiposPorNIT.length > 0 && (
+        <Card className="shadow-card border-amber-200/60 bg-gradient-to-br from-amber-50/40 to-white">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2 text-amber-700">
+              <Wallet className="h-4 w-4" />
+              Saldos de Anticipo
+            </CardTitle>
+            <CardDescription className="text-xs">Los pagos contra anticipo no se suman al total de ingresos</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-xs text-muted-foreground">
+                    <th className="text-left pb-2 pr-4 font-medium">Cliente</th>
+                    <th className="text-left pb-2 pr-4 font-medium">NIT</th>
+                    <th className="text-right pb-2 pr-4 font-medium">Anticipo total</th>
+                    <th className="text-right pb-2 pr-4 font-medium">Consumido</th>
+                    <th className="text-right pb-2 font-medium">Saldo</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/50">
+                  {resumen.anticiposPorNIT.map(a => (
+                    <tr key={a.nit} className="hover:bg-muted/30">
+                      <td className="py-2 pr-4 flex items-center gap-2">
+                        <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        <span className="font-medium">{a.nombre}</span>
+                      </td>
+                      <td className="py-2 pr-4 text-muted-foreground text-xs">{a.nit}</td>
+                      <td className="py-2 pr-4 text-right tabular-nums text-amber-700 font-semibold">${a.totalAnticipo.toLocaleString('es-CO')}</td>
+                      <td className="py-2 pr-4 text-right tabular-nums text-muted-foreground">${a.consumo.toLocaleString('es-CO')}</td>
+                      <td className={cn("py-2 text-right tabular-nums font-bold", a.saldo >= 0 ? "text-green-700" : "text-red-600")}>
+                        {a.saldo < 0 && '-'}${Math.abs(a.saldo).toLocaleString('es-CO')}
+                        {a.saldo < 0 && <span className="text-[10px] font-normal ml-1">(excedido)</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* ── KPI Cards ────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">

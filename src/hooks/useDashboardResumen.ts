@@ -60,6 +60,14 @@ export interface ResumenCliente {
   tiposTransaccion: string[];
 }
 
+export interface AnticipoPorNIT {
+  nit: string;
+  nombre: string;
+  totalAnticipo: number;
+  consumo: number;
+  saldo: number;
+}
+
 export interface DashboardResumen {
   ventas: ResumenVentas;
   acopio: ResumenAcopio;
@@ -67,6 +75,7 @@ export interface DashboardResumen {
   porFuente: ResumenPorFuente[];
   clientes: ResumenCliente[];
   totalCombinado: number;
+  anticiposPorNIT: AnticipoPorNIT[];
 }
 
 export const useDashboardResumen = (filtros: DashboardFiltros) => {
@@ -76,13 +85,25 @@ export const useDashboardResumen = (filtros: DashboardFiltros) => {
       // ── Ventas ──────────────────────────────────────────────────
       let ventasQ = supabase
         .from('ventas')
-        .select('cantidad_m3, valor_total, silice, tipo_transaccion, fuente')
+        .select('cantidad_m3, valor_total, silice, tipo_transaccion, fuente, banco, nit_cliente')
         .gte('fecha', filtros.fechaInicio)
         .lte('fecha', filtros.fechaFin);
       if (filtros.tipoSilice !== 'todos') ventasQ = ventasQ.eq('silice', filtros.tipoSilice);
       if (filtros.tipoTransaccion !== 'todos') ventasQ = ventasQ.eq('tipo_transaccion', filtros.tipoTransaccion);
       if (filtros.fuente !== 'todos') ventasQ = ventasQ.eq('fuente', filtros.fuente);
       const { data: ventasData } = await ventasQ;
+
+      // NITs con anticipo (global, sin filtro de fecha — para detectar consumos cross-período)
+      const { data: anticipoNITsRaw } = await supabase
+        .from('ventas')
+        .select('nit_cliente')
+        .eq('banco', 'Anticipo')
+        .not('nit_cliente', 'is', null);
+      const nitsConAnticipo = new Set<string>();
+      anticipoNITsRaw?.forEach(v => { if (v.nit_cliente) nitsConAnticipo.add(v.nit_cliente); });
+
+      const esConsumoAnticipo = (v: { banco?: string | null; nit_cliente?: string | null }): boolean =>
+        v.banco !== 'Anticipo' && !!v.nit_cliente && nitsConAnticipo.has(v.nit_cliente);
 
       const ventasPorTipoMap = new Map<string, { registros: number; valor: number }>();
       const ventasPorSiliceMap = new Map<string, { registros: number; m3Vendidos: number; m3Entregados: number }>();
@@ -97,11 +118,14 @@ export const useDashboardResumen = (filtros: DashboardFiltros) => {
         const fuente = (v as any).fuente || 'Sin fuente';
         const m3 = Number(v.cantidad_m3);
         const val = Number(v.valor_total);
+        // Los consumos de anticipo no generan nuevo ingreso (ya fueron cobrados como anticipo)
+        const consumo = esConsumoAnticipo(v as any);
+
         totalM3Vendidos += m3;
-        totalValorVentas += val;
+        if (!consumo) totalValorVentas += val;
 
         const pt = ventasPorTipoMap.get(tipo) || { registros: 0, valor: 0 };
-        ventasPorTipoMap.set(tipo, { registros: pt.registros + 1, valor: pt.valor + val });
+        ventasPorTipoMap.set(tipo, { registros: pt.registros + 1, valor: pt.valor + (consumo ? 0 : val) });
 
         const ps = ventasPorSiliceMap.get(sil) || { registros: 0, m3Vendidos: 0, m3Entregados: 0 };
         ventasPorSiliceMap.set(sil, {
@@ -116,7 +140,7 @@ export const useDashboardResumen = (filtros: DashboardFiltros) => {
           registros: pf.registros + 1,
           m3Facturados: pf.m3Facturados + m3,
           m3Entregados: pf.m3Entregados + m3 + 1,
-          valorTotal: pf.valorTotal + val,
+          valorTotal: pf.valorTotal + (consumo ? 0 : val),
         });
       });
 
@@ -205,7 +229,7 @@ export const useDashboardResumen = (filtros: DashboardFiltros) => {
       // ── Clientes ────────────────────────────────────────────────
       let clientesQ = supabase
         .from('ventas')
-        .select('placa, nombre_cliente, cantidad_m3, valor_total, silice, tipo_transaccion, fecha')
+        .select('placa, nombre_cliente, nit_cliente, cantidad_m3, valor_total, silice, tipo_transaccion, fecha, banco')
         .gte('fecha', filtros.fechaInicio)
         .lte('fecha', filtros.fechaFin);
       if (filtros.tipoSilice !== 'todos') clientesQ = clientesQ.eq('silice', filtros.tipoSilice);
@@ -221,6 +245,7 @@ export const useDashboardResumen = (filtros: DashboardFiltros) => {
         const m3 = Number(v.cantidad_m3);
         const val = Number(v.valor_total);
         const tipo = (v as any).tipo_transaccion || 'Venta';
+        const consumo = esConsumoAnticipo(v as any);
 
         const prev = clienteMap.get(placa) || {
           nombre: nombre || placa,
@@ -235,19 +260,45 @@ export const useDashboardResumen = (filtros: DashboardFiltros) => {
           tiposTransaccion: [] as string[],
         };
 
-        // Si en alguna fila tiene nombre, lo actualizamos
         if (nombre && !prev.tieneNombre) { prev.nombre = nombre; prev.tieneNombre = true; }
 
         prev.totalCompras += 1;
         prev.m3Facturados += m3;
         prev.m3Entregados += m3 + 1;
-        prev.valorTotal += val;
+        if (!consumo) prev.valorTotal += val;
         if (v.fecha > prev.ultimaCompra) prev.ultimaCompra = v.fecha;
         if (!prev.silices.includes(v.silice)) prev.silices.push(v.silice);
         if (!prev.tiposTransaccion.includes(tipo)) prev.tiposTransaccion.push(tipo);
 
         clienteMap.set(placa, prev);
       });
+
+      // Saldos de anticipo por NIT (global, sin filtro de fecha)
+      const { data: anticipoAllData } = await supabase
+        .from('ventas')
+        .select('nit_cliente, nombre_cliente, banco, valor_total')
+        .not('nit_cliente', 'is', null);
+
+      const anticipoNITMap = new Map<string, { nombre: string; totalAnticipo: number; consumo: number }>();
+      anticipoAllData?.forEach(v => {
+        const nit = v.nit_cliente!;
+        if (!nitsConAnticipo.has(nit)) return;
+        const entry = anticipoNITMap.get(nit) || { nombre: v.nombre_cliente || nit, totalAnticipo: 0, consumo: 0 };
+        if (v.nombre_cliente) entry.nombre = v.nombre_cliente;
+        if (v.banco === 'Anticipo') entry.totalAnticipo += Number(v.valor_total);
+        else entry.consumo += Number(v.valor_total);
+        anticipoNITMap.set(nit, entry);
+      });
+
+      const anticiposPorNIT: AnticipoPorNIT[] = Array.from(anticipoNITMap.entries())
+        .map(([nit, d]) => ({
+          nit,
+          nombre: d.nombre,
+          totalAnticipo: Math.round(d.totalAnticipo),
+          consumo: Math.round(d.consumo),
+          saldo: Math.round(d.totalAnticipo - d.consumo),
+        }))
+        .sort((a, b) => b.totalAnticipo - a.totalAnticipo);
 
       // Ordenar por valor total descendente
       const clientes = Array.from(clienteMap.values())
@@ -259,7 +310,7 @@ export const useDashboardResumen = (filtros: DashboardFiltros) => {
         }))
         .sort((a, b) => b.valorTotal - a.valorTotal);
 
-      return { ventas, acopio, movimientos, porFuente, clientes, totalCombinado: Math.round(ventas.totalValor + acopio.totalValor) };
+      return { ventas, acopio, movimientos, porFuente, clientes, totalCombinado: Math.round(ventas.totalValor + acopio.totalValor), anticiposPorNIT };
     },
     staleTime: 15000,
     refetchInterval: 30000,

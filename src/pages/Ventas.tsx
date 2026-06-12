@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -12,12 +12,13 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, Search, FileText, Trash2, Save, Warehouse, CalendarIcon, Loader2, User, AlertCircle, Edit, Filter, X, Download } from 'lucide-react';
+import { Plus, Search, FileText, Trash2, Save, Warehouse, CalendarIcon, Loader2, User, AlertCircle, Edit, Filter, X, Download, Wallet } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useVentas, useCreateVentas, useUpdateVenta, useDeleteVenta } from '@/hooks/useVentas';
 import { usePlacasClientes, useClientesInfo, formatearPlaca, validarPlaca } from '@/hooks/usePlacaCliente';
+import { useAnticiposPorNIT } from '@/hooks/useAnticipos';
 
 type TipoTransaccion = 'Venta' | 'Donación' | 'Transferencia';
 
@@ -59,6 +60,19 @@ const Ventas = () => {
   const deleteVenta = useDeleteVenta();
   const { data: placasClientes = new Map() } = usePlacasClientes();
   const { data: clientesInfo = [] } = useClientesInfo();
+  const { data: anticiposPorNIT = [] } = useAnticiposPorNIT();
+
+  // NITs que tienen anticipo activo (para marcar filas de consumo)
+  const nitsConAnticipo = useMemo(() => {
+    const s = new Set<string>();
+    anticiposPorNIT.forEach(a => s.add(a.nit));
+    return s;
+  }, [anticiposPorNIT]);
+
+  const esConsumoAnticipo = (v: typeof ventas[0]): boolean =>
+    (v as any).banco !== 'Anticipo' &&
+    !!(v as any).nit_cliente &&
+    nitsConAnticipo.has((v as any).nit_cliente);
 
   const [showForm, setShowForm] = useState(false);
   const [autocompleteIndex, setAutocompleteIndex] = useState<number | null>(null);
@@ -428,6 +442,43 @@ const Ventas = () => {
             </CardContent>
           </Card>
         )}
+
+      {/* Saldos de Anticipo */}
+      {anticiposPorNIT.length > 0 && (
+        <Card className="shadow-card border-amber-200 bg-amber-50/40">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2 text-amber-700">
+              <Wallet className="h-4 w-4" />
+              Saldos de Anticipo
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-3">
+              {anticiposPorNIT.map(a => (
+                <div key={a.nit} className={cn(
+                  "flex flex-col gap-0.5 px-4 py-2 rounded-lg border text-sm",
+                  a.saldo > 0
+                    ? "bg-white border-amber-200"
+                    : "bg-red-50 border-red-200"
+                )}>
+                  <div className="flex items-center gap-2">
+                    <User className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="font-medium">{a.nombre}</span>
+                    <span className="text-xs text-muted-foreground">NIT: {a.nit}</span>
+                  </div>
+                  <div className="flex gap-4 text-xs mt-0.5">
+                    <span className="text-muted-foreground">Anticipo: <span className="font-semibold text-amber-700">${a.totalAnticipo.toLocaleString('es-CO')}</span></span>
+                    <span className="text-muted-foreground">Consumido: <span className="font-semibold">${a.consumo.toLocaleString('es-CO')}</span></span>
+                    <span className={cn("font-bold", a.saldo >= 0 ? "text-green-700" : "text-red-600")}>
+                      Saldo: ${Math.abs(a.saldo).toLocaleString('es-CO')}{a.saldo < 0 ? ' (excedido)' : ' restante'}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Form */}
       {showForm && (
@@ -829,7 +880,7 @@ const Ventas = () => {
                     </TableRow>
                   ) : (
                     filteredVentas.map((venta) => (
-                      <TableRow key={venta.id} className="hover:bg-muted/30">
+                      <TableRow key={venta.id} className={cn("hover:bg-muted/30", esConsumoAnticipo(venta) && "bg-amber-50/60")}>
                         <TableCell className="font-medium">{venta.fecha}</TableCell>
                         <TableCell>{getSiliceBadge(venta.silice)}</TableCell>
                         <TableCell>{venta.recibo}</TableCell>
@@ -854,7 +905,14 @@ const Ventas = () => {
                           ) : <span className="text-muted-foreground/40">—</span>}
                         </TableCell>
                         <TableCell className="text-right">{venta.cantidad_m3} m³</TableCell>
-                        <TableCell className="text-right font-semibold">${Number(venta.valor_total).toLocaleString('es-CO')}</TableCell>
+                        <TableCell className="text-right">
+                          <span className={cn("font-semibold", esConsumoAnticipo(venta) && "text-amber-700")}>
+                            ${Number(venta.valor_total).toLocaleString('es-CO')}
+                          </span>
+                          {esConsumoAnticipo(venta) && (
+                            <div className="text-[10px] text-amber-600 font-normal">← consume anticipo</div>
+                          )}
+                        </TableCell>
                         <TableCell>
                           <Badge variant="outline" className={venta.fuente === 'Zaranda' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-gray-100 text-gray-700 border-gray-200'}>
                             {venta.fuente}
