@@ -52,14 +52,12 @@ export const useDashboardStats = (filtros?: DashboardFiltros) => {
       const { data: ventasMes, error: errorVentas } = await ventasQuery;
       if (errorVentas) console.error('Error fetching ventas:', errorVentas);
 
-      // NITs que tienen anticipo (global, sin filtro de fecha)
+      // NITs con anticipo (tabla dedicada, global sin filtro de fecha)
       const { data: anticipoNITsData } = await supabase
-        .from('ventas')
-        .select('nit_cliente')
-        .eq('banco', 'Anticipo')
-        .not('nit_cliente', 'is', null);
+        .from('anticipos')
+        .select('nit');
       const nitsConAnticipo = new Set<string>();
-      anticipoNITsData?.forEach(v => { if (v.nit_cliente) nitsConAnticipo.add(v.nit_cliente); });
+      anticipoNITsData?.forEach(a => { if (a.nit) nitsConAnticipo.add(a.nit); });
 
       // Movimientos internos filtrados
       let movQuery = supabase
@@ -102,7 +100,6 @@ export const useDashboardStats = (filtros?: DashboardFiltros) => {
       // Calcular totales de ventas (excluir consumos de anticipo — no son ingresos nuevos)
       const totalVentasMes = ventasMes?.reduce((sum, v) => {
         const esConsumoAnticipo =
-          (v as any).banco !== 'Anticipo' &&
           !!(v as any).nit_cliente &&
           nitsConAnticipo.has((v as any).nit_cliente);
         return sum + (esConsumoAnticipo ? 0 : Number(v.valor_total));

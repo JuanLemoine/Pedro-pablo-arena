@@ -12,6 +12,7 @@ import {
   Warehouse,
   Timer,
   Calculator,
+  Wallet,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
@@ -19,6 +20,7 @@ import { useState } from 'react';
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Ventas', href: '/ventas', icon: ShoppingCart },
+  { name: 'Anticipos', href: '/anticipos', icon: Wallet },
   { name: 'Acopio', href: '/acopio', icon: Warehouse },
   { name: 'Movimientos', href: '/movimientos', icon: ArrowLeftRight },
   { name: 'Tiempos', href: '/tiempos', icon: Timer },
