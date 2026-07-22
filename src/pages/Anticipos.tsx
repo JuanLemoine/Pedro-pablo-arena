@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, CalendarIcon, Save, Loader2, Trash2, Edit, Search, Wallet, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -22,6 +23,7 @@ interface AnticipoForm {
   nit: string;
   nombre: string;
   correo: string;
+  banco: string;
   fecha: Date;
   valor: string;
 }
@@ -30,6 +32,7 @@ const getEmptyForm = (): AnticipoForm => ({
   nit: '',
   nombre: '',
   correo: '',
+  banco: '',
   fecha: new Date(),
   valor: '',
 });
@@ -87,6 +90,7 @@ const Anticipos = () => {
       nit: form.nit.trim(),
       nombre: form.nombre.trim(),
       correo: form.correo.trim() || null,
+      banco: form.banco || null,
       fecha: format(form.fecha, 'yyyy-MM-dd'),
       valor: parseFloat(form.valor),
     };
@@ -108,6 +112,7 @@ const Anticipos = () => {
       nit: a.nit,
       nombre: a.nombre || '',
       correo: a.correo || '',
+      banco: a.banco || '',
       fecha: new Date(a.fecha + 'T00:00:00'),
       valor: a.valor.toString(),
     });
@@ -211,6 +216,20 @@ const Anticipos = () => {
                     value={form.correo}
                     onChange={e => actualizarForm('correo', e.target.value)}
                   />
+                </div>
+
+                {/* Banco */}
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold">Banco <span className="text-muted-foreground font-normal">(opcional)</span></Label>
+                  <Select value={form.banco} onValueChange={v => actualizarForm('banco', v)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar banco..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Bancolombia">Bancolombia</SelectItem>
+                      <SelectItem value="Davivienda">Davivienda</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 {/* Fecha */}
@@ -342,7 +361,7 @@ const Anticipos = () => {
                     <TableHead>Fecha</TableHead>
                     <TableHead>NIT</TableHead>
                     <TableHead>Cliente</TableHead>
-                    <TableHead>Correo</TableHead>
+                    <TableHead>Banco</TableHead>
                     <TableHead className="text-right">Valor</TableHead>
                     <TableHead className="text-center">Acciones</TableHead>
                   </TableRow>
@@ -364,7 +383,11 @@ const Anticipos = () => {
                             ? <span className="flex items-center gap-1"><User className="h-3 w-3 text-muted-foreground" />{a.nombre}</span>
                             : <span className="text-muted-foreground/40">—</span>}
                         </TableCell>
-                        <TableCell className="text-muted-foreground text-sm">{a.correo || '—'}</TableCell>
+                        <TableCell>
+                          {a.banco
+                            ? <Badge variant="outline" className="text-xs">{a.banco}</Badge>
+                            : <span className="text-muted-foreground/40">—</span>}
+                        </TableCell>
                         <TableCell className="text-right">
                           <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 font-semibold">
                             ${Number(a.valor).toLocaleString('es-CO')}

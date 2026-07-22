@@ -8,6 +8,7 @@ export interface Anticipo {
   nit: string;
   nombre: string | null;
   correo: string | null;
+  banco: string | null;
   valor: number;
   created_at: string;
 }
