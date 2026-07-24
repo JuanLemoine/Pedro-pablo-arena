@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import * as XLSX from 'xlsx';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
@@ -27,7 +28,10 @@ import {
   Users,
   User,
   Wallet,
+  FileDown,
+  Loader2,
 } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import { useDashboardStats } from '@/hooks/useDashboardStats';
 import { useDashboardResumen } from '@/hooks/useDashboardResumen';
@@ -115,6 +119,61 @@ const Dashboard = () => {
   });
 
   const { data: resumen, isLoading: resumenLoading } = useDashboardResumen(filtros);
+
+  const [descargando, setDescargando] = useState(false);
+
+  const descargarReporteFacturacion = async () => {
+    setDescargando(true);
+    try {
+      const { data, error } = await supabase
+        .from('ventas')
+        .select('fecha, recibo, silice, nombre_cliente, nit_cliente, placa, cantidad_m3, valor_total, tipo_transaccion, banco, descuenta_anticipo')
+        .gte('fecha', filtros.fechaInicio)
+        .lte('fecha', filtros.fechaFin)
+        .order('fecha', { ascending: true });
+
+      if (error) throw error;
+
+      // Excluir Donación y banco='Crédito' (no facturado)
+      const facturadas = (data || []).filter(v => {
+        if ((v as any).tipo_transaccion === 'Donación') return false;
+        if ((v as any).banco === 'Crédito') return false;
+        return true;
+      });
+
+      const formaPago = (v: any): string => {
+        if (v.descuenta_anticipo) return 'Anticipo';
+        if (v.tipo_transaccion === 'Transferencia') return v.banco || 'Transferencia';
+        return 'Efectivo';
+      };
+
+      const filas = facturadas.map(v => ({
+        'Fecha': v.fecha,
+        'N° Recibo': v.recibo,
+        'Tipo de Arena': v.silice,
+        'Cliente': (v as any).nombre_cliente || '—',
+        'NIT': (v as any).nit_cliente || '—',
+        'Placa': v.placa,
+        'Cantidad m³': v.cantidad_m3,
+        'Valor Total ($)': v.valor_total,
+        'Forma de Pago': formaPago(v),
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(filas);
+      // Ancho de columnas
+      ws['!cols'] = [
+        { wch: 12 }, { wch: 10 }, { wch: 18 }, { wch: 28 },
+        { wch: 14 }, { wch: 8 }, { wch: 12 }, { wch: 16 }, { wch: 16 },
+      ];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Facturación');
+      XLSX.writeFile(wb, `reporte_facturacion_${filtros.fechaInicio}_${filtros.fechaFin}.xlsx`);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setDescargando(false);
+    }
+  };
 
   const porcentajeVendido = stats && stats.m3Producidos > 0
     ? Math.min((stats.m3Vendidos / stats.m3Producidos) * 100, 100) : 0;
@@ -211,6 +270,21 @@ const Dashboard = () => {
                 Restablecer
               </Button>
             )}
+
+            <div className="ml-auto">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={descargarReporteFacturacion}
+                disabled={descargando}
+                className="gap-2 border-green-300 text-green-700 hover:bg-green-50 hover:text-green-800"
+              >
+                {descargando
+                  ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  : <FileDown className="h-3.5 w-3.5" />}
+                Reporte para Facturación
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
