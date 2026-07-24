@@ -744,11 +744,10 @@ const Ventas = () => {
                   {venta.tipoTransaccion === 'Transferencia' && (
                     <div className="space-y-1">
                       <Label className="text-xs">Anticipo</Label>
-                      <button
-                        type="button"
+                      <div
                         onClick={() => actualizarVentaMultiple(index, { descontarAnticipo: !venta.descontarAnticipo })}
                         className={cn(
-                          "h-10 w-full flex items-center gap-2 px-3 rounded-md border text-xs font-medium transition-colors",
+                          "h-10 w-full flex items-center gap-2 px-3 rounded-md border text-xs font-medium transition-colors cursor-pointer select-none",
                           venta.descontarAnticipo
                             ? "border-amber-400 bg-amber-50 text-amber-800"
                             : "border-dashed border-muted-foreground/30 text-muted-foreground hover:border-amber-300 hover:bg-amber-50/50"
@@ -756,12 +755,11 @@ const Ventas = () => {
                       >
                         <Checkbox
                           checked={venta.descontarAnticipo}
-                          onCheckedChange={(c) => actualizarVentaMultiple(index, { descontarAnticipo: !!c })}
                           className="pointer-events-none"
                         />
                         <CreditCard className="h-3.5 w-3.5" />
                         Descontar de anticipo
-                      </button>
+                      </div>
                     </div>
                   )}
                   
