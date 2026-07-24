@@ -649,29 +649,6 @@ const Ventas = () => {
                     />
                   </div>
                   
-                  {/* Banco — solo para Transferencia */}
-                  {venta.tipoTransaccion === 'Transferencia' ? (
-                    <div className="space-y-1">
-                      <Label className="text-xs">Banco</Label>
-                      <Select value={venta.banco} onValueChange={(v) => actualizarVenta(index, 'banco', v)}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Banco" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Bancolombia">Bancolombia</SelectItem>
-                          <SelectItem value="Davivienda">Davivienda</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  ) : (
-                    <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground/50">Banco</Label>
-                      <div className="h-10 flex items-center px-3 rounded-md border border-dashed border-muted-foreground/20 text-xs text-muted-foreground/40 select-none">
-                        Solo transferencia
-                      </div>
-                    </div>
-                  )}
-
                   <div className="space-y-1">
                     <Label className="text-xs">Cantidad (m³) *</Label>
                     <Input
@@ -731,6 +708,22 @@ const Ventas = () => {
                       </SelectContent>
                     </Select>
                   </div>
+
+                  {/* Banco — solo para Transferencia */}
+                  {venta.tipoTransaccion === 'Transferencia' && (
+                    <div className="space-y-1">
+                      <Label className="text-xs">Banco</Label>
+                      <Select value={venta.banco} onValueChange={(v) => actualizarVenta(index, 'banco', v)}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Banco" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Bancolombia">Bancolombia</SelectItem>
+                          <SelectItem value="Davivienda">Davivienda</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
 
                   <div className="space-y-1">
                     <Label className="text-xs">Concepto <span className="text-muted-foreground text-[10px]">(solo donación)</span></Label>
