@@ -264,12 +264,14 @@ export const useDashboardResumen = (filtros: DashboardFiltros) => {
         clienteMap.set(placa, prev);
       });
 
-      // Saldos de anticipo por NIT (tabla dedicada, global sin filtro de fecha)
-      const { data: anticipoAllData } = await supabase
-        .from('anticipos')
-        .select('nit, nombre, valor');
+      // Saldos de anticipo por NIT: anticipos registrados + ventas con descuenta_anticipo
+      const [{ data: anticipoAllData }, { data: ventasConsumoData }] = await Promise.all([
+        supabase.from('anticipos').select('nit, nombre, valor'),
+        supabase.from('ventas').select('nit_cliente, nombre_cliente, valor_total').eq('descuenta_anticipo', true),
+      ]);
 
       const anticipoNITMap = new Map<string, { nombre: string; totalAnticipo: number; consumo: number }>();
+
       anticipoAllData?.forEach(a => {
         const entry = anticipoNITMap.get(a.nit) || { nombre: a.nombre || a.nit, totalAnticipo: 0, consumo: 0 };
         if (a.nombre) entry.nombre = a.nombre;
@@ -277,16 +279,15 @@ export const useDashboardResumen = (filtros: DashboardFiltros) => {
         anticipoNITMap.set(a.nit, entry);
       });
 
-      // Consumo: ventas explícitamente marcadas como descuenta_anticipo
-      const { data: ventasConsumoData } = await supabase
-        .from('ventas')
-        .select('nit_cliente, valor_total')
-        .eq('descuenta_anticipo', true)
-        .in('nit_cliente', Array.from(anticipoNITMap.keys()));
       ventasConsumoData?.forEach(v => {
         if (!v.nit_cliente) return;
-        const entry = anticipoNITMap.get(v.nit_cliente);
-        if (entry) entry.consumo += Number(v.valor_total);
+        const entry = anticipoNITMap.get(v.nit_cliente) || {
+          nombre: (v as any).nombre_cliente || v.nit_cliente,
+          totalAnticipo: 0,
+          consumo: 0,
+        };
+        entry.consumo += Number(v.valor_total);
+        anticipoNITMap.set(v.nit_cliente, entry);
       });
 
       const anticiposPorNIT: AnticipoPorNIT[] = Array.from(anticipoNITMap.entries())

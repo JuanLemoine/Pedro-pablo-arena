@@ -101,27 +101,19 @@ export const useAnticiposPorNIT = () =>
   useQuery({
     queryKey: ['anticipos-por-nit'],
     queryFn: async (): Promise<AnticipoPorNIT[]> => {
-      // Todos los anticipos registrados
-      const { data: anticiposData, error: e1 } = await supabase
-        .from('anticipos')
-        .select('nit, nombre, correo, valor');
+      // Anticipos registrados + ventas con descuenta_anticipo en paralelo
+      const [{ data: anticiposData, error: e1 }, { data: ventasConsumo, error: e2 }] = await Promise.all([
+        supabase.from('anticipos').select('nit, nombre, correo, valor'),
+        supabase.from('ventas').select('nit_cliente, nombre_cliente, valor_total').eq('descuenta_anticipo', true),
+      ]);
       if (e1) throw new Error(e1.message);
-
-      if (!anticiposData || anticiposData.length === 0) return [];
-
-      const nits = [...new Set(anticiposData.map(a => a.nit))];
-
-      // Consumo: ventas explícitamente marcadas como descuenta_anticipo
-      const { data: ventasData, error: e2 } = await supabase
-        .from('ventas')
-        .select('nit_cliente, valor_total')
-        .eq('descuenta_anticipo', true)
-        .in('nit_cliente', nits);
       if (e2) throw new Error(e2.message);
 
-      // Acumular anticipos por NIT
-      const nitMap = new Map<string, { nombre: string; correo: string | null; totalAnticipo: number; consumo: number }>();
-      anticiposData.forEach(a => {
+      type Entry = { nombre: string; correo: string | null; totalAnticipo: number; consumo: number };
+      const nitMap = new Map<string, Entry>();
+
+      // 1. Cargar anticipos registrados
+      anticiposData?.forEach(a => {
         const prev = nitMap.get(a.nit) || { nombre: a.nombre || a.nit, correo: a.correo, totalAnticipo: 0, consumo: 0 };
         if (a.nombre) prev.nombre = a.nombre;
         if (a.correo) prev.correo = a.correo;
@@ -129,12 +121,20 @@ export const useAnticiposPorNIT = () =>
         nitMap.set(a.nit, prev);
       });
 
-      // Acumular consumo de ventas
-      ventasData?.forEach(v => {
+      // 2. Cargar consumo de ventas — incluye NITs sin anticipo (quedan en negativo)
+      ventasConsumo?.forEach(v => {
         if (!v.nit_cliente) return;
-        const entry = nitMap.get(v.nit_cliente);
-        if (entry) entry.consumo += Number(v.valor_total);
+        const prev = nitMap.get(v.nit_cliente) || {
+          nombre: (v as any).nombre_cliente || v.nit_cliente,
+          correo: null,
+          totalAnticipo: 0,
+          consumo: 0,
+        };
+        prev.consumo += Number(v.valor_total);
+        nitMap.set(v.nit_cliente, prev);
       });
+
+      if (nitMap.size === 0) return [];
 
       return Array.from(nitMap.entries())
         .map(([nit, d]) => ({
@@ -145,7 +145,7 @@ export const useAnticiposPorNIT = () =>
           consumo: Math.round(d.consumo),
           saldo: Math.round(d.totalAnticipo - d.consumo),
         }))
-        .sort((a, b) => b.totalAnticipo - a.totalAnticipo);
+        .sort((a, b) => a.saldo - b.saldo); // más negativo primero
     },
     staleTime: 30000,
   });
