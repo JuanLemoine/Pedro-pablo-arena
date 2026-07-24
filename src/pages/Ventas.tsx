@@ -12,8 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, Search, FileText, Trash2, Save, Warehouse, CalendarIcon, Loader2, User, AlertCircle, Edit, Filter, X, Download, CreditCard } from 'lucide-react';
+import { Plus, Search, FileText, Trash2, Save, Warehouse, CalendarIcon, Loader2, User, AlertCircle, Edit, Filter, X, Download, CreditCard, Check } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -753,10 +752,12 @@ const Ventas = () => {
                             : "border-dashed border-muted-foreground/30 text-muted-foreground hover:border-amber-300 hover:bg-amber-50/50"
                         )}
                       >
-                        <Checkbox
-                          checked={venta.descontarAnticipo}
-                          className="pointer-events-none"
-                        />
+                        <div className={cn(
+                          "h-4 w-4 shrink-0 rounded-sm border flex items-center justify-center",
+                          venta.descontarAnticipo ? "bg-primary border-primary" : "border-muted-foreground/40"
+                        )}>
+                          {venta.descontarAnticipo && <Check className="h-3 w-3 text-primary-foreground" />}
+                        </div>
                         <CreditCard className="h-3.5 w-3.5" />
                         Descontar de anticipo
                       </div>
