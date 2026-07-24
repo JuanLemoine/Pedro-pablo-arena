@@ -111,10 +111,11 @@ export const useAnticiposPorNIT = () =>
 
       const nits = [...new Set(anticiposData.map(a => a.nit))];
 
-      // Consumo: ventas de esos NITs (que ya no tienen banco='Anticipo')
+      // Consumo: ventas explícitamente marcadas como descuenta_anticipo
       const { data: ventasData, error: e2 } = await supabase
         .from('ventas')
         .select('nit_cliente, valor_total')
+        .eq('descuenta_anticipo', true)
         .in('nit_cliente', nits);
       if (e2) throw new Error(e2.message);
 

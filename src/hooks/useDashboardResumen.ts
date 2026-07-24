@@ -85,7 +85,7 @@ export const useDashboardResumen = (filtros: DashboardFiltros) => {
       // ── Ventas ──────────────────────────────────────────────────
       let ventasQ = supabase
         .from('ventas')
-        .select('cantidad_m3, valor_total, silice, tipo_transaccion, fuente, banco, nit_cliente')
+        .select('cantidad_m3, valor_total, silice, tipo_transaccion, fuente, nit_cliente, descuenta_anticipo')
         .gte('fecha', filtros.fechaInicio)
         .lte('fecha', filtros.fechaFin);
       if (filtros.tipoSilice !== 'todos') ventasQ = ventasQ.eq('silice', filtros.tipoSilice);
@@ -93,15 +93,8 @@ export const useDashboardResumen = (filtros: DashboardFiltros) => {
       if (filtros.fuente !== 'todos') ventasQ = ventasQ.eq('fuente', filtros.fuente);
       const { data: ventasData } = await ventasQ;
 
-      // NITs con anticipo (tabla dedicada, global sin filtro de fecha)
-      const { data: anticipoNITsRaw } = await supabase
-        .from('anticipos')
-        .select('nit');
-      const nitsConAnticipo = new Set<string>();
-      anticipoNITsRaw?.forEach(a => { if (a.nit) nitsConAnticipo.add(a.nit); });
-
-      const esConsumoAnticipo = (v: { nit_cliente?: string | null }): boolean =>
-        !!v.nit_cliente && nitsConAnticipo.has(v.nit_cliente);
+      const esConsumoAnticipo = (v: { descuenta_anticipo?: boolean | null }): boolean =>
+        !!v.descuenta_anticipo;
 
       const ventasPorTipoMap = new Map<string, { registros: number; valor: number }>();
       const ventasPorSiliceMap = new Map<string, { registros: number; m3Vendidos: number; m3Entregados: number }>();
@@ -227,7 +220,7 @@ export const useDashboardResumen = (filtros: DashboardFiltros) => {
       // ── Clientes ────────────────────────────────────────────────
       let clientesQ = supabase
         .from('ventas')
-        .select('placa, nombre_cliente, nit_cliente, cantidad_m3, valor_total, silice, tipo_transaccion, fecha, banco')
+        .select('placa, nombre_cliente, nit_cliente, cantidad_m3, valor_total, silice, tipo_transaccion, fecha, descuenta_anticipo')
         .gte('fecha', filtros.fechaInicio)
         .lte('fecha', filtros.fechaFin);
       if (filtros.tipoSilice !== 'todos') clientesQ = clientesQ.eq('silice', filtros.tipoSilice);
@@ -284,10 +277,11 @@ export const useDashboardResumen = (filtros: DashboardFiltros) => {
         anticipoNITMap.set(a.nit, entry);
       });
 
-      // Consumo: ventas con nit_cliente que esté en anticipoNITMap
+      // Consumo: ventas explícitamente marcadas como descuenta_anticipo
       const { data: ventasConsumoData } = await supabase
         .from('ventas')
         .select('nit_cliente, valor_total')
+        .eq('descuenta_anticipo', true)
         .in('nit_cliente', Array.from(anticipoNITMap.keys()));
       ventasConsumoData?.forEach(v => {
         if (!v.nit_cliente) return;

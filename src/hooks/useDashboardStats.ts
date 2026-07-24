@@ -41,7 +41,7 @@ export const useDashboardStats = (filtros?: DashboardFiltros) => {
       // Ventas del período filtrado
       let ventasQuery = supabase
         .from('ventas')
-        .select('valor_total, cantidad_m3, silice, banco, nit_cliente')
+        .select('valor_total, cantidad_m3, silice, descuenta_anticipo')
         .gte('fecha', inicio)
         .lte('fecha', fin);
 
@@ -51,13 +51,6 @@ export const useDashboardStats = (filtros?: DashboardFiltros) => {
 
       const { data: ventasMes, error: errorVentas } = await ventasQuery;
       if (errorVentas) console.error('Error fetching ventas:', errorVentas);
-
-      // NITs con anticipo (tabla dedicada, global sin filtro de fecha)
-      const { data: anticipoNITsData } = await supabase
-        .from('anticipos')
-        .select('nit');
-      const nitsConAnticipo = new Set<string>();
-      anticipoNITsData?.forEach(a => { if (a.nit) nitsConAnticipo.add(a.nit); });
 
       // Movimientos internos filtrados
       let movQuery = supabase
@@ -97,12 +90,9 @@ export const useDashboardStats = (filtros?: DashboardFiltros) => {
       const { data: ventasRecientes, error: errorRecientes } = await recientesQuery;
       if (errorRecientes) console.error('Error fetching ventas recientes:', errorRecientes);
 
-      // Calcular totales de ventas (excluir consumos de anticipo — no son ingresos nuevos)
+      // Excluir ventas marcadas como consumo de anticipo (no son ingresos nuevos)
       const totalVentasMes = ventasMes?.reduce((sum, v) => {
-        const esConsumoAnticipo =
-          !!(v as any).nit_cliente &&
-          nitsConAnticipo.has((v as any).nit_cliente);
-        return sum + (esConsumoAnticipo ? 0 : Number(v.valor_total));
+        return sum + ((v as any).descuenta_anticipo ? 0 : Number(v.valor_total));
       }, 0) || 0;
       const m3Vendidos = ventasMes?.reduce((sum, v) => sum + Number(v.cantidad_m3) + 1, 0) || 0;
 

@@ -12,7 +12,8 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, Search, FileText, Trash2, Save, Warehouse, CalendarIcon, Loader2, User, AlertCircle, Edit, Filter, X, Download } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Plus, Search, FileText, Trash2, Save, Warehouse, CalendarIcon, Loader2, User, AlertCircle, Edit, Filter, X, Download, CreditCard } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -34,6 +35,7 @@ interface VentaForm {
   fuente: string;
   tipoTransaccion: TipoTransaccion;
   concepto: string;
+  descontarAnticipo: boolean;
 }
 
 const getEmptyForm = (): VentaForm => ({
@@ -49,6 +51,7 @@ const getEmptyForm = (): VentaForm => ({
   fuente: '',
   tipoTransaccion: 'Venta',
   concepto: '',
+  descontarAnticipo: false,
 });
 
 const Ventas = () => {
@@ -161,8 +164,9 @@ const Ventas = () => {
       tipo_transaccion: venta.tipoTransaccion,
       nombre_cliente: venta.nombreCliente || null,
       nit_cliente: venta.nitCliente || null,
-      banco: venta.banco || null,
+      banco: venta.tipoTransaccion === 'Transferencia' ? (venta.banco || null) : null,
       concepto: venta.tipoTransaccion === 'Donación' ? (venta.concepto || null) : null,
+      descuenta_anticipo: venta.tipoTransaccion === 'Transferencia' ? venta.descontarAnticipo : false,
     }));
 
     if (editingId) {
@@ -206,6 +210,7 @@ const Ventas = () => {
       fuente: venta.fuente,
       tipoTransaccion: (venta as any).tipo_transaccion || 'Venta',
       concepto: venta.concepto || '',
+      descontarAnticipo: (venta as any).descuenta_anticipo || false,
     };
     setVentasEnCurso([ventaForm]);
     setOpenCalendars([false]);
@@ -644,20 +649,28 @@ const Ventas = () => {
                     />
                   </div>
                   
-                  {/* Banco */}
-                  <div className="space-y-1">
-                    <Label className="text-xs">Banco</Label>
-                    <Select value={venta.banco} onValueChange={(v) => actualizarVenta(index, 'banco', v)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Banco" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Bancolombia">Bancolombia</SelectItem>
-                        <SelectItem value="Davivienda">Davivienda</SelectItem>
-                        <SelectItem value="Crédito">Crédito</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  {/* Banco — solo para Transferencia */}
+                  {venta.tipoTransaccion === 'Transferencia' ? (
+                    <div className="space-y-1">
+                      <Label className="text-xs">Banco</Label>
+                      <Select value={venta.banco} onValueChange={(v) => actualizarVenta(index, 'banco', v)}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Banco" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Bancolombia">Bancolombia</SelectItem>
+                          <SelectItem value="Davivienda">Davivienda</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground/50">Banco</Label>
+                      <div className="h-10 flex items-center px-3 rounded-md border border-dashed border-muted-foreground/20 text-xs text-muted-foreground/40 select-none">
+                        Solo transferencia
+                      </div>
+                    </div>
+                  )}
 
                   <div className="space-y-1">
                     <Label className="text-xs">Cantidad (m³) *</Label>
@@ -700,7 +713,13 @@ const Ventas = () => {
                     <Label className="text-xs">Tipo Transacción *</Label>
                     <Select
                       value={venta.tipoTransaccion}
-                      onValueChange={(value) => actualizarVenta(index, 'tipoTransaccion', value as TipoTransaccion)}
+                      onValueChange={(value) => {
+                        const tipo = value as TipoTransaccion;
+                        actualizarVentaMultiple(index, {
+                          tipoTransaccion: tipo,
+                          ...(tipo !== 'Transferencia' ? { banco: '', descontarAnticipo: false } : {}),
+                        });
+                      }}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Tipo" />
@@ -727,6 +746,31 @@ const Ventas = () => {
                       </div>
                     )}
                   </div>
+
+                  {/* Descontar de anticipo — solo para Transferencia */}
+                  {venta.tipoTransaccion === 'Transferencia' && (
+                    <div className="space-y-1">
+                      <Label className="text-xs">Anticipo</Label>
+                      <button
+                        type="button"
+                        onClick={() => actualizarVentaMultiple(index, { descontarAnticipo: !venta.descontarAnticipo })}
+                        className={cn(
+                          "h-10 w-full flex items-center gap-2 px-3 rounded-md border text-xs font-medium transition-colors",
+                          venta.descontarAnticipo
+                            ? "border-amber-400 bg-amber-50 text-amber-800"
+                            : "border-dashed border-muted-foreground/30 text-muted-foreground hover:border-amber-300 hover:bg-amber-50/50"
+                        )}
+                      >
+                        <Checkbox
+                          checked={venta.descontarAnticipo}
+                          onCheckedChange={(c) => actualizarVentaMultiple(index, { descontarAnticipo: !!c })}
+                          className="pointer-events-none"
+                        />
+                        <CreditCard className="h-3.5 w-3.5" />
+                        Descontar de anticipo
+                      </button>
+                    </div>
+                  )}
                   
                   <div className="flex items-end">
                     <Button
@@ -842,15 +886,22 @@ const Ventas = () => {
                           {(venta as any).nit_cliente || <span className="text-muted-foreground/40">—</span>}
                         </TableCell>
                         <TableCell>
-                          {(venta as any).banco ? (
-                            <Badge variant="outline" className={
-                              (venta as any).banco === 'Bancolombia' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
-                              (venta as any).banco === 'Davivienda' ? 'bg-red-50 text-red-700 border-red-200' :
-                              'bg-slate-50 text-slate-700 border-slate-200'
-                            }>
-                              {(venta as any).banco}
-                            </Badge>
-                          ) : <span className="text-muted-foreground/40">—</span>}
+                          <div className="flex flex-col gap-1">
+                            {(venta as any).banco ? (
+                              <Badge variant="outline" className={
+                                (venta as any).banco === 'Bancolombia' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                                (venta as any).banco === 'Davivienda' ? 'bg-red-50 text-red-700 border-red-200' :
+                                'bg-slate-50 text-slate-700 border-slate-200'
+                              }>
+                                {(venta as any).banco}
+                              </Badge>
+                            ) : <span className="text-muted-foreground/40">—</span>}
+                            {(venta as any).descuenta_anticipo && (
+                              <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-[10px] px-1.5">
+                                ↓ anticipo
+                              </Badge>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell className="text-right">{venta.cantidad_m3} m³</TableCell>
                         <TableCell className="text-right font-semibold">${Number(venta.valor_total).toLocaleString('es-CO')}</TableCell>
