@@ -153,17 +153,15 @@ const Dashboard = () => {
         'Tipo de Arena': v.silice,
         'Cliente': (v as any).nombre_cliente || '—',
         'NIT': (v as any).nit_cliente || '—',
-        'Placa': v.placa,
         'Cantidad m³': v.cantidad_m3,
         'Valor Total ($)': v.valor_total,
         'Forma de Pago': formaPago(v),
       }));
 
       const ws = XLSX.utils.json_to_sheet(filas);
-      // Ancho de columnas
       ws['!cols'] = [
         { wch: 12 }, { wch: 10 }, { wch: 18 }, { wch: 28 },
-        { wch: 14 }, { wch: 8 }, { wch: 12 }, { wch: 16 }, { wch: 16 },
+        { wch: 14 }, { wch: 12 }, { wch: 16 }, { wch: 16 },
       ];
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Facturación');
