@@ -67,7 +67,7 @@ const ProduccionDiariaLineChart = ({ tipoSilice = 'todos', fechaInicio, fechaFin
 
   const { data, isLoading, error } = useProduccionVentas({
     agrupacion: 'diario',
-    tipoSilice: tipoSilice as 'todos' | 'Silice A - Peña' | 'Silice B - Pozo',
+    tipoSilice: tipoSilice as 'todos' | 'Silice A - Peña' | 'Silice B - Pozo' | 'Silice C - Arena Fina',
     fechaInicio: parsedInicio,
     fechaFin: parsedFin,
   });

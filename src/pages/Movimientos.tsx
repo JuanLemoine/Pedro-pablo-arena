@@ -39,7 +39,7 @@ const MINAS = [
   'MINA GLADIS',
 ];
 
-const SILICES = ['Silice A - Peña', 'Silice B - Pozo'];
+const SILICES = ['Silice A - Peña', 'Silice B - Pozo', 'Silice C - Arena Fina'];
 
 // Función para obtener los orígenes disponibles según el tipo de sílice
 const getOrigenesDisponibles = (silice: string): string[] => {
@@ -64,12 +64,12 @@ const getDestinosDisponibles = (silice: string, origen: string): string[] => {
     if (origen === 'Zaranda') {
       return ['Trituradora', 'Clasificadora', 'Repaso', 'Revolver'];
     }
-  } else if (silice === 'Silice B - Pozo') {
-    // Silice B - Pozo: desde punto de excavación va a Zaranda o Trituradora
+  } else if (silice === 'Silice B - Pozo' || silice === 'Silice C - Arena Fina') {
+    // Desde punto de excavación va a Zaranda o Trituradora
     if (origen === 'Punto de excavación') {
       return ['Zaranda', 'Trituradora'];
     }
-    // Silice B - Pozo: desde Zaranda va a Trituradora, Clasificadora o Repaso
+    // Desde Zaranda va a Trituradora, Clasificadora o Repaso
     if (origen === 'Zaranda') {
       return ['Trituradora', 'Clasificadora', 'Repaso'];
     }

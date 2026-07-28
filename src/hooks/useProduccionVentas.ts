@@ -5,7 +5,7 @@ import { format, startOfWeek, startOfMonth, parseISO, subDays, subWeeks, subMont
 import { es } from 'date-fns/locale';
 
 export type TipoAgrupacion = 'diario' | 'semanal' | 'mensual';
-export type TipoSilice = 'todos' | 'Silice A - Peña' | 'Silice B - Pozo';
+export type TipoSilice = 'todos' | 'Silice A - Peña' | 'Silice B - Pozo' | 'Silice C - Arena Fina';
 
 interface DataPoint {
   fecha: string;
@@ -123,6 +123,7 @@ export const useProduccionVentas = ({ agrupacion, tipoSilice, fechaInicio, fecha
       const resumenMap = new Map<string, { producido: number; vendido: number }>();
       resumenMap.set('Silice A - Peña', { producido: 0, vendido: 0 });
       resumenMap.set('Silice B - Pozo', { producido: 0, vendido: 0 });
+      resumenMap.set('Silice C - Arena Fina', { producido: 0, vendido: 0 });
 
       todosMovimientos?.forEach(mov => {
         const resultado = calcularM3PorMovimiento(mov.placa, mov.silice, mov.origen, mov.destino);

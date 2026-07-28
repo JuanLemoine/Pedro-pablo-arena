@@ -22,7 +22,7 @@ import { useProduccionPorFlujo, FiltrosProduccion } from '@/hooks/useProduccionP
 import { cn } from '@/lib/utils';
 import * as XLSX from 'xlsx';
 
-const SILICES = ['Silice A - Peña', 'Silice B - Pozo'];
+const SILICES = ['Silice A - Peña', 'Silice B - Pozo', 'Silice C - Arena Fina'];
 const ORIGENES = ['Punto de excavación', 'Zaranda'];
 const DESTINOS = ['Zaranda', 'Trituradora', 'Clasificadora'];
 

@@ -30,6 +30,7 @@ export interface ResumenVentas {
 export const PRECIO_M3: Record<string, number> = {
   'Silice B - Pozo': 85000,
   'Silice A - Peña': 75000,
+  'Silice C - Arena Fina': 180000,
 };
 
 export interface ResumenAcopio {

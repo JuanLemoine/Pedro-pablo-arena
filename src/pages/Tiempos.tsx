@@ -225,6 +225,7 @@ const Tiempos = () => {
                 <SelectContent>
                   <SelectItem value="Silice A - Peña">Silice A - Peña</SelectItem>
                   <SelectItem value="Silice B - Pozo">Silice B - Pozo</SelectItem>
+                  <SelectItem value="Silice C - Arena Fina">Silice C - Arena Fina</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -380,6 +381,7 @@ const Tiempos = () => {
                     <SelectContent>
                       <SelectItem value="Silice A - Peña">Sílice A — Peña</SelectItem>
                       <SelectItem value="Silice B - Pozo">Sílice B — Pozo</SelectItem>
+                      <SelectItem value="Silice C - Arena Fina">Sílice C — Arena Fina</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

@@ -232,6 +232,7 @@ const Dashboard = () => {
                   <SelectItem value="todos">Todos los tipos</SelectItem>
                   <SelectItem value="Silice A - Peña">Sílice A — Peña</SelectItem>
                   <SelectItem value="Silice B - Pozo">Sílice B — Pozo</SelectItem>
+                  <SelectItem value="Silice C - Arena Fina">Sílice C — Arena Fina</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -390,7 +391,7 @@ const Dashboard = () => {
                     </div>
                   </div>
                 )}
-                <p className="text-[10px] text-muted-foreground">Peña $75.000/m³ · Pozo $85.000/m³</p>
+                <p className="text-[10px] text-muted-foreground">Peña $75.000/m³ · Pozo $85.000/m³ · Arena Fina $180.000/m³</p>
                 <button onClick={() => navigate('/acopio')} className="text-xs text-primary hover:underline flex items-center gap-1 pt-0.5">
                   Ver detalle <ArrowUpRight className="h-3 w-3" />
                 </button>

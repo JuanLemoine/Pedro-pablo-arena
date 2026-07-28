@@ -89,6 +89,7 @@ const ProduccionPorFlujoChart = () => {
               <SelectItem value="todos">Todos los tipos</SelectItem>
               <SelectItem value="Silice A - Peña">Sílice A - Peña</SelectItem>
               <SelectItem value="Silice B - Pozo">Sílice B - Pozo</SelectItem>
+              <SelectItem value="Silice C - Arena Fina">Sílice C - Arena Fina</SelectItem>
             </SelectContent>
           </Select>
         </div>

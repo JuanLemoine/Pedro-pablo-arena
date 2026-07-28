@@ -125,6 +125,17 @@ const PORCENTAJES_ARENA = {
       'Repaso': PF_ZARANDA_DESTINO,        // Resultado: Silice A - Peña
     },
   },
+  'Silice C - Arena Fina': {
+    'Punto de excavación': {
+      'Zaranda': PF_EXCAVACION_ZARANDA,
+      'Trituradora': PF_EXCAVACION_TRITURADORA_POZO,
+    },
+    'Zaranda': {
+      'Trituradora': PF_ZARANDA_DESTINO,  // Resultado: Silice A - Peña
+      'Clasificadora': PF_ZARANDA_DESTINO, // Resultado: Silice A - Peña
+      'Repaso': PF_ZARANDA_DESTINO,        // Resultado: Silice A - Peña
+    },
+  },
 };
 
 export interface ResultadoProduccion {
@@ -181,13 +192,13 @@ export const calcularM3PorMovimiento = (
   // Determinar sílice resultante
   // Caso especial: Silice B - Pozo desde Zaranda produce Silice A - Peña
   let siliceResultante = silice;
-  if (silice === 'Silice B - Pozo' && origen === 'Zaranda') {
+  if ((silice === 'Silice B - Pozo' || silice === 'Silice C - Arena Fina') && origen === 'Zaranda') {
     siliceResultante = 'Silice A - Peña';
   }
 
   // Determinar tipo de PF según la tabla
   let tipoPF: 'Peña' | 'Pozo' | 'Granzón';
-  if (siliceResultante === 'Silice B - Pozo') {
+  if (siliceResultante === 'Silice B - Pozo' || siliceResultante === 'Silice C - Arena Fina') {
     tipoPF = 'Pozo';
   } else {
     tipoPF = 'Peña';
