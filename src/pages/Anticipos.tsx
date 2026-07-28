@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import * as XLSX from 'xlsx';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,7 +12,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, CalendarIcon, Save, Loader2, Trash2, Edit, Search, Wallet, User } from 'lucide-react';
+import { Plus, CalendarIcon, Save, Loader2, Trash2, Edit, Search, Wallet, User, Download, Filter, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import {
@@ -51,6 +52,12 @@ const Anticipos = () => {
   const [openCalendar, setOpenCalendar] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [nitAutocompleteOpen, setNitAutocompleteOpen] = useState(false);
+
+  // Filtros del historial
+  const [filterFechaInicio, setFilterFechaInicio] = useState<Date | null>(null);
+  const [filterFechaFin, setFilterFechaFin] = useState<Date | null>(null);
+  const [filterBanco, setFilterBanco] = useState('');
+  const [openFilterCalendars, setOpenFilterCalendars] = useState({ inicio: false, fin: false });
 
   // Sugerencias de NIT mientras el usuario escribe
   const nitSugerencias = useMemo(() => {
@@ -126,11 +133,41 @@ const Anticipos = () => {
     setShowForm(false);
   };
 
-  const filteredAnticipos = anticipos.filter(a =>
-    a.nit.includes(searchTerm) ||
-    (a.nombre || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (a.correo || '').toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredAnticipos = anticipos.filter(a => {
+    if (searchTerm && !a.nit.includes(searchTerm) &&
+        !(a.nombre || '').toLowerCase().includes(searchTerm.toLowerCase()) &&
+        !(a.correo || '').toLowerCase().includes(searchTerm.toLowerCase())) return false;
+    if (filterBanco && a.banco !== filterBanco) return false;
+    const fecha = new Date(a.fecha + 'T00:00:00');
+    if (filterFechaInicio && fecha < filterFechaInicio) return false;
+    if (filterFechaFin && fecha > filterFechaFin) return false;
+    return true;
+  });
+
+  const hayFiltros = !!searchTerm || !!filterBanco || !!filterFechaInicio || !!filterFechaFin;
+
+  const limpiarFiltros = () => {
+    setSearchTerm('');
+    setFilterBanco('');
+    setFilterFechaInicio(null);
+    setFilterFechaFin(null);
+  };
+
+  const exportarExcel = () => {
+    const datos = filteredAnticipos.map(a => ({
+      'Fecha': a.fecha,
+      'NIT': a.nit,
+      'Cliente': a.nombre || '—',
+      'Correo': a.correo || '—',
+      'Banco': a.banco || '—',
+      'Valor ($)': a.valor,
+    }));
+    const ws = XLSX.utils.json_to_sheet(datos);
+    ws['!cols'] = [{ wch: 12 }, { wch: 14 }, { wch: 28 }, { wch: 28 }, { wch: 14 }, { wch: 14 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Anticipos');
+    XLSX.writeFile(wb, `anticipos_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -328,6 +365,84 @@ const Anticipos = () => {
         </Card>
       )}
 
+      {/* Filtros del historial */}
+      <Card className="shadow-card bg-slate-50 border-slate-200">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-primary" />
+            <CardTitle className="text-base">Filtros</CardTitle>
+            {hayFiltros && <Badge variant="secondary" className="text-xs">Activos</Badge>}
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-3 items-end">
+            {/* Fecha inicio */}
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground font-medium">Desde</Label>
+              <Popover open={openFilterCalendars.inicio} onOpenChange={o => setOpenFilterCalendars(p => ({ ...p, inicio: o }))}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="justify-start gap-2 text-left font-normal min-w-[130px]">
+                    <CalendarIcon className="h-3.5 w-3.5" />
+                    {filterFechaInicio ? format(filterFechaInicio, 'dd MMM yyyy', { locale: es }) : 'Fecha inicio'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={filterFechaInicio || undefined}
+                    onSelect={d => { setFilterFechaInicio(d || null); setOpenFilterCalendars(p => ({ ...p, inicio: false })); }}
+                    initialFocus />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {/* Fecha fin */}
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground font-medium">Hasta</Label>
+              <Popover open={openFilterCalendars.fin} onOpenChange={o => setOpenFilterCalendars(p => ({ ...p, fin: o }))}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="justify-start gap-2 text-left font-normal min-w-[130px]">
+                    <CalendarIcon className="h-3.5 w-3.5" />
+                    {filterFechaFin ? format(filterFechaFin, 'dd MMM yyyy', { locale: es }) : 'Fecha fin'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={filterFechaFin || undefined}
+                    onSelect={d => { setFilterFechaFin(d || null); setOpenFilterCalendars(p => ({ ...p, fin: false })); }}
+                    initialFocus />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {/* Banco */}
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground font-medium">Banco</Label>
+              <Select value={filterBanco} onValueChange={setFilterBanco}>
+                <SelectTrigger className="h-9 min-w-[150px] text-sm"><SelectValue placeholder="Todos" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Bancolombia">Bancolombia</SelectItem>
+                  <SelectItem value="Davivienda">Davivienda</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Búsqueda */}
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground font-medium">Buscar</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input placeholder="NIT o nombre..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-9 h-9 text-sm w-48" />
+              </div>
+            </div>
+
+            {hayFiltros && (
+              <Button variant="ghost" size="sm" onClick={limpiarFiltros} className="gap-1.5 text-muted-foreground hover:text-foreground">
+                <X className="h-3.5 w-3.5" />
+                Limpiar
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Historial */}
       <Card className="shadow-card">
         <CardHeader>
@@ -339,15 +454,10 @@ const Anticipos = () => {
               </CardTitle>
               <CardDescription>{filteredAnticipos.length} registro(s)</CardDescription>
             </div>
-            <div className="relative w-full sm:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por NIT o nombre..."
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-                className="pl-9"
-              />
-            </div>
+            <Button variant="outline" onClick={exportarExcel} className="gap-2 shrink-0">
+              <Download className="h-4 w-4" />
+              Excel
+            </Button>
           </div>
         </CardHeader>
         <CardContent>
