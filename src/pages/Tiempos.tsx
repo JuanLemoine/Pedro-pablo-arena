@@ -120,7 +120,9 @@ const Tiempos = () => {
   const handleEdit = (tiempo: typeof tiempos[0]) => {
     setEditingId(tiempo.id);
     setForm({
-      fecha: new Date(tiempo.fecha),
+      // 'T00:00:00' fuerza hora local: sin él, new Date('2026-07-15') se parsea
+      // como medianoche UTC y al guardar con format() la fecha retrocede un día.
+      fecha: new Date(tiempo.fecha + 'T00:00:00'),
       silice: tiempo.silice,
       tiempo_ida: tiempo.tiempo_ida.toString(),
       tiempo_vuelta: tiempo.tiempo_vuelta.toString(),

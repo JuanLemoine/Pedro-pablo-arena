@@ -147,7 +147,9 @@ const Acopio = () => {
   const handleEdit = (acopio: typeof acopios[0]) => {
     setEditingId(acopio.id);
     const acopioForm: AcopioForm = {
-      fecha: new Date(acopio.fecha),
+      // 'T00:00:00' fuerza hora local: sin él, new Date('2026-07-15') se parsea
+      // como medianoche UTC y al guardar con format() la fecha retrocede un día.
+      fecha: new Date(acopio.fecha + 'T00:00:00'),
       fuente: acopio.fuente,
       silice: acopio.silice,
       placa: acopio.placa,

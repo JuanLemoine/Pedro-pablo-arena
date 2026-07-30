@@ -197,7 +197,9 @@ const Ventas = () => {
   const handleEdit = (venta: typeof ventas[0]) => {
     setEditingId(venta.id);
     const ventaForm: VentaForm = {
-      fecha: new Date(venta.fecha),
+      // 'T00:00:00' fuerza hora local: sin él, new Date('2026-07-15') se parsea
+      // como medianoche UTC y al guardar con format() la fecha retrocede un día.
+      fecha: new Date(venta.fecha + 'T00:00:00'),
       silice: venta.silice,
       recibo: venta.recibo,
       placa: venta.placa,

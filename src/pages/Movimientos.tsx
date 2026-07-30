@@ -180,7 +180,9 @@ const Movimientos = () => {
   const handleEdit = (mov: typeof movimientos[0]) => {
     setEditingId(mov.id);
     setFormData({
-      fecha: new Date(mov.fecha),
+      // 'T00:00:00' fuerza hora local: sin él, new Date('2026-07-15') se parsea
+      // como medianoche UTC y al guardar con format() la fecha retrocede un día.
+      fecha: new Date(mov.fecha + 'T00:00:00'),
       mina: mov.mina,
       silice: mov.silice,
       placa: mov.placa,

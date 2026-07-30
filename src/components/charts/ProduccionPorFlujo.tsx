@@ -259,13 +259,13 @@ const ProduccionPorFlujo = () => {
                   )}
                 >
                   <CalendarIcon className="mr-1 h-3 w-3" />
-                  {filtros.fechaInicio ? format(new Date(filtros.fechaInicio), 'dd/MM/yy') : 'Desde'}
+                  {filtros.fechaInicio ? format(new Date(filtros.fechaInicio + 'T00:00:00'), 'dd/MM/yy') : 'Desde'}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
                 <Calendar
                   mode="single"
-                  selected={filtros.fechaInicio ? new Date(filtros.fechaInicio) : undefined}
+                  selected={filtros.fechaInicio ? new Date(filtros.fechaInicio + 'T00:00:00') : undefined}
                   onSelect={(date) => {
                     setFiltros({ ...filtros, fechaInicio: date ? format(date, 'yyyy-MM-dd') : undefined });
                     setOpenFechaInicio(false);
@@ -288,13 +288,13 @@ const ProduccionPorFlujo = () => {
                   )}
                 >
                   <CalendarIcon className="mr-1 h-3 w-3" />
-                  {filtros.fechaFin ? format(new Date(filtros.fechaFin), 'dd/MM/yy') : 'Hasta'}
+                  {filtros.fechaFin ? format(new Date(filtros.fechaFin + 'T00:00:00'), 'dd/MM/yy') : 'Hasta'}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
                 <Calendar
                   mode="single"
-                  selected={filtros.fechaFin ? new Date(filtros.fechaFin) : undefined}
+                  selected={filtros.fechaFin ? new Date(filtros.fechaFin + 'T00:00:00') : undefined}
                   onSelect={(date) => {
                     setFiltros({ ...filtros, fechaFin: date ? format(date, 'yyyy-MM-dd') : undefined });
                     setOpenFechaFin(false);
