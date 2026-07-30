@@ -80,7 +80,10 @@ export const useDashboardStats = (filtros?: DashboardFiltros) => {
         .select('id, fecha, placa, valor_total, silice, cantidad_m3')
         .gte('fecha', inicio)
         .lte('fecha', fin)
+        // Mismo orden cronológico que el historial de Ventas
+        .order('fecha', { ascending: false })
         .order('created_at', { ascending: false })
+        .order('id', { ascending: false })
         .limit(5);
 
       if (tipoSilice !== 'todos') {

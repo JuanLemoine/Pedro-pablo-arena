@@ -10,8 +10,12 @@ export const useVentas = () => {
       const { data, error } = await supabase
         .from('ventas')
         .select('*')
+        // Orden cronológico: más reciente primero. El id (uuid inmutable) es el
+        // desempate estable — sin él, editar una fila la mueve de posición
+        // porque los registros importados comparten el mismo created_at.
         .order('fecha', { ascending: false })
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: false });
 
       if (error) {
         throw new Error(error.message);
