@@ -184,9 +184,44 @@ const Dashboard = () => {
         { wch: 18 }, { wch: 16 }, { wch: 16 },
       ];
 
+      // Hoja 3: mismas ventas del periodo, agrupadas por cliente y tipo de arena
+      // Se agrupa por nombre de cliente (no por NIT) porque hay ventas del mismo
+      // cliente sin NIT registrado, que si no partirían el total en dos filas.
+      type Grupo = { cliente: string; nits: Set<string>; silice: string; ventas: number; m3: number; valor: number };
+      const grupos = new Map<string, Grupo>();
+      facturadas.forEach(v => {
+        const cliente = (v as any).nombre_cliente || '—';
+        const clave = `${cliente}|${v.silice}`;
+        const g = grupos.get(clave) || { cliente, nits: new Set<string>(), silice: v.silice, ventas: 0, m3: 0, valor: 0 };
+        if ((v as any).nit_cliente) g.nits.add((v as any).nit_cliente);
+        g.ventas += 1;
+        g.m3 += Number(v.cantidad_m3);
+        g.valor += Number(v.valor_total);
+        grupos.set(clave, g);
+      });
+
+      const filasPorCliente = Array.from(grupos.values())
+        // Cliente alfabético; dentro de cada cliente, por tipo de arena
+        .sort((a, b) => a.cliente.localeCompare(b.cliente, 'es') || a.silice.localeCompare(b.silice, 'es'))
+        .map(g => ({
+          'Cliente': g.cliente,
+          'NIT': Array.from(g.nits).join(' / ') || '—',
+          'Tipo de Arena': g.silice,
+          'N° Ventas': g.ventas,
+          'Cantidad m³': Math.round(g.m3 * 100) / 100,
+          'Valor Total ($)': Math.round(g.valor),
+        }));
+
+      const wsPorCliente = XLSX.utils.json_to_sheet(filasPorCliente);
+      wsPorCliente['!cols'] = [
+        { wch: 28 }, { wch: 14 }, { wch: 18 },
+        { wch: 10 }, { wch: 14 }, { wch: 16 },
+      ];
+
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Facturación');
       XLSX.utils.book_append_sheet(wb, wsAnticipos, 'Anticipos por Cliente');
+      XLSX.utils.book_append_sheet(wb, wsPorCliente, 'Resumen por Cliente');
       XLSX.writeFile(wb, `reporte_facturacion_${filtros.fechaInicio}_${filtros.fechaFin}.xlsx`);
     } catch (e) {
       console.error(e);
