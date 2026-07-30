@@ -35,6 +35,7 @@ import { supabase } from '@/lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import { useDashboardStats } from '@/hooks/useDashboardStats';
 import { useDashboardResumen } from '@/hooks/useDashboardResumen';
+import { fetchAnticiposPorNIT } from '@/hooks/useAnticipos';
 import ProduccionVentasChart from '@/components/charts/ProduccionVentasChart';
 import ProduccionDiariaLineChart from '@/components/charts/ProduccionDiariaLineChart';
 import MovimientosExcavacionChart from '@/components/charts/MovimientosExcavacionChart';
@@ -125,12 +126,16 @@ const Dashboard = () => {
   const descargarReporteFacturacion = async () => {
     setDescargando(true);
     try {
-      const { data, error } = await supabase
-        .from('ventas')
-        .select('fecha, recibo, silice, nombre_cliente, nit_cliente, placa, cantidad_m3, valor_total, tipo_transaccion, banco, descuenta_anticipo')
-        .gte('fecha', filtros.fechaInicio)
-        .lte('fecha', filtros.fechaFin)
-        .order('fecha', { ascending: true });
+      // Ventas del periodo + saldos de anticipo por cliente (global, a hoy)
+      const [{ data, error }, saldosAnticipo] = await Promise.all([
+        supabase
+          .from('ventas')
+          .select('fecha, recibo, silice, nombre_cliente, nit_cliente, placa, cantidad_m3, valor_total, tipo_transaccion, banco, descuenta_anticipo')
+          .gte('fecha', filtros.fechaInicio)
+          .lte('fecha', filtros.fechaFin)
+          .order('fecha', { ascending: true }),
+        fetchAnticiposPorNIT(),
+      ]);
 
       if (error) throw error;
 
@@ -142,7 +147,7 @@ const Dashboard = () => {
       });
 
       const formaPago = (v: any): string => {
-        if (v.descuenta_anticipo) return 'Anticipo';
+        if (v.descuenta_anticipo) return 'Anticipo descontado';
         if (v.tipo_transaccion === 'Transferencia') return v.banco || 'Transferencia';
         return 'Efectivo';
       };
@@ -161,10 +166,27 @@ const Dashboard = () => {
       const ws = XLSX.utils.json_to_sheet(filas);
       ws['!cols'] = [
         { wch: 12 }, { wch: 10 }, { wch: 18 }, { wch: 28 },
-        { wch: 14 }, { wch: 12 }, { wch: 16 }, { wch: 16 },
+        { wch: 14 }, { wch: 12 }, { wch: 16 }, { wch: 18 },
       ];
+
+      // Hoja 2: estado de anticipos por cliente (saldo actual, sin filtro de fecha)
+      const filasAnticipos = saldosAnticipo.map(c => ({
+        'Cliente': c.nombre,
+        'NIT': c.nit,
+        'Correo': c.correo || '—',
+        'Anticipo Total ($)': c.totalAnticipo,
+        'Consumido ($)': c.consumo,
+        'Saldo Actual ($)': c.saldo,
+      }));
+      const wsAnticipos = XLSX.utils.json_to_sheet(filasAnticipos);
+      wsAnticipos['!cols'] = [
+        { wch: 28 }, { wch: 14 }, { wch: 28 },
+        { wch: 18 }, { wch: 16 }, { wch: 16 },
+      ];
+
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Facturación');
+      XLSX.utils.book_append_sheet(wb, wsAnticipos, 'Anticipos por Cliente');
       XLSX.writeFile(wb, `reporte_facturacion_${filtros.fechaInicio}_${filtros.fechaFin}.xlsx`);
     } catch (e) {
       console.error(e);
