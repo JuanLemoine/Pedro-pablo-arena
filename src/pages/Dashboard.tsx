@@ -184,15 +184,17 @@ const Dashboard = () => {
         { wch: 18 }, { wch: 16 }, { wch: 16 },
       ];
 
-      // Hoja 3: mismas ventas del periodo, agrupadas por cliente y tipo de arena
-      // Se agrupa por nombre de cliente (no por NIT) porque hay ventas del mismo
-      // cliente sin NIT registrado, que si no partirían el total en dos filas.
-      type Grupo = { cliente: string; nits: Set<string>; silice: string; ventas: number; m3: number; valor: number };
+      // Hoja 3: mismas ventas del periodo, agrupadas por cliente, tipo de arena
+      // y forma de pago. Se agrupa por nombre de cliente (no por NIT) porque hay
+      // ventas del mismo cliente sin NIT registrado, que si no partirían el
+      // total en dos filas.
+      type Grupo = { cliente: string; nits: Set<string>; silice: string; pago: string; ventas: number; m3: number; valor: number };
       const grupos = new Map<string, Grupo>();
       facturadas.forEach(v => {
         const cliente = (v as any).nombre_cliente || '—';
-        const clave = `${cliente}|${v.silice}`;
-        const g = grupos.get(clave) || { cliente, nits: new Set<string>(), silice: v.silice, ventas: 0, m3: 0, valor: 0 };
+        const pago = formaPago(v);
+        const clave = `${cliente}|${v.silice}|${pago}`;
+        const g = grupos.get(clave) || { cliente, nits: new Set<string>(), silice: v.silice, pago, ventas: 0, m3: 0, valor: 0 };
         if ((v as any).nit_cliente) g.nits.add((v as any).nit_cliente);
         g.ventas += 1;
         g.m3 += Number(v.cantidad_m3);
@@ -201,12 +203,16 @@ const Dashboard = () => {
       });
 
       const filasPorCliente = Array.from(grupos.values())
-        // Cliente alfabético; dentro de cada cliente, por tipo de arena
-        .sort((a, b) => a.cliente.localeCompare(b.cliente, 'es') || a.silice.localeCompare(b.silice, 'es'))
+        // Cliente alfabético; dentro de cada cliente, por tipo de arena y forma de pago
+        .sort((a, b) =>
+          a.cliente.localeCompare(b.cliente, 'es') ||
+          a.silice.localeCompare(b.silice, 'es') ||
+          a.pago.localeCompare(b.pago, 'es'))
         .map(g => ({
           'Cliente': g.cliente,
           'NIT': Array.from(g.nits).join(' / ') || '—',
           'Tipo de Arena': g.silice,
+          'Forma de Pago': g.pago,
           'N° Ventas': g.ventas,
           'Cantidad m³': Math.round(g.m3 * 100) / 100,
           'Valor Total ($)': Math.round(g.valor),
@@ -214,7 +220,7 @@ const Dashboard = () => {
 
       const wsPorCliente = XLSX.utils.json_to_sheet(filasPorCliente);
       wsPorCliente['!cols'] = [
-        { wch: 28 }, { wch: 14 }, { wch: 18 },
+        { wch: 28 }, { wch: 14 }, { wch: 18 }, { wch: 18 },
         { wch: 10 }, { wch: 14 }, { wch: 16 },
       ];
 
