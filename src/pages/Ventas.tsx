@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useVentas, useCreateVentas, useUpdateVenta, useDeleteVenta } from '@/hooks/useVentas';
 import { usePlacasClientes, useClientesInfo, formatearPlaca, validarPlaca } from '@/hooks/usePlacaCliente';
+import { ReciboInput } from '@/components/ReciboInput';
 
 type TipoTransaccion = 'Venta' | 'Donación' | 'Transferencia';
 
@@ -68,6 +69,7 @@ const Ventas = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [ventasEnCurso, setVentasEnCurso] = useState<VentaForm[]>([getEmptyForm()]);
+  const [recibosDuplicados, setRecibosDuplicados] = useState<Record<number, boolean>>({});
   const [openCalendars, setOpenCalendars] = useState<boolean[]>([false]);
   const [openClientePopovers, setOpenClientePopovers] = useState<boolean[]>([false]);
 
@@ -125,6 +127,37 @@ const Ventas = () => {
     setOpenClientePopovers(newOpen);
   };
 
+  // ── Unicidad del N° de recibo ───────────────────────────────────────────────
+  // El bloqueo definitivo lo hace la base de datos (trigger ventas_recibo_unico);
+  // esto es la validación en pantalla para avisar antes de intentar guardar.
+  const registrarEstadoRecibo = useCallback((index: number, duplicado: boolean) => {
+    setRecibosDuplicados(prev => {
+      if (!!prev[index] === duplicado) return prev;
+      return { ...prev, [index]: duplicado };
+    });
+  }, []);
+
+  /** Índices de filas cuyo recibo se repite dentro del propio formulario */
+  const recibosRepetidosEnLote = useMemo(() => {
+    const vistos = new Map<string, number>();
+    const repetidos = new Set<number>();
+    ventasEnCurso.forEach((v, i) => {
+      const r = v.recibo.trim();
+      if (!r) return;
+      if (vistos.has(r)) {
+        repetidos.add(i);
+        repetidos.add(vistos.get(r)!);
+      } else {
+        vistos.set(r, i);
+      }
+    });
+    return repetidos;
+  }, [ventasEnCurso]);
+
+  const hayRecibosDuplicados =
+    recibosRepetidosEnLote.size > 0 ||
+    ventasEnCurso.some((_, i) => recibosDuplicados[i]);
+
   const validarVenta = (venta: VentaForm): boolean => {
     return !!(
       venta.silice &&
@@ -139,6 +172,11 @@ const Ventas = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (hayRecibosDuplicados) {
+      toast.error('Hay un N° de recibo ya registrado. Corríjalo para poder guardar.');
+      return;
+    }
 
     const ventasValidas = ventasEnCurso.filter(validarVenta);
 
@@ -174,6 +212,7 @@ const Ventas = () => {
         {
           onSuccess: () => {
             setVentasEnCurso([getEmptyForm()]);
+    setRecibosDuplicados({});
             setOpenCalendars([false]);
             setOpenClientePopovers([false]);
             setShowForm(false);
@@ -185,6 +224,7 @@ const Ventas = () => {
       createVentas.mutate(nuevasVentas, {
         onSuccess: () => {
           setVentasEnCurso([getEmptyForm()]);
+    setRecibosDuplicados({});
           setOpenCalendars([false]);
           setOpenClientePopovers([false]);
 
@@ -224,6 +264,7 @@ const Ventas = () => {
   const handleCancelEdit = () => {
     setEditingId(null);
     setVentasEnCurso([getEmptyForm()]);
+    setRecibosDuplicados({});
     setOpenCalendars([false]);
     setOpenClientePopovers([false]);
     setShowForm(false);
@@ -509,14 +550,14 @@ const Ventas = () => {
                     </Select>
                   </div>
                   
-                  <div className="space-y-1">
-                    <Label className="text-xs">N° Recibo *</Label>
-                    <Input
-                      placeholder="001"
-                      value={venta.recibo}
-                      onChange={(e) => actualizarVenta(index, 'recibo', e.target.value)}
-                    />
-                  </div>
+                  <ReciboInput
+                    index={index}
+                    value={venta.recibo}
+                    onChange={(valor) => actualizarVenta(index, 'recibo', valor)}
+                    ignorarId={editingId}
+                    duplicadoEnLote={recibosRepetidosEnLote.has(index)}
+                    onEstadoChange={registrarEstadoRecibo}
+                  />
                   
                   <div className="space-y-1">
                     <Label className="text-xs">Placa Volqueta *</Label>
@@ -789,7 +830,7 @@ const Ventas = () => {
                 <Button type="button" variant="outline" onClick={handleCancelEdit}>
                     Cancelar
                   </Button>
-                  <Button type="submit" className="gap-2" disabled={createVentas.isPending || updateVenta.isPending}>
+                  <Button type="submit" className="gap-2" disabled={createVentas.isPending || updateVenta.isPending || hayRecibosDuplicados}>
                     {(createVentas.isPending || updateVenta.isPending) ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (

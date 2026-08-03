@@ -3,6 +3,16 @@ import { supabase } from '@/lib/supabase';
 import type { Venta, VentaInsert } from '@/types/database';
 import { toast } from 'sonner';
 
+/**
+ * El trigger ventas_recibo_unico rechaza recibos repetidos con un mensaje
+ * prefijado. Se traduce a texto legible para el usuario.
+ */
+const mensajeError = (mensaje: string): string => {
+  const dup = mensaje.match(/RECIBO_DUPLICADO:\s*(.*)/);
+  if (dup) return `N° de recibo repetido: ${dup[1].replace(/^el recibo /, 'el recibo ')}`;
+  return mensaje;
+};
+
 export const useVentas = () => {
   return useQuery({
     queryKey: ['ventas'],
@@ -52,7 +62,7 @@ export const useCreateVentas = () => {
       toast.success(`${data.length} venta(s) registrada(s) exitosamente`);
     },
     onError: (error: Error) => {
-      toast.error(`Error al guardar: ${error.message}`);
+      toast.error(`Error al guardar: ${mensajeError(error.message)}`);
     }
   });
 };
@@ -95,7 +105,7 @@ export const useUpdateVenta = () => {
     },
     onError: (error: Error) => {
       console.error('[useUpdateVenta] onError:', error.message);
-      toast.error(`Error al actualizar: ${error.message}`);
+      toast.error(`Error al actualizar: ${mensajeError(error.message)}`);
     }
   });
 };
