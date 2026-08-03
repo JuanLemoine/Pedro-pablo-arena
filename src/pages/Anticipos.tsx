@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Plus, CalendarIcon, Save, Loader2, Trash2, Edit, Search, Wallet, User, Download, Filter, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { MoneyInput } from '@/components/MoneyInput';
 import {
   useAnticipos, useCreateAnticipo, useUpdateAnticipo, useDeleteAnticipo,
   useAnticiposPorNIT, useClientesAnticipo,
@@ -293,12 +294,9 @@ const Anticipos = () => {
                 {/* Valor */}
                 <div className="space-y-1">
                   <Label className="text-xs font-semibold">Valor del anticipo ($) *</Label>
-                  <Input
-                    type="number"
-                    placeholder="0"
+                  <MoneyInput
                     value={form.valor}
-                    onChange={e => actualizarForm('valor', e.target.value)}
-                    min="0"
+                    onChange={valor => actualizarForm('valor', valor)}
                   />
                 </div>
               </div>

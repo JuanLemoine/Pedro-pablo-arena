@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils';
 import { useVentas, useCreateVentas, useUpdateVenta, useDeleteVenta } from '@/hooks/useVentas';
 import { usePlacasClientes, useClientesInfo, formatearPlaca, validarPlaca } from '@/hooks/usePlacaCliente';
 import { ReciboInput } from '@/components/ReciboInput';
+import { MoneyInput } from '@/components/MoneyInput';
 
 type TipoTransaccion = 'Venta' | 'Donación' | 'Transferencia';
 
@@ -705,11 +706,9 @@ const Ventas = () => {
                   
                   <div className="space-y-1">
                     <Label className="text-xs">Valor Total ($) *</Label>
-                    <Input
-                      type="number"
-                      placeholder="0"
+                    <MoneyInput
                       value={venta.valorTotal}
-                      onChange={(e) => actualizarVenta(index, 'valorTotal', e.target.value)}
+                      onChange={(valor) => actualizarVenta(index, 'valorTotal', valor)}
                     />
                   </div>
                   
