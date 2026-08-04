@@ -27,6 +27,7 @@ export const CAPACIDAD_VOLQUETAS: Record<string, number> = {
   'XFJ040': 7,
   'SBE944': 7,
   'AQJ946': 7,
+  'SWR157': 7,
 };
 
 export const CAPACIDAD_DEFAULT = 7;
