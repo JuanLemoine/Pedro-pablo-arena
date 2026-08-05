@@ -30,12 +30,15 @@ import {
   Wallet,
   FileDown,
   Loader2,
+  Mountain,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import { useDashboardStats } from '@/hooks/useDashboardStats';
 import { useDashboardResumen } from '@/hooks/useDashboardResumen';
 import { fetchAnticiposPorNIT } from '@/hooks/useAnticipos';
+import { getCapacidadVolqueta, calcularM3PorMovimiento } from '@/lib/volquetas';
+import { toast } from 'sonner';
 import ProduccionVentasChart from '@/components/charts/ProduccionVentasChart';
 import ProduccionDiariaLineChart from '@/components/charts/ProduccionDiariaLineChart';
 import MovimientosExcavacionChart from '@/components/charts/MovimientosExcavacionChart';
@@ -77,6 +80,25 @@ const FechaPicker = ({ label, value, onChange }: { label: string; value: string;
       </PopoverContent>
     </Popover>
   );
+};
+
+/**
+ * Supabase devuelve como máximo 1.000 filas por petición. Los reportes deben
+ * incluir el periodo completo, así que se pide por páginas hasta agotarlo.
+ */
+const TAMANO_PAGINA = 1000;
+
+const traerTodo = async <T,>(
+  construirQuery: (desde: number, hasta: number) => PromiseLike<{ data: T[] | null; error: unknown }>
+): Promise<T[]> => {
+  const todo: T[] = [];
+  for (let desde = 0; ; desde += TAMANO_PAGINA) {
+    const { data, error } = await construirQuery(desde, desde + TAMANO_PAGINA - 1);
+    if (error) throw error;
+    const pagina = data || [];
+    todo.push(...pagina);
+    if (pagina.length < TAMANO_PAGINA) return todo;
+  }
 };
 
 // ── Chip de métrica compacta ──────────────────────────────────────────────────
@@ -122,22 +144,25 @@ const Dashboard = () => {
   const { data: resumen, isLoading: resumenLoading } = useDashboardResumen(filtros);
 
   const [descargando, setDescargando] = useState(false);
+  const [descargandoMinas, setDescargandoMinas] = useState(false);
 
   const descargarReporteFacturacion = async () => {
     setDescargando(true);
     try {
       // Ventas del periodo + saldos de anticipo por cliente (global, a hoy)
-      const [{ data, error }, saldosAnticipo] = await Promise.all([
-        supabase
-          .from('ventas')
-          .select('fecha, recibo, silice, nombre_cliente, nit_cliente, placa, cantidad_m3, valor_total, tipo_transaccion, banco, descuenta_anticipo')
-          .gte('fecha', filtros.fechaInicio)
-          .lte('fecha', filtros.fechaFin)
-          .order('fecha', { ascending: true }),
+      const [data, saldosAnticipo] = await Promise.all([
+        traerTodo<any>((desde, hasta) =>
+          supabase
+            .from('ventas')
+            .select('fecha, recibo, silice, nombre_cliente, nit_cliente, placa, cantidad_m3, valor_total, tipo_transaccion, banco, descuenta_anticipo')
+            .gte('fecha', filtros.fechaInicio)
+            .lte('fecha', filtros.fechaFin)
+            .order('fecha', { ascending: true })
+            .order('id', { ascending: true })
+            .range(desde, hasta)
+        ),
         fetchAnticiposPorNIT(),
       ]);
-
-      if (error) throw error;
 
       // Excluir Donación y banco='Crédito' (no facturado)
       const facturadas = (data || []).filter(v => {
@@ -233,6 +258,137 @@ const Dashboard = () => {
       console.error(e);
     } finally {
       setDescargando(false);
+    }
+  };
+
+  const descargarReporteMinas = async () => {
+    setDescargandoMinas(true);
+    try {
+      // Solo movimientos que salieron del punto de excavación: son los que
+      // representan material extraído de la mina.
+      const movimientos = await traerTodo<any>((desde, hasta) =>
+        supabase
+          .from('movimientos')
+          .select('fecha, mina, silice, placa, origen, destino, cantidad_movimientos')
+          .eq('origen', 'Punto de excavación')
+          .gte('fecha', filtros.fechaInicio)
+          .lte('fecha', filtros.fechaFin)
+          .order('fecha', { ascending: true })
+          .order('id', { ascending: true })
+          .range(desde, hasta)
+      );
+
+      if (movimientos.length === 0) {
+        toast.warning('No hay movimientos desde punto de excavación en el rango seleccionado');
+        return;
+      }
+
+      type Resumen = {
+        mina: string;
+        movimientos: number;
+        registros: number;
+        m3Extraidos: number;
+        m3Producidos: number;
+        porSilice: Map<string, { movimientos: number; m3Extraidos: number; m3Producidos: number }>;
+      };
+      const minas = new Map<string, Resumen>();
+
+      movimientos.forEach(m => {
+        const mina = m.mina || '(sin mina)';
+        const viajes = Number(m.cantidad_movimientos) || 0;
+        // Lo que salió de la mina es el volumen transportado (capacidad × viajes);
+        // los m³ producidos aplican además el factor de producción del flujo.
+        const m3Extraidos = getCapacidadVolqueta(m.placa) * viajes;
+        const m3Producidos =
+          calcularM3PorMovimiento(m.placa, m.silice, m.origen, m.destino).m3Producidos * viajes;
+
+        const r = minas.get(mina) || {
+          mina, movimientos: 0, registros: 0, m3Extraidos: 0, m3Producidos: 0,
+          porSilice: new Map(),
+        };
+        r.movimientos += viajes;
+        r.registros += 1;
+        r.m3Extraidos += m3Extraidos;
+        r.m3Producidos += m3Producidos;
+
+        const s = r.porSilice.get(m.silice) || { movimientos: 0, m3Extraidos: 0, m3Producidos: 0 };
+        s.movimientos += viajes;
+        s.m3Extraidos += m3Extraidos;
+        s.m3Producidos += m3Producidos;
+        r.porSilice.set(m.silice, s);
+
+        minas.set(mina, r);
+      });
+
+      const ordenadas = Array.from(minas.values()).sort((a, b) => b.movimientos - a.movimientos);
+      const r1 = (n: number) => Math.round(n * 100) / 100;
+
+      // Hoja 1: total por mina
+      const filasResumen = ordenadas.map(r => ({
+        'Mina': r.mina,
+        'Registros': r.registros,
+        'Movimientos': r.movimientos,
+        'm³ Extraídos': r1(r.m3Extraidos),
+        'm³ Producidos': r1(r.m3Producidos),
+      }));
+      filasResumen.push({
+        'Mina': 'TOTAL',
+        'Registros': ordenadas.reduce((s, r) => s + r.registros, 0),
+        'Movimientos': ordenadas.reduce((s, r) => s + r.movimientos, 0),
+        'm³ Extraídos': r1(ordenadas.reduce((s, r) => s + r.m3Extraidos, 0)),
+        'm³ Producidos': r1(ordenadas.reduce((s, r) => s + r.m3Producidos, 0)),
+      });
+      const wsResumen = XLSX.utils.json_to_sheet(filasResumen);
+      wsResumen['!cols'] = [{ wch: 26 }, { wch: 11 }, { wch: 13 }, { wch: 14 }, { wch: 15 }];
+
+      // Hoja 2: mina desglosada por tipo de arena
+      const filasSilice = ordenadas.flatMap(r =>
+        Array.from(r.porSilice.entries())
+          .sort((a, b) => a[0].localeCompare(b[0], 'es'))
+          .map(([silice, s]) => ({
+            'Mina': r.mina,
+            'Tipo de Arena': silice,
+            'Movimientos': s.movimientos,
+            'm³ Extraídos': r1(s.m3Extraidos),
+            'm³ Producidos': r1(s.m3Producidos),
+          }))
+      );
+      const wsSilice = XLSX.utils.json_to_sheet(filasSilice);
+      wsSilice['!cols'] = [{ wch: 26 }, { wch: 20 }, { wch: 13 }, { wch: 14 }, { wch: 15 }];
+
+      // Hoja 3: detalle de los movimientos incluidos
+      const filasDetalle = movimientos.map(m => {
+        const viajes = Number(m.cantidad_movimientos) || 0;
+        return {
+          'Fecha': m.fecha,
+          'Mina': m.mina || '(sin mina)',
+          'Tipo de Arena': m.silice,
+          'Placa': m.placa,
+          'Capacidad (m³)': getCapacidadVolqueta(m.placa),
+          'Destino': m.destino,
+          'Movimientos': viajes,
+          'm³ Extraídos': r1(getCapacidadVolqueta(m.placa) * viajes),
+          'm³ Producidos': r1(
+            calcularM3PorMovimiento(m.placa, m.silice, m.origen, m.destino).m3Producidos * viajes
+          ),
+        };
+      });
+      const wsDetalle = XLSX.utils.json_to_sheet(filasDetalle);
+      wsDetalle['!cols'] = [
+        { wch: 12 }, { wch: 26 }, { wch: 20 }, { wch: 10 },
+        { wch: 14 }, { wch: 14 }, { wch: 13 }, { wch: 14 }, { wch: 15 },
+      ];
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen por Mina');
+      XLSX.utils.book_append_sheet(wb, wsSilice, 'Mina y Tipo de Arena');
+      XLSX.utils.book_append_sheet(wb, wsDetalle, 'Detalle Movimientos');
+      XLSX.writeFile(wb, `reporte_minas_${filtros.fechaInicio}_${filtros.fechaFin}.xlsx`);
+    } catch (e) {
+      console.error(e);
+      toast.error('No se pudo generar el reporte de minas');
+    } finally {
+      setDescargandoMinas(false);
     }
   };
 
@@ -333,7 +489,7 @@ const Dashboard = () => {
               </Button>
             )}
 
-            <div className="ml-auto">
+            <div className="ml-auto flex flex-wrap gap-2">
               <Button
                 variant="outline"
                 size="sm"
@@ -345,6 +501,19 @@ const Dashboard = () => {
                   ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   : <FileDown className="h-3.5 w-3.5" />}
                 Reporte para Facturación
+              </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={descargarReporteMinas}
+                disabled={descargandoMinas}
+                className="gap-2 border-amber-300 text-amber-700 hover:bg-amber-50 hover:text-amber-800"
+              >
+                {descargandoMinas
+                  ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  : <Mountain className="h-3.5 w-3.5" />}
+                Reporte de Movimientos de Minas
               </Button>
             </div>
           </div>
