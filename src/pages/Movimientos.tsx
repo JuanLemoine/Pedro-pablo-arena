@@ -30,6 +30,8 @@ import {
 import { useMovimientos, useCreateMovimiento, useUpdateMovimiento, useDeleteMovimiento } from '@/hooks/useMovimientos';
 import { usePlacas } from '@/hooks/useVolquetas';
 import { calcularM3PorMovimiento } from '@/lib/volquetas';
+import { validarPlaca } from '@/lib/placas';
+import { cn } from '@/lib/utils';
 
 const MINAS = [
   'MINA ROZO',
@@ -121,6 +123,11 @@ const Movimientos = () => {
 
     if (!formData.mina || !formData.silice || !formData.placa || !formData.origen || !formData.destino || !formData.cantidad_movimientos) {
       toast.error('Por favor complete todos los campos requeridos');
+      return;
+    }
+
+    if (!validarPlaca(formData.placa)) {
+      toast.error(`Placa "${formData.placa}" inválida: debe ser 3 letras y 3 números, ej. SWR157.`);
       return;
     }
 
@@ -656,7 +663,10 @@ const Movimientos = () => {
                       variant="outline"
                       role="combobox"
                       aria-expanded={openPlaca}
-                      className="w-full justify-between font-normal"
+                      className={cn(
+                        "w-full justify-between font-normal",
+                        formData.placa && !validarPlaca(formData.placa) && "border-red-400 text-red-600"
+                      )}
                     >
                       {formData.placa || "Seleccione placa..."}
                       <Truck className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -692,8 +702,11 @@ const Movimientos = () => {
                     </Command>
                   </PopoverContent>
                 </Popover>
+                {formData.placa && !validarPlaca(formData.placa) && (
+                  <p className="text-xs text-red-600">Placa inválida: use 3 letras y 3 números</p>
+                )}
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="origen">Origen *</Label>
                 <Select

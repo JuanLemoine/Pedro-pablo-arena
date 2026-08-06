@@ -1,17 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 
-/** Formato válido de placa: 3 letras seguidas de 3 dígitos, ej. BMW345 */
-export const PLACA_REGEX = /^[A-Z]{3}[0-9]{3}$/;
-
-export const validarPlaca = (placa: string): boolean => PLACA_REGEX.test(placa);
-
-export const formatearPlaca = (valor: string): string => {
-  const limpio = valor.toUpperCase().replace(/[^A-Z0-9]/g, '');
-  const letras = limpio.slice(0, 3).replace(/[^A-Z]/g, '');
-  const numeros = limpio.slice(3, 6).replace(/[^0-9]/g, '');
-  return letras + numeros;
-};
+// La validación de placa se movió a lib/placas.ts para que acopios y
+// movimientos también la usen. Se re-exporta para no romper los imports.
+export { PLACA_REGEX, validarPlaca, formatearPlaca } from '@/lib/placas';
 
 export interface ClienteInfo {
   nombre: string;

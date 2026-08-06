@@ -116,6 +116,15 @@ const Ventas = () => {
     setVentasEnCurso(nuevasVentas);
   };
 
+  /**
+   * Marca la placa como inválida solo cuando el usuario ya salió del campo:
+   * mientras escribe, "SWR15" está a medias, no está mal. Como formatearPlaca
+   * ya obliga a que cada posición sea del tipo correcto, el único error posible
+   * es que falten caracteres.
+   */
+  const placaIncompleta = (index: number, placa: string) =>
+    autocompleteplacaIndex !== index && placa.length > 0 && !validarPlaca(placa);
+
   const setCalendarOpen = (index: number, open: boolean) => {
     const newOpenCalendars = [...openCalendars];
     newOpenCalendars[index] = open;
@@ -176,6 +185,18 @@ const Ventas = () => {
 
     if (hayRecibosDuplicados) {
       toast.error('Hay un N° de recibo ya registrado. Corríjalo para poder guardar.');
+      return;
+    }
+
+    // Antes, una placa incompleta hacía que la venta se descartara en silencio
+    // dentro de validarVenta, contada solo como "datos incompletos". Se avisa
+    // explícitamente para que el usuario sepa qué corregir.
+    const placasInvalidas = ventasEnCurso.filter(v => v.placa && !validarPlaca(v.placa));
+    if (placasInvalidas.length > 0) {
+      toast.error(
+        `Placa incompleta (${placasInvalidas.map(v => v.placa).join(', ')}). ` +
+        'Debe ser 3 letras y 3 números, ej. SWR157.'
+      );
       return;
     }
 
@@ -576,10 +597,10 @@ const Ventas = () => {
                         autoComplete="off"
                         className={cn(
                           'uppercase font-mono tracking-widest pr-8',
-                          venta.placa.length === 6 && !validarPlaca(venta.placa) && 'border-red-400 focus-visible:ring-red-400'
+                          placaIncompleta(index, venta.placa) && 'border-red-400 focus-visible:ring-red-400'
                         )}
                       />
-                      {venta.placa.length === 6 && !validarPlaca(venta.placa) && (
+                      {placaIncompleta(index, venta.placa) && (
                         <AlertCircle className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-red-500" />
                       )}
                       {/* Dropdown autocompletado de placas */}
@@ -606,7 +627,7 @@ const Ventas = () => {
                         ) : null;
                       })()}
                     </div>
-                    {venta.placa.length === 6 && !validarPlaca(venta.placa) && (
+                    {placaIncompleta(index, venta.placa) && (
                       <p className="text-xs text-red-500">3 letras + 3 números (ej. BMW345)</p>
                     )}
                   </div>

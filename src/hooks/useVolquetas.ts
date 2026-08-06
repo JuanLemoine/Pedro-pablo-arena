@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { getPlacasDisponibles } from '@/lib/volquetas';
+import { validarPlaca } from '@/lib/placas';
 import type { Volqueta } from '@/types/database';
 
 export const useVolquetas = () => {
@@ -30,6 +31,10 @@ export const useVolquetas = () => {
  * falta en la tabla no se puede seleccionar aunque su capacidad ya esté
  * definida. Es unión, no reemplazo: ninguna placa que hoy esté en la tabla
  * desaparece.
+ *
+ * Se descarta lo que no tenga formato de placa: la lista es el origen de los
+ * registros nuevos, así que una entrada mal escrita en la tabla no debe poder
+ * seleccionarse.
  */
 export const usePlacas = () => {
   const { data: volquetas, ...rest } = useVolquetas();
@@ -39,7 +44,9 @@ export const usePlacas = () => {
   ]);
   return {
     ...rest,
-    data: Array.from(placas).sort((a, b) => a.localeCompare(b)),
+    data: Array.from(placas)
+      .filter(validarPlaca)
+      .sort((a, b) => a.localeCompare(b)),
   };
 };
 

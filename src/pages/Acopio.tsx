@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils';
 import { useAcopios, useCreateAcopios, useUpdateAcopio, useDeleteAcopio } from '@/hooks/useAcopios';
 import { usePlacas } from '@/hooks/useVolquetas';
 import { getCapacidadVolqueta, calcularM3Producidos } from '@/lib/volquetas';
+import { validarPlaca } from '@/lib/placas';
 
 interface AcopioForm {
   fecha: Date;
@@ -93,11 +94,23 @@ const Acopio = () => {
   };
 
   const validarAcopio = (acopio: AcopioForm): boolean => {
-    return !!(acopio.fuente && acopio.silice && acopio.placa && acopio.cantidadViajes);
+    return !!(acopio.fuente && acopio.silice && acopio.placa && validarPlaca(acopio.placa) && acopio.cantidadViajes);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Una placa con formato inválido se avisa aparte: solo puede llegar aquí al
+    // editar un registro viejo del histórico importado, y el mensaje genérico de
+    // "datos incompletos" no diría cuál es el problema.
+    const conPlacaInvalida = acopiosEnCurso.filter(a => a.placa && !validarPlaca(a.placa));
+    if (conPlacaInvalida.length > 0) {
+      toast.error(
+        `Placa con formato inválido (${conPlacaInvalida.map(a => a.placa).join(', ')}). ` +
+        'Debe ser 3 letras y 3 números, ej. SWR157.'
+      );
+      return;
+    }
 
     const acopiosValidos = acopiosEnCurso.filter(validarAcopio);
 
@@ -479,7 +492,10 @@ const Acopio = () => {
                           variant="outline"
                           role="combobox"
                           aria-expanded={openPopovers[index]}
-                          className="w-full justify-between font-normal"
+                          className={cn(
+                            "w-full justify-between font-normal",
+                            acopio.placa && !validarPlaca(acopio.placa) && "border-red-400 text-red-600"
+                          )}
                         >
                           {acopio.placa || "Seleccionar placa..."}
                           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -514,8 +530,11 @@ const Acopio = () => {
                         </Command>
                       </PopoverContent>
                     </Popover>
+                    {acopio.placa && !validarPlaca(acopio.placa) && (
+                      <p className="text-xs text-red-600">Placa inválida: use 3 letras y 3 números</p>
+                    )}
                   </div>
-                  
+
                   <div className="space-y-1">
                     <Label className="lg:hidden text-xs">Cantidad de Viajes *</Label>
                     <Input
