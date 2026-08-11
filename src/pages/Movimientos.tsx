@@ -44,32 +44,32 @@ const MINAS = [
 const SILICES = ['Silice A - Peña', 'Silice B - Pozo', 'Silice C - Arena Fina'];
 
 // Función para obtener los orígenes disponibles según el tipo de sílice
-const getOrigenesDisponibles = (silice: string): string[] => {
-  if (silice === 'Silice A - Peña') {
-    // Silice A puede salir del punto de excavación o de la zaranda
-    return ['Punto de excavación', 'Zaranda'];
-  } else if (silice === 'Silice B - Pozo') {
-    // Silice B puede salir del punto de excavación o de la zaranda
-    return ['Punto de excavación', 'Zaranda'];
-  }
-  return ['Punto de excavación', 'Zaranda'];
+// Trituradora y Clasificadora son orígenes de retorno: el material vuelve a la
+// zaranda. Aplican a los tres sílices.
+const getOrigenesDisponibles = (_silice: string): string[] => {
+  return ['Punto de excavación', 'Zaranda', 'Trituradora', 'Clasificadora'];
 };
 
 // Función para obtener los destinos disponibles según el tipo de sílice y origen
 const getDestinosDisponibles = (silice: string, origen: string): string[] => {
+  // Retorno a zaranda: único destino posible desde estos orígenes
+  if (origen === 'Trituradora' || origen === 'Clasificadora') {
+    return ['Zaranda'];
+  }
+
   if (silice === 'Silice A - Peña') {
-    // Silice A - Peña: desde punto de excavación solo va a Zaranda
+    // Silice A - Peña: desde punto de excavación va a Zaranda o Tierra
     if (origen === 'Punto de excavación') {
-      return ['Zaranda'];
+      return ['Zaranda', 'Tierra'];
     }
     // Silice A - Peña: desde Zaranda va a Trituradora, Clasificadora o Repaso
     if (origen === 'Zaranda') {
       return ['Trituradora', 'Clasificadora', 'Repaso', 'Revolver'];
     }
   } else if (silice === 'Silice B - Pozo' || silice === 'Silice C - Arena Fina') {
-    // Desde punto de excavación va a Zaranda o Trituradora
+    // Desde punto de excavación va a Zaranda, Trituradora o Tierra
     if (origen === 'Punto de excavación') {
-      return ['Zaranda', 'Trituradora'];
+      return ['Zaranda', 'Trituradora', 'Tierra'];
     }
     // Desde Zaranda va a Trituradora, Clasificadora o Repaso
     if (origen === 'Zaranda') {
@@ -286,9 +286,14 @@ const Movimientos = () => {
   };
 
   const getOrigenBadge = (origen: string) => {
-    const isZaranda = origen === 'Zaranda';
+    const colors: Record<string, string> = {
+      'Punto de excavación': 'bg-emerald-100 text-emerald-700 border-emerald-200',
+      'Zaranda': 'bg-yellow-100 text-yellow-700 border-yellow-200',
+      'Trituradora': 'bg-slate-100 text-slate-700 border-slate-200',
+      'Clasificadora': 'bg-teal-100 text-teal-700 border-teal-200',
+    };
     return (
-      <Badge variant="outline" className={isZaranda ? 'bg-yellow-100 text-yellow-700 border-yellow-200' : 'bg-emerald-100 text-emerald-700 border-emerald-200'}>
+      <Badge variant="outline" className={colors[origen] || 'bg-gray-100 text-gray-700'}>
         {origen}
       </Badge>
     );
@@ -301,6 +306,7 @@ const Movimientos = () => {
       'Zaranda': 'bg-violet-100 text-violet-700 border-violet-200',
       'Repaso': 'bg-orange-100 text-orange-700 border-orange-200',
       'Revolver': 'bg-pink-100 text-pink-700 border-pink-200',
+      'Tierra': 'bg-amber-100 text-amber-800 border-amber-200',
     };
     return (
       <Badge variant="outline" className={colors[destino] || 'bg-gray-100 text-gray-700'}>
@@ -390,6 +396,8 @@ const Movimientos = () => {
                 <SelectContent>
                   <SelectItem value="Punto de excavación">Punto de excavación</SelectItem>
                   <SelectItem value="Zaranda">Zaranda</SelectItem>
+                  <SelectItem value="Trituradora">Trituradora</SelectItem>
+                  <SelectItem value="Clasificadora">Clasificadora</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -407,6 +415,7 @@ const Movimientos = () => {
                   <SelectItem value="Zaranda">Zaranda</SelectItem>
                   <SelectItem value="Repaso">Repaso</SelectItem>
                   <SelectItem value="Revolver">Revolver</SelectItem>
+                  <SelectItem value="Tierra">Tierra</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -715,10 +724,14 @@ const Movimientos = () => {
                     // Al cambiar origen, verificar si el destino actual es válido
                     const nuevosDestinos = getDestinosDisponibles(formData.silice, value);
                     const destinoValido = nuevosDestinos.includes(formData.destino);
-                    setFormData({ 
-                      ...formData, 
-                      origen: value, 
-                      destino: destinoValido ? formData.destino : '' 
+                    setFormData({
+                      ...formData,
+                      origen: value,
+                      // Si el origen solo admite un destino (Trituradora y
+                      // Clasificadora solo van a Zaranda), se elige solo.
+                      destino: destinoValido
+                        ? formData.destino
+                        : nuevosDestinos.length === 1 ? nuevosDestinos[0] : '',
                     });
                   }}
                   disabled={!formData.silice}

@@ -94,6 +94,9 @@ export const calcularM3Producidos = (viajes: { placa: string; cantidad_viajes: n
 //   Silice B - Pozo  | Punto de excavación → Trituradora   | 70.00%
 //   Silice B - Pozo  | Zaranda → Trituradora               | 23.10%  → resulta Peña
 //   Silice B - Pozo  | Zaranda → Clasificadora             | 23.10%  → resulta Peña
+//   (todas)          | Punto de excavación → Tierra        | 67.00%
+//   (todas)          | Trituradora → Zaranda               | 67.00%
+//   (todas)          | Clasificadora → Zaranda             | 67.00%
 // ──────────────────────────────────────────────────────────────────────────────
 
 // Cuando el material sale de Punto de excavación → Zaranda, la zaranda genera
@@ -104,6 +107,10 @@ export const calcularM3Producidos = (viajes: { placa: string; cantidad_viajes: n
 export const PF_EXCAVACION_ZARANDA = 0.67;
 export const PF_ZARANDA_DESTINO    = 0.231;
 export const PF_EXCAVACION_TRITURADORA_POZO = 0.70;
+/** Punto de excavación → Tierra. Mismo rendimiento que hacia Zaranda. */
+export const PF_EXCAVACION_TIERRA  = 0.67;
+/** Retorno a la zaranda desde Trituradora o Clasificadora. */
+export const PF_RETORNO_ZARANDA    = 0.67;
 export const PF_PENA_RESIDUOS      = 0.231;         // fracción fina que sale en zaranda
 export const PF_GRANZON            = 1 - 0.67 - 0.231; // ≈ 0.099 (fracción gruesa)
 
@@ -111,6 +118,7 @@ const PORCENTAJES_ARENA = {
   'Silice A - Peña': {
     'Punto de excavación': {
       'Zaranda': PF_EXCAVACION_ZARANDA,
+      'Tierra': PF_EXCAVACION_TIERRA,
     },
     'Zaranda': {
       'Trituradora': PF_ZARANDA_DESTINO,
@@ -118,27 +126,47 @@ const PORCENTAJES_ARENA = {
       'Repaso': PF_ZARANDA_DESTINO,
       'Revolver': PF_ZARANDA_DESTINO,
     },
+    'Trituradora': {
+      'Zaranda': PF_RETORNO_ZARANDA,
+    },
+    'Clasificadora': {
+      'Zaranda': PF_RETORNO_ZARANDA,
+    },
   },
   'Silice B - Pozo': {
     'Punto de excavación': {
       'Zaranda': PF_EXCAVACION_ZARANDA,
       'Trituradora': PF_EXCAVACION_TRITURADORA_POZO,
+      'Tierra': PF_EXCAVACION_TIERRA,
     },
     'Zaranda': {
       'Trituradora': PF_ZARANDA_DESTINO,  // Resultado: Silice A - Peña
       'Clasificadora': PF_ZARANDA_DESTINO, // Resultado: Silice A - Peña
       'Repaso': PF_ZARANDA_DESTINO,        // Resultado: Silice A - Peña
+    },
+    'Trituradora': {
+      'Zaranda': PF_RETORNO_ZARANDA,
+    },
+    'Clasificadora': {
+      'Zaranda': PF_RETORNO_ZARANDA,
     },
   },
   'Silice C - Arena Fina': {
     'Punto de excavación': {
       'Zaranda': PF_EXCAVACION_ZARANDA,
       'Trituradora': PF_EXCAVACION_TRITURADORA_POZO,
+      'Tierra': PF_EXCAVACION_TIERRA,
     },
     'Zaranda': {
       'Trituradora': PF_ZARANDA_DESTINO,  // Resultado: Silice A - Peña
       'Clasificadora': PF_ZARANDA_DESTINO, // Resultado: Silice A - Peña
       'Repaso': PF_ZARANDA_DESTINO,        // Resultado: Silice A - Peña
+    },
+    'Trituradora': {
+      'Zaranda': PF_RETORNO_ZARANDA,
+    },
+    'Clasificadora': {
+      'Zaranda': PF_RETORNO_ZARANDA,
     },
   },
 };

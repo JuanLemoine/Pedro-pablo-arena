@@ -23,8 +23,8 @@ import { cn } from '@/lib/utils';
 import * as XLSX from 'xlsx';
 
 const SILICES = ['Silice A - Peña', 'Silice B - Pozo', 'Silice C - Arena Fina'];
-const ORIGENES = ['Punto de excavación', 'Zaranda'];
-const DESTINOS = ['Zaranda', 'Trituradora', 'Clasificadora'];
+const ORIGENES = ['Punto de excavación', 'Zaranda', 'Trituradora', 'Clasificadora'];
+const DESTINOS = ['Zaranda', 'Trituradora', 'Clasificadora', 'Repaso', 'Revolver', 'Tierra'];
 
 const ProduccionPorFlujo = () => {
   const [filtros, setFiltros] = useState<FiltrosProduccion>({});
@@ -134,9 +134,14 @@ const ProduccionPorFlujo = () => {
   };
 
   const getOrigenBadge = (origen: string) => {
-    const isZaranda = origen === 'Zaranda';
+    const colors: Record<string, string> = {
+      'Punto de excavación': 'bg-emerald-100 text-emerald-700 border-emerald-200',
+      'Zaranda': 'bg-yellow-100 text-yellow-700 border-yellow-200',
+      'Trituradora': 'bg-slate-100 text-slate-700 border-slate-200',
+      'Clasificadora': 'bg-teal-100 text-teal-700 border-teal-200',
+    };
     return (
-      <Badge variant="outline" className={isZaranda ? 'bg-yellow-100 text-yellow-700 border-yellow-200' : 'bg-emerald-100 text-emerald-700 border-emerald-200'}>
+      <Badge variant="outline" className={colors[origen] || 'bg-gray-100 text-gray-700'}>
         {origen}
       </Badge>
     );
@@ -147,6 +152,9 @@ const ProduccionPorFlujo = () => {
       'Trituradora': 'bg-slate-100 text-slate-700 border-slate-200',
       'Clasificadora': 'bg-teal-100 text-teal-700 border-teal-200',
       'Zaranda': 'bg-violet-100 text-violet-700 border-violet-200',
+      'Repaso': 'bg-orange-100 text-orange-700 border-orange-200',
+      'Revolver': 'bg-pink-100 text-pink-700 border-pink-200',
+      'Tierra': 'bg-amber-100 text-amber-800 border-amber-200',
     };
     return (
       <Badge variant="outline" className={colors[destino] || 'bg-gray-100 text-gray-700'}>
