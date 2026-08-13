@@ -1,7 +1,7 @@
 // Capacidad en m³ de cada volqueta
 // Por defecto: 7 m³
 // SVM306: 13 m³
-// SWR157 y BDJ249: 8 m³
+// SWR157 y SBJ249: 8 m³
 
 export const CAPACIDAD_VOLQUETAS: Record<string, number> = {
   'SAB643': 7,
@@ -29,7 +29,7 @@ export const CAPACIDAD_VOLQUETAS: Record<string, number> = {
   'SBE944': 7,
   'AQJ946': 7,
   'SWR157': 8,
-  'BDJ249': 8,
+  'SBJ249': 8,
   'AFE681': 7,
   'OKE331': 7,
   'SWJ304': 7,
