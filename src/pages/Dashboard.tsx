@@ -33,20 +33,17 @@ import {
   Mountain,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { traerTodo } from '@/lib/fetchTodo';
 import { useNavigate } from 'react-router-dom';
 import { useDashboardStats } from '@/hooks/useDashboardStats';
 import { useDashboardResumen } from '@/hooks/useDashboardResumen';
 import { fetchAnticiposPorNIT } from '@/hooks/useAnticipos';
 import { getCapacidadVolqueta, calcularM3PorMovimiento } from '@/lib/volquetas';
 import { toast } from 'sonner';
-import ProduccionVentasChart from '@/components/charts/ProduccionVentasChart';
 import ProduccionDiariaLineChart from '@/components/charts/ProduccionDiariaLineChart';
 import MovimientosExcavacionChart from '@/components/charts/MovimientosExcavacionChart';
-import ProgresoMensualChart from '@/components/charts/ProgresoMensualChart';
-import ProduccionPorFlujoChart from '@/components/charts/ProduccionPorFlujoChart';
-import ProduccionPorFlujo from '@/components/charts/ProduccionPorFlujo';
-import ProyeccionProduccion from '@/components/charts/ProyeccionProduccion';
 import VolquetasBalanceChart from '@/components/charts/VolquetasBalanceChart';
+import InformeGerencial from '@/components/informe/InformeGerencial';
 import { format, startOfMonth } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -80,25 +77,6 @@ const FechaPicker = ({ label, value, onChange }: { label: string; value: string;
       </PopoverContent>
     </Popover>
   );
-};
-
-/**
- * Supabase devuelve como máximo 1.000 filas por petición. Los reportes deben
- * incluir el periodo completo, así que se pide por páginas hasta agotarlo.
- */
-const TAMANO_PAGINA = 1000;
-
-const traerTodo = async <T,>(
-  construirQuery: (desde: number, hasta: number) => PromiseLike<{ data: T[] | null; error: unknown }>
-): Promise<T[]> => {
-  const todo: T[] = [];
-  for (let desde = 0; ; desde += TAMANO_PAGINA) {
-    const { data, error } = await construirQuery(desde, desde + TAMANO_PAGINA - 1);
-    if (error) throw error;
-    const pagina = data || [];
-    todo.push(...pagina);
-    if (pagina.length < TAMANO_PAGINA) return todo;
-  }
 };
 
 // ── Chip de métrica compacta ──────────────────────────────────────────────────
@@ -422,7 +400,7 @@ const Dashboard = () => {
       </div>
 
       {/* ── Panel de Filtros ─────────────────────────────────────────────────── */}
-      <Card className="shadow-card border-primary/10">
+      <Card className="shadow-card border-primary/10 no-print">
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
             <SlidersHorizontal className="h-4 w-4 text-primary" />
@@ -1020,103 +998,8 @@ const Dashboard = () => {
         fechaFin={filtros.fechaFin}
       />
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <ProduccionVentasChart tipoSilice={filtros.tipoSilice} fechaInicio={filtros.fechaInicio} fechaFin={filtros.fechaFin} />
-        <ProgresoMensualChart />
-      </div>
-
-      <ProduccionPorFlujoChart />
-      <ProyeccionProduccion />
-      <ProduccionPorFlujo />
-
-      {/* ── Ventas Recientes ─────────────────────────────────────────────────── */}
-      <Card className="shadow-card">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle className="text-lg font-semibold">Ventas Recientes</CardTitle>
-            <CardDescription>Últimas transacciones registradas</CardDescription>
-          </div>
-          <button onClick={() => navigate('/ventas')} className="text-sm text-primary hover:underline flex items-center gap-1">
-            Ver todas <ArrowUpRight className="h-3 w-3" />
-          </button>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="space-y-4">{[...Array(4)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}</div>
-          ) : stats?.ventasRecientes.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <Package className="h-12 w-12 mx-auto mb-3 opacity-50" />
-              <p>No hay ventas registradas aún</p>
-              <button onClick={() => navigate('/ventas')} className="mt-2 text-primary hover:underline text-sm">
-                Registrar primera venta
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {stats?.ventasRecientes.map((sale) => (
-                <div key={sale.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Truck className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-foreground">{sale.placa}</p>
-                      <p className="text-sm text-muted-foreground">{sale.silice} • {sale.cantidad_m3} m³</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-semibold text-foreground">${Number(sale.valor_total).toLocaleString('es-CO')}</p>
-                    <p className="text-xs text-muted-foreground">{sale.fecha}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* ── Acciones Rápidas ─────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="shadow-card hover:shadow-elevated transition-all duration-300 cursor-pointer hover:scale-[1.02] bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200" onClick={() => navigate('/ventas')}>
-          <CardContent className="p-5">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center">
-                <DollarSign className="h-6 w-6 text-blue-600" />
-              </div>
-              <div>
-                <p className="font-semibold text-blue-900">Nueva Venta</p>
-                <p className="text-sm text-blue-700">Registrar venta de sílice</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="shadow-card hover:shadow-elevated transition-all duration-300 cursor-pointer hover:scale-[1.02] bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200" onClick={() => navigate('/acopio')}>
-          <CardContent className="p-5">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center">
-                <Package className="h-6 w-6 text-amber-600" />
-              </div>
-              <div>
-                <p className="font-semibold text-amber-900">Nuevo Acopio</p>
-                <p className="text-sm text-amber-700">Registrar viajes</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="shadow-card hover:shadow-elevated transition-all duration-300 cursor-pointer hover:scale-[1.02] bg-gradient-to-br from-green-50 to-green-100 border-green-200" onClick={() => navigate('/movimientos')}>
-          <CardContent className="p-5">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-green-500/20 flex items-center justify-center">
-                <TrendingUp className="h-6 w-6 text-green-600" />
-              </div>
-              <div>
-                <p className="font-semibold text-green-900">Nuevo Movimiento</p>
-                <p className="text-sm text-green-700">Movimiento interno</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* ── Informe de Gestión ───────────────────────────────────────────────── */}
+      <InformeGerencial filtros={filtros} />
 
     </div>
   );

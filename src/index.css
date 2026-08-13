@@ -187,3 +187,53 @@
     transform: scale(1);
   }
 }
+
+/* ── Impresión del Informe de Gestión ────────────────────────────────────────
+   Se imprime únicamente el bloque #informe-gerencial. Se usa `visibility` y no
+   `display` para poder ocultar todo el árbol de la aplicación (sidebar, filtros,
+   resto del dashboard) sin sacar el informe de su contenedor. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  #informe-gerencial,
+  #informe-gerencial * {
+    visibility: visible;
+  }
+
+  #informe-gerencial {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    padding: 0;
+    margin: 0;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  /* Las tarjetas se ven mejor impresas con borde plano que con sombra. */
+  #informe-gerencial .shadow-card,
+  #informe-gerencial section {
+    box-shadow: none !important;
+  }
+
+  #informe-gerencial section,
+  #informe-gerencial .evitar-corte {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Sin esto los navegadores descartan los fondos de color de las tarjetas. */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  @page {
+    margin: 1.5cm;
+  }
+}

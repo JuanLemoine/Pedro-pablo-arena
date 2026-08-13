@@ -40,34 +40,37 @@ export const getCapacidadVolqueta = (placa: string): number => {
   return CAPACIDAD_VOLQUETAS[placa.toUpperCase()] || CAPACIDAD_DEFAULT;
 };
 
-/**
- * Obtiene el inventario real de volquetas agrupado por capacidad
- */
-export const getInventarioVolquetas = (): { 
-  pequenas: { placa: string; capacidad: number }[]; 
-  grandes: { placa: string; capacidad: number }[];
-  totalPequenas: number;
-  totalGrandes: number;
+export interface GrupoCapacidad {
+  capacidad: number;
+  placas: string[];
   total: number;
-} => {
-  const pequenas: { placa: string; capacidad: number }[] = [];
-  const grandes: { placa: string; capacidad: number }[] = [];
-  
+}
+
+/**
+ * Inventario real de la flota agrupado por su capacidad EXACTA.
+ *
+ * Antes esto devolvía solo dos cubetas (`< 10 m³` = pequeñas, `>= 10 m³` =
+ * grandes), lo que escondía a SWR157: con sus 8 m³ quedaba contada como si
+ * fuera de 7. Se agrupa por el valor real para que cada capacidad de la flota
+ * sea visible.
+ */
+export const getInventarioVolquetas = (): { grupos: GrupoCapacidad[]; total: number } => {
+  const porCapacidad = new Map<number, string[]>();
+
   Object.entries(CAPACIDAD_VOLQUETAS).forEach(([placa, capacidad]) => {
-    if (capacidad >= 10) {
-      grandes.push({ placa, capacidad });
-    } else {
-      pequenas.push({ placa, capacidad });
-    }
+    if (!porCapacidad.has(capacidad)) porCapacidad.set(capacidad, []);
+    porCapacidad.get(capacidad)!.push(placa);
   });
-  
-  return {
-    pequenas,
-    grandes,
-    totalPequenas: pequenas.length,
-    totalGrandes: grandes.length,
-    total: pequenas.length + grandes.length,
-  };
+
+  const grupos = Array.from(porCapacidad.entries())
+    .map(([capacidad, placas]) => ({
+      capacidad,
+      placas: placas.sort((a, b) => a.localeCompare(b)),
+      total: placas.length,
+    }))
+    .sort((a, b) => a.capacidad - b.capacidad);
+
+  return { grupos, total: grupos.reduce((s, g) => s + g.total, 0) };
 };
 
 /**
@@ -94,9 +97,10 @@ export const calcularM3Producidos = (viajes: { placa: string; cantidad_viajes: n
 //   Silice B - Pozo  | Punto de excavación → Trituradora   | 70.00%
 //   Silice B - Pozo  | Zaranda → Trituradora               | 23.10%  → resulta Peña
 //   Silice B - Pozo  | Zaranda → Clasificadora             | 23.10%  → resulta Peña
-//   (todas)          | Punto de excavación → Tierra        | 67.00%
 //   (todas)          | Trituradora → Zaranda               | 67.00%
 //   (todas)          | Clasificadora → Zaranda             | 67.00%
+//   (todas)          | → Almacenamiento tierra             |  0.00%  (residuo)
+//   (todas)          | → Almacenamiento granzón            |  0.00%  (residuo)
 // ──────────────────────────────────────────────────────────────────────────────
 
 // Cuando el material sale de Punto de excavación → Zaranda, la zaranda genera
@@ -107,8 +111,23 @@ export const calcularM3Producidos = (viajes: { placa: string; cantidad_viajes: n
 export const PF_EXCAVACION_ZARANDA = 0.67;
 export const PF_ZARANDA_DESTINO    = 0.231;
 export const PF_EXCAVACION_TRITURADORA_POZO = 0.70;
-/** Punto de excavación → Tierra. Mismo rendimiento que hacia Zaranda. */
-export const PF_EXCAVACION_TIERRA  = 0.67;
+
+// ─── Patios de almacenamiento de residuos ────────────────────────────────────
+export const DESTINO_ALMACEN_TIERRA = 'Almacenamiento tierra';
+export const DESTINO_ALMACEN_GRANZON = 'Almacenamiento granzón';
+export const DESTINOS_ALMACENAMIENTO = [DESTINO_ALMACEN_TIERRA, DESTINO_ALMACEN_GRANZON];
+
+/** ¿El movimiento lleva material a un patio de residuos en vez de procesarlo? */
+export const esDestinoAlmacenamiento = (destino: string): boolean =>
+  DESTINOS_ALMACENAMIENTO.includes(destino);
+
+/**
+ * Llevar material a un patio de almacenamiento es manejo de residuo, no
+ * producción: no genera m³ de arena. Los viajes y el volumen transportado sí
+ * quedan registrados, y sirven para medir el granzón y la tierra realmente
+ * movidos en vez de estimarlos como el 9,9 % y el resto de la Fase 1.
+ */
+export const PF_ALMACENAMIENTO = 0;
 /** Retorno a la zaranda desde Trituradora o Clasificadora. */
 export const PF_RETORNO_ZARANDA    = 0.67;
 export const PF_PENA_RESIDUOS      = 0.231;         // fracción fina que sale en zaranda
@@ -118,55 +137,64 @@ const PORCENTAJES_ARENA = {
   'Silice A - Peña': {
     'Punto de excavación': {
       'Zaranda': PF_EXCAVACION_ZARANDA,
-      'Tierra': PF_EXCAVACION_TIERRA,
+      [DESTINO_ALMACEN_TIERRA]: PF_ALMACENAMIENTO,
     },
     'Zaranda': {
       'Trituradora': PF_ZARANDA_DESTINO,
       'Clasificadora': PF_ZARANDA_DESTINO,
       'Repaso': PF_ZARANDA_DESTINO,
       'Revolver': PF_ZARANDA_DESTINO,
+      [DESTINO_ALMACEN_GRANZON]: PF_ALMACENAMIENTO,
     },
     'Trituradora': {
       'Zaranda': PF_RETORNO_ZARANDA,
+      [DESTINO_ALMACEN_GRANZON]: PF_ALMACENAMIENTO,
     },
     'Clasificadora': {
       'Zaranda': PF_RETORNO_ZARANDA,
+      [DESTINO_ALMACEN_GRANZON]: PF_ALMACENAMIENTO,
     },
   },
   'Silice B - Pozo': {
     'Punto de excavación': {
       'Zaranda': PF_EXCAVACION_ZARANDA,
       'Trituradora': PF_EXCAVACION_TRITURADORA_POZO,
-      'Tierra': PF_EXCAVACION_TIERRA,
+      [DESTINO_ALMACEN_TIERRA]: PF_ALMACENAMIENTO,
     },
     'Zaranda': {
       'Trituradora': PF_ZARANDA_DESTINO,  // Resultado: Silice A - Peña
       'Clasificadora': PF_ZARANDA_DESTINO, // Resultado: Silice A - Peña
       'Repaso': PF_ZARANDA_DESTINO,        // Resultado: Silice A - Peña
+      [DESTINO_ALMACEN_GRANZON]: PF_ALMACENAMIENTO,
     },
     'Trituradora': {
       'Zaranda': PF_RETORNO_ZARANDA,
+      [DESTINO_ALMACEN_GRANZON]: PF_ALMACENAMIENTO,
     },
     'Clasificadora': {
       'Zaranda': PF_RETORNO_ZARANDA,
+      [DESTINO_ALMACEN_GRANZON]: PF_ALMACENAMIENTO,
     },
   },
   'Silice C - Arena Fina': {
     'Punto de excavación': {
       'Zaranda': PF_EXCAVACION_ZARANDA,
       'Trituradora': PF_EXCAVACION_TRITURADORA_POZO,
-      'Tierra': PF_EXCAVACION_TIERRA,
+      [DESTINO_ALMACEN_TIERRA]: PF_ALMACENAMIENTO,
     },
     'Zaranda': {
       'Trituradora': PF_ZARANDA_DESTINO,  // Resultado: Silice A - Peña
       'Clasificadora': PF_ZARANDA_DESTINO, // Resultado: Silice A - Peña
       'Repaso': PF_ZARANDA_DESTINO,        // Resultado: Silice A - Peña
+      [DESTINO_ALMACEN_GRANZON]: PF_ALMACENAMIENTO,
     },
     'Trituradora': {
       'Zaranda': PF_RETORNO_ZARANDA,
+      [DESTINO_ALMACEN_GRANZON]: PF_ALMACENAMIENTO,
     },
     'Clasificadora': {
       'Zaranda': PF_RETORNO_ZARANDA,
+      [DESTINO_ALMACEN_GRANZON]: PF_ALMACENAMIENTO,
     },
   },
 };
@@ -231,7 +259,11 @@ export const calcularM3PorMovimiento = (
 
   // Determinar tipo de PF según la tabla
   let tipoPF: 'Peña' | 'Pozo' | 'Granzón';
-  if (siliceResultante === 'Silice B - Pozo' || siliceResultante === 'Silice C - Arena Fina') {
+  if (destino === DESTINO_ALMACEN_GRANZON) {
+    // Es granzón que se lleva al patio: no produce arena (PF 0), pero el tipo
+    // de material sí es granzón.
+    tipoPF = 'Granzón';
+  } else if (siliceResultante === 'Silice B - Pozo' || siliceResultante === 'Silice C - Arena Fina') {
     tipoPF = 'Pozo';
   } else {
     tipoPF = 'Peña';

@@ -6,12 +6,35 @@
 //   - duración de la jornada laboral (segundos)
 
 // Tiempos estándar del simulador (segundos)
+// El cargue son "cucharadas" de ~25 s: 9 para la de 7 m³ (225 s) y 21 para la
+// de 14 m³ (525 s), según las tomas de tiempos del reporte de gestión.
+export const SEGUNDOS_POR_CUCHARADA = 25;
 export const TCARGA_SMALL = 73 + 225 + 15;   // parqueo + cargar 7m³ + quitar burro = 313
 export const TCARGA_LARGE = 73 + 525 + 15;   // parqueo + cargar 14m³ + quitar burro = 613
 export const TDESCARGA_SMALL = 40;
 export const TDESCARGA_LARGE = 83;
 export const M3_POR_VIAJE_SMALL = 5.5;
 export const M3_POR_VIAJE_LARGE = 13;
+
+/**
+ * Volqueta de 8 m³ (SWR157). ⚠️ PARÁMETROS ESTIMADOS, NO MEDIDOS.
+ *
+ * No existe toma de tiempos para esta volqueta, así que se derivan por
+ * proporción sobre la de 7 m³:
+ *   · cargue: 9 cucharadas × 8/7 ≈ 10 cucharadas → 10 × 25 s = 250 s
+ *     T_carga = 73 (parqueo) + 250 (cargue) + 15 (quitar burro) = 338 s
+ *   · m³ netos por viaje: 5,5 × 8/7 ≈ 6,29
+ *   · descarga y costos diarios: los mismos de la de 7 m³ (mismo tipo de equipo)
+ *
+ * Cuando se midan las cucharadas y el tiempo reales de SWR157, reemplazar estos
+ * valores por los medidos.
+ */
+export const CUCHARADAS_MEDIUM = 10;
+export const TCARGA_MEDIUM = 73 + CUCHARADAS_MEDIUM * SEGUNDOS_POR_CUCHARADA + 15; // 338
+export const TDESCARGA_MEDIUM = TDESCARGA_SMALL;
+export const M3_POR_VIAJE_MEDIUM = Math.round((M3_POR_VIAJE_SMALL * 8 / 7) * 100) / 100; // 6,29
+/** Los parámetros de la volqueta de 8 m³ son estimados, no medidos. */
+export const MEDIUM_ES_ESTIMADO = true;
 
 // Factor de producción del flujo principal (Excavación → Zaranda = 67%).
 // El simulador reporta "Producto final en zaranda" = viajes × capacidad × 0.67.
@@ -32,11 +55,27 @@ export function jornadaSegundosParaFecha(fechaISO: string): number {
   return JORNADA_LV;
 }
 
+export type ClaseVolqueta = 'small' | 'medium' | 'large';
+
+/**
+ * Clase de simulación según la capacidad nominal de `CAPACIDAD_VOLQUETAS`:
+ *   · 7 m³  → small  (5,5 m³ netos por viaje)
+ *   · 8 m³  → medium (6,29 m³ netos, parámetros estimados)
+ *   · 13 m³ → large  (13 m³ netos)
+ */
+export function clasificarPorCapacidad(capacidad: number): ClaseVolqueta {
+  if (capacidad >= 10) return 'large';
+  if (capacidad >= 8) return 'medium';
+  return 'small';
+}
+
 export interface OptimoParams {
   tIda: number;           // segundos
   tVuelta: number;        // segundos
   nSmall: number;         // volquetas 5.5 m³ asignadas
   nLarge: number;         // volquetas 13 m³ asignadas
+  /** Volquetas de 8 m³ (6,29 m³ netos). Opcional: por defecto no hay ninguna. */
+  nMedium?: number;
   jornadaSeg: number;
 }
 
@@ -58,40 +97,58 @@ export interface OptimoResult {
  *   m³ = 28×13 + 28×5.5 = 518 ✓
  */
 export function calcularOptimoDia({
-  tIda, tVuelta, nSmall, nLarge, jornadaSeg
+  tIda, tVuelta, nSmall, nLarge, nMedium = 0, jornadaSeg
 }: OptimoParams): OptimoResult {
-  if (jornadaSeg <= 0 || (nSmall + nLarge) === 0) {
+  if (jornadaSeg <= 0 || (nSmall + nMedium + nLarge) === 0) {
     return { viajes: 0, m3: 0, m3Bruto: 0 };
   }
   const ida = Math.max(0, tIda);
   const vuelta = Math.max(0, tVuelta);
   const TtotalSmall = TCARGA_SMALL + TDESCARGA_SMALL + ida + vuelta;
+  const TtotalMedium = TCARGA_MEDIUM + TDESCARGA_MEDIUM + ida + vuelta;
   const TtotalLarge = TCARGA_LARGE + TDESCARGA_LARGE + ida + vuelta;
 
+  // Las de 7 y 8 m³ comparten la cola de la excavadora; lo que cambia entre
+  // ellas es cuánto la ocupan (313 s vs 338 s) y cuánto cargan por viaje.
+  const nCola = nSmall + nMedium;
+  const cargaCola = nSmall * TCARGA_SMALL + nMedium * TCARGA_MEDIUM;
+
   let viajesSmall = 0;
+  let viajesMedium = 0;
   let viajesLarge = 0;
 
   if (nLarge === 0) {
-    // Flota homogénea pequeña (hoja 1)
-    const ciclo = Math.max(TtotalSmall, nSmall * TCARGA_SMALL);
-    viajesSmall = Math.floor((jornadaSeg * nSmall) / ciclo);
-  } else if (nSmall === 0) {
+    // Flota sin volqueta de 14 m³ (hoja 1, generalizada a 7 y 8 m³).
+    // El ciclo lo marca la volqueta más lenta presente o la cola de cargue.
+    const totalesPresentes: number[] = [];
+    if (nSmall > 0) totalesPresentes.push(TtotalSmall);
+    if (nMedium > 0) totalesPresentes.push(TtotalMedium);
+    const ciclo = Math.max(Math.max(...totalesPresentes), cargaCola);
+    const viajesCola = Math.floor((jornadaSeg * nCola) / ciclo);
+    // Los viajes se reparten en proporción a cuántas volquetas hay de cada clase.
+    viajesSmall = Math.round((viajesCola * nSmall) / nCola);
+    viajesMedium = viajesCola - viajesSmall;
+  } else if (nCola === 0) {
     // Flota homogénea grande
     const ciclo = Math.max(TtotalLarge, nLarge * TCARGA_LARGE);
     viajesLarge = Math.floor((jornadaSeg * nLarge) / ciclo);
   } else {
     // Flota mixta (hoja 2)
     const tTransporteLarge = TDESCARGA_LARGE + ida + vuelta;
-    const tCargaTotalSmall = nSmall * TCARGA_SMALL;
-    // Por ronda de la grande: cargar grande + (o bien su transporte, o bien la cola de pequeñas)
-    const ciclo = nLarge * TCARGA_LARGE + Math.max(tTransporteLarge, tCargaTotalSmall);
+    // Por ronda de la grande: cargar grande + (o bien su transporte, o bien la
+    // cola de las demás volquetas)
+    const ciclo = nLarge * TCARGA_LARGE + Math.max(tTransporteLarge, cargaCola);
     viajesLarge = Math.floor((jornadaSeg * nLarge) / ciclo);
     viajesSmall = viajesLarge * nSmall; // patrón 1:1 por ronda, siguiendo hoja 2
+    viajesMedium = viajesLarge * nMedium;
   }
 
-  const m3Bruto = viajesSmall * M3_POR_VIAJE_SMALL + viajesLarge * M3_POR_VIAJE_LARGE;
+  const m3Bruto =
+    viajesSmall * M3_POR_VIAJE_SMALL +
+    viajesMedium * M3_POR_VIAJE_MEDIUM +
+    viajesLarge * M3_POR_VIAJE_LARGE;
   const m3 = m3Bruto * PF_ZARANDA_PRINCIPAL;
-  return { viajes: viajesSmall + viajesLarge, m3, m3Bruto };
+  return { viajes: viajesSmall + viajesMedium + viajesLarge, m3, m3Bruto };
 }
 
 /**
@@ -144,6 +201,13 @@ export function calcularOptimoTeorico(
  *
  * Se usa para mostrar el "Óptimo" en el dashboard como el máximo m³ alcanzable
  * antes de que agregar una volqueta más deje de aumentar la producción.
+ *
+ * NO explora configuraciones con la volqueta de 8 m³ a propósito: el óptimo es
+ * la referencia de PLANEACIÓN, y la planeación de rutas de la empresa está
+ * definida sobre 7 m³ y 14 m³ (Ruta 1: 1×14 + 1×7; Ruta 2: 2×7). Meter la de
+ * 8 m³ aquí movería el cumplimiento histórico de todos los períodos por una
+ * volqueta que casi no se asigna, y además con parámetros estimados. La flota
+ * REAL sí la cuenta con su capacidad correcta (ver `calcularOptimoDia`).
  */
 export interface MejorConfig {
   nSmall: number;
@@ -154,10 +218,11 @@ export interface MejorConfig {
   Wo: number;            // Wo teórico (decimal) de la flota ganadora
 }
 
-export function labelFlota(nSmall: number, nLarge: number): string {
-  if (nSmall + nLarge === 0) return '—';
+export function labelFlota(nSmall: number, nLarge: number, nMedium = 0): string {
+  if (nSmall + nMedium + nLarge === 0) return '—';
   const parts: string[] = [];
   if (nLarge > 0) parts.push(`${nLarge}×14m³`);
+  if (nMedium > 0) parts.push(`${nMedium}×8m³`);
   if (nSmall > 0) parts.push(`${nSmall}×7m³`);
   return parts.join(' + ');
 }
@@ -238,8 +303,10 @@ export const COSTO_TOTAL_DIARIO_14M3 =
 export type TipoProducto = 'Peña' | 'Pozo';
 export type ResiduosPozo = 'Peña' | 'Pozo';
 
+export type TamanoVolqueta = '7m3' | '8m3' | '14m3';
+
 export interface SimHomogeneaInput {
-  tamano: '7m3' | '14m3';
+  tamano: TamanoVolqueta;
   tIda: number;
   tVuelta: number;
   diasLV: number;
@@ -288,10 +355,11 @@ export interface SimHomogeneaOutput {
 }
 
 export function simularHomogenea(input: SimHomogeneaInput): SimHomogeneaOutput {
-  const es7 = input.tamano === '7m3';
-  const Tcarga = es7 ? TCARGA_SMALL : TCARGA_LARGE;
+  const es14 = input.tamano === '14m3';
+  const es8 = input.tamano === '8m3';
+  const Tcarga = es14 ? TCARGA_LARGE : es8 ? TCARGA_MEDIUM : TCARGA_SMALL;
   const Tdescarga = TDESCARGA_SMALL; // hoja 1 usa 40s literal
-  const m3Volqueta = es7 ? M3_POR_VIAJE_SMALL : M3_POR_VIAJE_LARGE;
+  const m3Volqueta = es14 ? M3_POR_VIAJE_LARGE : es8 ? M3_POR_VIAJE_MEDIUM : M3_POR_VIAJE_SMALL;
   const Ttotal = Tcarga + Tdescarga + input.tIda + input.tVuelta;
   const Rb = 1 / Tcarga;
   const Wo = Ttotal * Rb;
@@ -340,7 +408,8 @@ export function simularHomogenea(input: SimHomogeneaInput): SimHomogeneaOutput {
   const ingresoMensualTotal = ingresoMensualProducto + ingresoMensualGranzon;
 
   // Costos
-  const costoPorVolqueta = es7 ? COSTO_TOTAL_DIARIO_7M3 : COSTO_TOTAL_DIARIO_14M3;
+  // La de 8 m³ usa los costos de la de 7 m³: mismo tipo de equipo y de turno.
+  const costoPorVolqueta = es14 ? COSTO_TOTAL_DIARIO_14M3 : COSTO_TOTAL_DIARIO_7M3;
   const costoDiarioOperacion = costoPorVolqueta * input.W;
   const costoPorM3 = m3Fase1LV > 0 ? costoDiarioOperacion / m3Fase1LV : 0;
 

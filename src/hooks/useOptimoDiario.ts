@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 import {
   calcularOptimoDia,
   calcularMejorConfig,
+  clasificarPorCapacidad,
   jornadaSegundosParaFecha,
   labelFlota,
 } from '@/lib/simulador';
@@ -13,8 +14,10 @@ export interface OptimoPorDia {
   fecha: string;
   // Flota real asignada ese día (agregada sobre sílices)
   nSmallActual: number;
+  /** Volquetas de 8 m³ asignadas (SWR157). */
+  nMediumActual: number;
   nLargeActual: number;
-  wActual: number;                // nSmall + nLarge reales
+  wActual: number;                // nSmall + nMedium + nLarge reales
   configActualLabel: string;      // p.ej. "2×7m³" o "1×14m³ + 1×7m³"
   m3Actual: number;               // m³ fase 1 que producirían las volquetas reales
   viajesActual: number;
@@ -42,7 +45,7 @@ interface MovRow { fecha: string; placa: string; silice: string; }
 
 const vacio = (fecha: string): OptimoPorDia => ({
   fecha,
-  nSmallActual: 0, nLargeActual: 0, wActual: 0, configActualLabel: '—',
+  nSmallActual: 0, nMediumActual: 0, nLargeActual: 0, wActual: 0, configActualLabel: '—',
   m3Actual: 0, viajesActual: 0,
   nSmallOptimo: 0, nLargeOptimo: 0, woRound: 0, configOptimoLabel: '—',
   m3Optimo: 0, viajesOptimo: 0, woOptimo: 0,
@@ -115,7 +118,7 @@ export const useOptimoDiario = ({ fechaInicio, fechaFin, tipoSilice }: Params) =
 
         if (silicesDelDia.length === 0) { resultado.set(fecha, vacio(fecha)); continue; }
 
-        let nSmallAct = 0, nLargeAct = 0;
+        let nSmallAct = 0, nMediumAct = 0, nLargeAct = 0;
         let viajesAct = 0, m3Act = 0;
         let viajesOpt = 0, m3Opt = 0, woOptSuma = 0;
         let nSmallOpt = 0, nLargeOpt = 0;
@@ -126,9 +129,12 @@ export const useOptimoDiario = ({ fechaInicio, fechaFin, tipoSilice }: Params) =
 
         for (const sil of silicesDelDia) {
           const placas = placasMap.get(`${fecha}|${sil}`) ?? new Set<string>();
-          let nSmall = 0, nLarge = 0;
+          let nSmall = 0, nMedium = 0, nLarge = 0;
           placas.forEach(p => {
-            if (getCapacidadVolqueta(p) >= 10) nLarge++; else nSmall++;
+            const clase = clasificarPorCapacidad(getCapacidadVolqueta(p));
+            if (clase === 'large') nLarge++;
+            else if (clase === 'medium') nMedium++;
+            else nSmall++;
           });
 
           const t = tiemposMap.get(`${fecha}|${sil}`);
@@ -137,17 +143,19 @@ export const useOptimoDiario = ({ fechaInicio, fechaFin, tipoSilice }: Params) =
           if (!tiempos) continue;
 
           // Actual (con volquetas realmente asignadas)
-          if (nSmall + nLarge > 0) {
+          if (nSmall + nMedium + nLarge > 0) {
             const real = calcularOptimoDia({
               tIda: tiempos.ida, tVuelta: tiempos.vuelta,
-              nSmall, nLarge, jornadaSeg: jornada,
+              nSmall, nMedium, nLarge, jornadaSeg: jornada,
             });
             nSmallAct += nSmall;
+            nMediumAct += nMedium;
             nLargeAct += nLarge;
             viajesAct += real.viajes;
             m3Act += real.m3Bruto;
-            if (multiSilice) labelsActPorSil.push(`${sil}: ${labelFlota(nSmall, nLarge)}`);
-            else labelsActPorSil.push(labelFlota(nSmall, nLarge));
+            const etiqueta = labelFlota(nSmall, nLarge, nMedium);
+            if (multiSilice) labelsActPorSil.push(`${sil}: ${etiqueta}`);
+            else labelsActPorSil.push(etiqueta);
           }
 
           // Óptimo teórico (mejor combinación dados los tiempos)
@@ -161,11 +169,12 @@ export const useOptimoDiario = ({ fechaInicio, fechaFin, tipoSilice }: Params) =
           else labelsOptPorSil.push(mejor.label);
         }
 
-        const wActual = nSmallAct + nLargeAct;
+        const wActual = nSmallAct + nMediumAct + nLargeAct;
         const woRound = nSmallOpt + nLargeOpt;
         resultado.set(fecha, {
           fecha,
           nSmallActual: nSmallAct,
+          nMediumActual: nMediumAct,
           nLargeActual: nLargeAct,
           wActual,
           configActualLabel: labelsActPorSil.length ? labelsActPorSil.join(' · ') : '—',

@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
+import { traerTodo } from '@/lib/fetchTodo';
 import { calcularM3PorMovimiento, getCapacidadVolqueta } from '@/lib/volquetas';
 
 export interface DashboardFiltros {
@@ -69,6 +70,50 @@ export interface AnticipoPorNIT {
   saldo: number;
 }
 
+/**
+ * Los tipos generados de Supabase están desactualizados y colapsan a `never`
+ * para varias columnas reales, así que la consulta se normaliza a la forma que
+ * espera `traerTodo`.
+ */
+type ConsultaPaginada<T> = PromiseLike<{ data: T[] | null; error: unknown }>;
+
+interface VentaResumen {
+  cantidad_m3: number;
+  valor_total: number;
+  silice: string;
+  tipo_transaccion: string | null;
+  fuente: string | null;
+  nit_cliente: string | null;
+  descuenta_anticipo: boolean | null;
+}
+
+interface AcopioResumen {
+  cantidad_viajes: number;
+  silice: string;
+  fuente: string;
+  placa: string;
+}
+
+interface MovimientoResumen {
+  placa: string;
+  silice: string;
+  origen: string;
+  destino: string;
+  cantidad_movimientos: number;
+}
+
+interface ClienteVenta {
+  placa: string;
+  nombre_cliente: string | null;
+  nit_cliente: string | null;
+  cantidad_m3: number;
+  valor_total: number;
+  silice: string;
+  tipo_transaccion: string | null;
+  fecha: string;
+  descuenta_anticipo: boolean | null;
+}
+
 export interface DashboardResumen {
   ventas: ResumenVentas;
   acopio: ResumenAcopio;
@@ -84,15 +129,19 @@ export const useDashboardResumen = (filtros: DashboardFiltros) => {
     queryKey: ['dashboard-resumen', filtros],
     queryFn: async (): Promise<DashboardResumen> => {
       // ── Ventas ──────────────────────────────────────────────────
-      let ventasQ = supabase
-        .from('ventas')
-        .select('cantidad_m3, valor_total, silice, tipo_transaccion, fuente, nit_cliente, descuenta_anticipo')
-        .gte('fecha', filtros.fechaInicio)
-        .lte('fecha', filtros.fechaFin);
-      if (filtros.tipoSilice !== 'todos') ventasQ = ventasQ.eq('silice', filtros.tipoSilice);
-      if (filtros.tipoTransaccion !== 'todos') ventasQ = ventasQ.eq('tipo_transaccion', filtros.tipoTransaccion);
-      if (filtros.fuente !== 'todos') ventasQ = ventasQ.eq('fuente', filtros.fuente);
-      const { data: ventasData } = await ventasQ;
+      // Se pagina porque un mes de operación supera las 1.000 filas que
+      // devuelve Supabase por petición (p. ej. sep-2025 tiene 1.059 ventas).
+      const ventasData = await traerTodo<VentaResumen>((desde, hasta) => {
+        let q = supabase
+          .from('ventas')
+          .select('cantidad_m3, valor_total, silice, tipo_transaccion, fuente, nit_cliente, descuenta_anticipo')
+          .gte('fecha', filtros.fechaInicio)
+          .lte('fecha', filtros.fechaFin);
+        if (filtros.tipoSilice !== 'todos') q = q.eq('silice', filtros.tipoSilice);
+        if (filtros.tipoTransaccion !== 'todos') q = q.eq('tipo_transaccion', filtros.tipoTransaccion);
+        if (filtros.fuente !== 'todos') q = q.eq('fuente', filtros.fuente);
+        return q.order('id', { ascending: true }).range(desde, hasta) as unknown as ConsultaPaginada<VentaResumen>;
+      });
 
       const esConsumoAnticipo = (v: { descuenta_anticipo?: boolean | null }): boolean =>
         !!v.descuenta_anticipo;
@@ -155,15 +204,17 @@ export const useDashboardResumen = (filtros: DashboardFiltros) => {
       };
 
       // ── Acopio ──────────────────────────────────────────────────
-      let acopioQ = supabase
-        .from('acopios')
-        .select('cantidad_viajes, silice, fuente, placa')
-        .gte('fecha', filtros.fechaInicio)
-        .lte('fecha', filtros.fechaFin);
-      if (filtros.tipoSilice !== 'todos') acopioQ = acopioQ.eq('silice', filtros.tipoSilice);
-      const { data: acopioData } = await acopioQ;
+      const acopioData = await traerTodo<AcopioResumen>((desde, hasta) => {
+        let q = supabase
+          .from('acopios')
+          .select('cantidad_viajes, silice, fuente, placa')
+          .gte('fecha', filtros.fechaInicio)
+          .lte('fecha', filtros.fechaFin);
+        if (filtros.tipoSilice !== 'todos') q = q.eq('silice', filtros.tipoSilice);
+        return q.order('id', { ascending: true }).range(desde, hasta) as unknown as ConsultaPaginada<AcopioResumen>;
+      });
 
-      const acopioPorSiliceMap = new Map<string, { viajes: number; m3: number }>();
+      const acopioPorSiliceMap = new Map<string, { viajes: number; m3: number; valor: number }>();
       const acopioPorFuenteMap = new Map<string, { viajes: number }>();
       let totalViajesAcopio = 0;
       let totalM3Acopio = 0;
@@ -196,13 +247,15 @@ export const useDashboardResumen = (filtros: DashboardFiltros) => {
       };
 
       // ── Movimientos ─────────────────────────────────────────────
-      let movQ = supabase
-        .from('movimientos')
-        .select('placa, silice, origen, destino, cantidad_movimientos')
-        .gte('fecha', filtros.fechaInicio)
-        .lte('fecha', filtros.fechaFin);
-      if (filtros.tipoSilice !== 'todos') movQ = movQ.eq('silice', filtros.tipoSilice);
-      const { data: movData } = await movQ;
+      const movData = await traerTodo<MovimientoResumen>((desde, hasta) => {
+        let q = supabase
+          .from('movimientos')
+          .select('placa, silice, origen, destino, cantidad_movimientos')
+          .gte('fecha', filtros.fechaInicio)
+          .lte('fecha', filtros.fechaFin);
+        if (filtros.tipoSilice !== 'todos') q = q.eq('silice', filtros.tipoSilice);
+        return q.order('id', { ascending: true }).range(desde, hasta) as unknown as ConsultaPaginada<MovimientoResumen>;
+      });
 
       let totalMovimientosCant = 0;
       let totalM3Mov = 0;
@@ -219,15 +272,17 @@ export const useDashboardResumen = (filtros: DashboardFiltros) => {
       };
 
       // ── Clientes ────────────────────────────────────────────────
-      let clientesQ = supabase
-        .from('ventas')
-        .select('placa, nombre_cliente, nit_cliente, cantidad_m3, valor_total, silice, tipo_transaccion, fecha, descuenta_anticipo')
-        .gte('fecha', filtros.fechaInicio)
-        .lte('fecha', filtros.fechaFin);
-      if (filtros.tipoSilice !== 'todos') clientesQ = clientesQ.eq('silice', filtros.tipoSilice);
-      if (filtros.tipoTransaccion !== 'todos') clientesQ = clientesQ.eq('tipo_transaccion', filtros.tipoTransaccion);
-      if (filtros.fuente !== 'todos') clientesQ = clientesQ.eq('fuente', filtros.fuente);
-      const { data: clientesData } = await clientesQ;
+      const clientesData = await traerTodo<ClienteVenta>((desde, hasta) => {
+        let q = supabase
+          .from('ventas')
+          .select('placa, nombre_cliente, nit_cliente, cantidad_m3, valor_total, silice, tipo_transaccion, fecha, descuenta_anticipo')
+          .gte('fecha', filtros.fechaInicio)
+          .lte('fecha', filtros.fechaFin);
+        if (filtros.tipoSilice !== 'todos') q = q.eq('silice', filtros.tipoSilice);
+        if (filtros.tipoTransaccion !== 'todos') q = q.eq('tipo_transaccion', filtros.tipoTransaccion);
+        if (filtros.fuente !== 'todos') q = q.eq('fuente', filtros.fuente);
+        return q.order('id', { ascending: true }).range(desde, hasta) as unknown as ConsultaPaginada<ClienteVenta>;
+      });
 
       // Agrupar por placa (identificador único del cliente)
       const clienteMap = new Map<string, ResumenCliente>();

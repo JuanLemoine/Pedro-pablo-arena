@@ -1,6 +1,33 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
+import { traerTodo } from '@/lib/fetchTodo';
 import { calcularM3PorMovimiento } from '@/lib/volquetas';
+
+/**
+ * Los tipos generados de Supabase están desactualizados y colapsan a `never`
+ * para varias columnas reales, así que la consulta se normaliza a la forma que
+ * espera `traerTodo`.
+ */
+type ConsultaPaginada<T> = PromiseLike<{ data: T[] | null; error: unknown }>;
+
+interface VentaStats {
+  valor_total: number;
+  cantidad_m3: number;
+  silice: string;
+  descuenta_anticipo: boolean | null;
+}
+
+interface MovimientoStats {
+  placa: string;
+  silice: string;
+  origen: string;
+  destino: string;
+  cantidad_movimientos: number;
+}
+
+interface AcopioStats {
+  cantidad_viajes: number;
+}
 
 interface DashboardStats {
   ventasMes: number;
@@ -38,41 +65,39 @@ export const useDashboardStats = (filtros?: DashboardFiltros) => {
   return useQuery({
     queryKey: ['dashboard-stats', inicio, fin, tipoSilice],
     queryFn: async (): Promise<DashboardStats> => {
-      // Ventas del período filtrado
-      let ventasQuery = supabase
-        .from('ventas')
-        .select('valor_total, cantidad_m3, silice, descuenta_anticipo')
-        .gte('fecha', inicio)
-        .lte('fecha', fin);
-
-      if (tipoSilice !== 'todos') {
-        ventasQuery = ventasQuery.eq('silice', tipoSilice);
-      }
-
-      const { data: ventasMes, error: errorVentas } = await ventasQuery;
-      if (errorVentas) console.error('Error fetching ventas:', errorVentas);
+      // Ventas del período filtrado. Se pagina porque un mes de operación
+      // supera las 1.000 filas que devuelve Supabase por petición.
+      const ventasMes = await traerTodo<VentaStats>((desde, hasta) => {
+        let q = supabase
+          .from('ventas')
+          .select('valor_total, cantidad_m3, silice, descuenta_anticipo')
+          .gte('fecha', inicio)
+          .lte('fecha', fin);
+        if (tipoSilice !== 'todos') q = q.eq('silice', tipoSilice);
+        return q.order('id', { ascending: true }).range(desde, hasta) as unknown as ConsultaPaginada<VentaStats>;
+      });
 
       // Movimientos internos filtrados
-      let movQuery = supabase
-        .from('movimientos')
-        .select('placa, silice, origen, destino, cantidad_movimientos')
-        .gte('fecha', inicio)
-        .lte('fecha', fin);
-
-      if (tipoSilice !== 'todos') {
-        movQuery = movQuery.eq('silice', tipoSilice);
-      }
-
-      const { data: movimientosData, error: errorMov } = await movQuery;
-      if (errorMov) console.error('Error fetching movimientos:', errorMov);
+      const movimientosData = await traerTodo<MovimientoStats>((desde, hasta) => {
+        let q = supabase
+          .from('movimientos')
+          .select('placa, silice, origen, destino, cantidad_movimientos')
+          .gte('fecha', inicio)
+          .lte('fecha', fin);
+        if (tipoSilice !== 'todos') q = q.eq('silice', tipoSilice);
+        return q.order('id', { ascending: true }).range(desde, hasta) as unknown as ConsultaPaginada<MovimientoStats>;
+      });
 
       // Acopios (no filtrados por sílice ya que no tienen ese campo)
-      const { data: acopiosData, error: errorAcopios } = await supabase
-        .from('acopios')
-        .select('cantidad_viajes')
-        .gte('fecha', inicio)
-        .lte('fecha', fin);
-      if (errorAcopios) console.error('Error fetching acopios:', errorAcopios);
+      const acopiosData = await traerTodo<AcopioStats>((desde, hasta) =>
+        supabase
+          .from('acopios')
+          .select('cantidad_viajes')
+          .gte('fecha', inicio)
+          .lte('fecha', fin)
+          .order('id', { ascending: true })
+          .range(desde, hasta) as unknown as ConsultaPaginada<AcopioStats>
+      );
 
       // Ventas recientes (respetando filtro sílice)
       let recientesQuery = supabase
@@ -94,9 +119,10 @@ export const useDashboardStats = (filtros?: DashboardFiltros) => {
       if (errorRecientes) console.error('Error fetching ventas recientes:', errorRecientes);
 
       // Excluir ventas marcadas como consumo de anticipo (no son ingresos nuevos)
-      const totalVentasMes = ventasMes?.reduce((sum, v) => {
-        return sum + ((v as any).descuenta_anticipo ? 0 : Number(v.valor_total));
-      }, 0) || 0;
+      const totalVentasMes = ventasMes.reduce(
+        (sum, v) => sum + (v.descuenta_anticipo ? 0 : Number(v.valor_total)),
+        0
+      );
       const m3Vendidos = ventasMes?.reduce((sum, v) => sum + Number(v.cantidad_m3) + 1, 0) || 0;
 
       // Calcular m³ producidos y m³ granzón

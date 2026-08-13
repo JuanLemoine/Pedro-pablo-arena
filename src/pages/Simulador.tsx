@@ -10,8 +10,12 @@ import { Calculator, Clock, Truck, TrendingUp, DollarSign } from 'lucide-react';
 import {
   simularHomogenea,
   simularMixta,
+  CUCHARADAS_MEDIUM,
+  TCARGA_MEDIUM,
+  M3_POR_VIAJE_MEDIUM,
   type TipoProducto,
   type ResiduosPozo,
+  type TamanoVolqueta,
 } from '@/lib/simulador';
 
 const fmtSeg = (s: number) => {
@@ -41,7 +45,7 @@ const StatRow = ({ label, value, hint, highlight }: { label: string; value: stri
 
 // ─── Hoja 1: Volquetas Homogéneas ───────────────────────────────────────────
 const SimHomogenea = () => {
-  const [tamano, setTamano] = useState<'7m3' | '14m3'>('7m3');
+  const [tamano, setTamano] = useState<TamanoVolqueta>('7m3');
   const [tIda, setTIda] = useState(129);
   const [tVuelta, setTVuelta] = useState(88);
   const [diasLV, setDiasLV] = useState(22);
@@ -78,13 +82,22 @@ const SimHomogenea = () => {
         <CardContent className="space-y-3">
           <div>
             <Label>Tamaño de volquetas</Label>
-            <Select value={tamano} onValueChange={v => setTamano(v as '7m3' | '14m3')}>
+            <Select value={tamano} onValueChange={v => setTamano(v as TamanoVolqueta)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="7m3">7 m³</SelectItem>
+                <SelectItem value="8m3">8 m³</SelectItem>
                 <SelectItem value="14m3">14 m³</SelectItem>
               </SelectContent>
             </Select>
+            {tamano === '8m3' && (
+              <p className="mt-1.5 rounded border border-amber-200 bg-amber-50/70 p-2 text-[11px] leading-relaxed text-amber-900">
+                <strong>Parámetros estimados.</strong> No hay toma de tiempos de la volqueta de 8 m³
+                (SWR157). Se derivan por proporción de la de 7 m³: cargue de {CUCHARADAS_MEDIUM}{' '}
+                cucharadas ({TCARGA_MEDIUM} s con parqueo y burro) y {M3_POR_VIAJE_MEDIUM} m³ netos
+                por viaje. Al medirlos en campo hay que actualizarlos en <code>src/lib/simulador.ts</code>.
+              </p>
+            )}
           </div>
           <div>
             <Label>Transporte ida a Zaranda (seg)</Label>

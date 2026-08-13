@@ -29,7 +29,11 @@ import {
 } from "@/components/ui/popover";
 import { useMovimientos, useCreateMovimiento, useUpdateMovimiento, useDeleteMovimiento } from '@/hooks/useMovimientos';
 import { usePlacas } from '@/hooks/useVolquetas';
-import { calcularM3PorMovimiento } from '@/lib/volquetas';
+import {
+  calcularM3PorMovimiento,
+  DESTINO_ALMACEN_GRANZON,
+  DESTINO_ALMACEN_TIERRA,
+} from '@/lib/volquetas';
 import { validarPlaca } from '@/lib/placas';
 import { cn } from '@/lib/utils';
 
@@ -51,29 +55,31 @@ const getOrigenesDisponibles = (_silice: string): string[] => {
 };
 
 // Función para obtener los destinos disponibles según el tipo de sílice y origen
+// El granzón lo generan las tres máquinas (zaranda, trituradora y clasificadora)
+// y se lleva a su patio; la tierra sale del frente de excavación.
 const getDestinosDisponibles = (silice: string, origen: string): string[] => {
-  // Retorno a zaranda: único destino posible desde estos orígenes
+  // Retorno a zaranda o salida del granzón que produce la máquina
   if (origen === 'Trituradora' || origen === 'Clasificadora') {
-    return ['Zaranda'];
+    return ['Zaranda', DESTINO_ALMACEN_GRANZON];
   }
 
   if (silice === 'Silice A - Peña') {
-    // Silice A - Peña: desde punto de excavación va a Zaranda o Tierra
+    // Silice A - Peña: desde punto de excavación va a Zaranda o al patio de tierra
     if (origen === 'Punto de excavación') {
-      return ['Zaranda', 'Tierra'];
+      return ['Zaranda', DESTINO_ALMACEN_TIERRA];
     }
     // Silice A - Peña: desde Zaranda va a Trituradora, Clasificadora o Repaso
     if (origen === 'Zaranda') {
-      return ['Trituradora', 'Clasificadora', 'Repaso', 'Revolver'];
+      return ['Trituradora', 'Clasificadora', 'Repaso', 'Revolver', DESTINO_ALMACEN_GRANZON];
     }
   } else if (silice === 'Silice B - Pozo' || silice === 'Silice C - Arena Fina') {
-    // Desde punto de excavación va a Zaranda, Trituradora o Tierra
+    // Desde punto de excavación va a Zaranda, Trituradora o al patio de tierra
     if (origen === 'Punto de excavación') {
-      return ['Zaranda', 'Trituradora', 'Tierra'];
+      return ['Zaranda', 'Trituradora', DESTINO_ALMACEN_TIERRA];
     }
     // Desde Zaranda va a Trituradora, Clasificadora o Repaso
     if (origen === 'Zaranda') {
-      return ['Trituradora', 'Clasificadora', 'Repaso'];
+      return ['Trituradora', 'Clasificadora', 'Repaso', DESTINO_ALMACEN_GRANZON];
     }
   }
   return [];
@@ -241,7 +247,7 @@ const Movimientos = () => {
 
   const exportarExcel = () => {
     const datos = filteredMovimientos.map(m => {
-      const resultado = calcularM3PorMovimiento(m.silice, m.origen, m.destino);
+      const resultado = calcularM3PorMovimiento(m.placa, m.silice, m.origen, m.destino);
       return {
         'Fecha': m.fecha,
         'Mina': m.mina,
@@ -306,7 +312,8 @@ const Movimientos = () => {
       'Zaranda': 'bg-violet-100 text-violet-700 border-violet-200',
       'Repaso': 'bg-orange-100 text-orange-700 border-orange-200',
       'Revolver': 'bg-pink-100 text-pink-700 border-pink-200',
-      'Tierra': 'bg-amber-100 text-amber-800 border-amber-200',
+      [DESTINO_ALMACEN_TIERRA]: 'bg-amber-100 text-amber-800 border-amber-200',
+      [DESTINO_ALMACEN_GRANZON]: 'bg-stone-200 text-stone-700 border-stone-300',
     };
     return (
       <Badge variant="outline" className={colors[destino] || 'bg-gray-100 text-gray-700'}>
@@ -415,7 +422,8 @@ const Movimientos = () => {
                   <SelectItem value="Zaranda">Zaranda</SelectItem>
                   <SelectItem value="Repaso">Repaso</SelectItem>
                   <SelectItem value="Revolver">Revolver</SelectItem>
-                  <SelectItem value="Tierra">Tierra</SelectItem>
+                  <SelectItem value={DESTINO_ALMACEN_TIERRA}>{DESTINO_ALMACEN_TIERRA}</SelectItem>
+                  <SelectItem value={DESTINO_ALMACEN_GRANZON}>{DESTINO_ALMACEN_GRANZON}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
