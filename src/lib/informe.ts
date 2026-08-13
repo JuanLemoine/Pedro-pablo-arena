@@ -15,7 +15,7 @@ import {
   PF_ZARANDA_DESTINO,
   PF_GRANZON,
 } from '@/lib/volquetas';
-import { jornadaSegundosParaFecha } from '@/lib/simulador';
+import { jornadaSegundosParaFecha, JORNADA_SAB } from '@/lib/simulador';
 import { PRECIO_M3 } from '@/hooks/useDashboardResumen';
 import type { OptimoPorDia } from '@/hooks/useOptimoDiario';
 import { dividir, porcentaje } from '@/lib/formato';
@@ -41,6 +41,30 @@ export const INTENSIDAD_BUENA = 40;
 
 /** Volquetas por ruta consideradas óptimas: más que esto es desperdicio. */
 export const VOLQUETAS_OPTIMAS_POR_RUTA = 2;
+
+/**
+ * Sobre qué días se acumula la capacidad con la que se compara lo producido:
+ *
+ *  · `habiles`  — todos los días hábiles (L-S). Responde "¿produjimos lo que
+ *                 la operación podía dar?" y castiga los días sin operar.
+ *  · `operados` — solo los días con actividad. Responde "los días que sí
+ *                 trabajamos, ¿rendimos?", aislando el problema de asistencia.
+ */
+export type BaseCapacidad = 'habiles' | 'operados';
+
+/**
+ * Conversión de m³ brutos excavados a m³ de PRODUCTO, que es la unidad en la
+ * que habla el informe para que producción, capacidad y ventas sean
+ * comparables entre sí:
+ *
+ *   Fase 1 → 67 % sale directo de la zaranda como arena lista.
+ *   Fase 2 → del 33 % de residuo se recupera el 70 %, o sea 23,1 % adicional.
+ *
+ * El granzón (9,9 %) queda por fuera de la capacidad de producto: se vende,
+ * pero a un precio muy inferior y por decisión del negocio no cuenta aquí.
+ */
+export const RENDIMIENTO_PRODUCTO_F1 = PF_EXCAVACION_ZARANDA;              // 0,67
+export const RENDIMIENTO_PRODUCTO_F2 = PF_ZARANDA_DESTINO;                 // 0,231
 
 // ── Filas crudas ──────────────────────────────────────────────────────────────
 export interface VentaRow {
@@ -85,6 +109,12 @@ export interface MetricasSilice {
   intensidadReproceso: number;
   m3Entregados: number;
   ingreso: number;
+  // Producción vs capacidad, en m³ de producto
+  productoFase1: number;
+  capacidadProductoF1: number;
+  capacidadProductoF2: number;
+  cumplimientoF1: number;
+  cumplimientoF2: number;
 }
 
 export interface ClienteInforme {
@@ -133,6 +163,8 @@ export interface MetricasPeriodo {
   inicio: string;
   fin: string;
   diasCalendario: number;
+  /** Sobre qué días se acumuló la capacidad de este cálculo. */
+  baseCapacidad: BaseCapacidad;
 
   // Producción
   fase1: number;
@@ -160,6 +192,28 @@ export interface MetricasPeriodo {
   m3Optimo: number;
   cumplimientoFlota: number;
   cumplimientoCapacidad: number;
+
+  /**
+   * El bloque que encabeza el informe: lo producido en cada fase frente a lo
+   * que se debió producir dada la capacidad, todo en m³ de producto.
+   */
+  capacidadProductoF1: number;
+  capacidadProductoF2: number;
+  /** Suma de ambas: el producto total alcanzable si las dos fases rindieran. */
+  capacidadProductoTotal: number;
+  cumplimientoF1: number;
+  cumplimientoF2: number;
+  cumplimientoTotal: number;
+  /** Producto que se dejó de generar en cada fase frente a su capacidad. */
+  brechaF1: number;
+  brechaF2: number;
+
+  // Sábados (se analizan aparte: la jornada es de 4 h y no de 7,5 h)
+  sabadosHabiles: number;
+  sabadosOperados: number;
+  capacidadProductoSabados: number;
+  productoSabados: number;
+  cumplimientoSabados: number;
 
   // Calendario
   diasHabiles: number;
@@ -273,7 +327,8 @@ export const calcularMetricasPeriodo = (
   ventas: VentaRow[],
   acopios: AcopioRow[],
   movimientos: MovimientoRow[],
-  optimoPorDia: Map<string, OptimoPorDia>
+  optimoPorDia: Map<string, OptimoPorDia>,
+  baseCapacidad: BaseCapacidad = 'habiles'
 ): MetricasPeriodo => {
   const diasCalendario = Math.max(
     1,
@@ -296,6 +351,7 @@ export const calcularMetricasPeriodo = (
   const fase1PorDia = new Map<string, number>();
   const fase1PorSilice = new Map<string, number>();
   const fase2PorSilice = new Map<string, number>();
+  const productoFase1PorSilice = new Map<string, number>();
   const productoFase2PorSilice = new Map<string, number>();
   const placasPorDiaSilice = new Map<string, Set<string>>();
   const placaAcum = new Map<string, { viajes: number; m3: number; dias: Set<string> }>();
@@ -324,6 +380,7 @@ export const calcularMetricasPeriodo = (
       viajesFase1 += viajes;
       fase1PorDia.set(m.fecha, (fase1PorDia.get(m.fecha) || 0) + bruto);
       fase1PorSilice.set(m.silice, (fase1PorSilice.get(m.silice) || 0) + bruto);
+      productoFase1PorSilice.set(m.silice, (productoFase1PorSilice.get(m.silice) || 0) + producto);
 
       const claveDiaSilice = `${m.fecha}|${m.silice}`;
       if (!placasPorDiaSilice.has(claveDiaSilice)) placasPorDiaSilice.set(claveDiaSilice, new Set());
@@ -362,6 +419,12 @@ export const calcularMetricasPeriodo = (
   // Para estimar lo que se dejó de producir los días sin operar.
   let segundosOperados = 0;
   const diasSinOperarSegundos: number[] = [];
+  // Capacidad bruta acumulada por sílice, sobre todos los días hábiles
+  const capacidadBrutaPorSilice = new Map<string, number>();
+  let sabadosHabiles = 0;
+  let sabadosOperados = 0;
+  let capacidadBrutaSabados = 0;
+  let brutoSabados = 0;
 
   for (let i = 0; i < diasCalendario; i++) {
     const fecha = format(addDays(parseISO(inicio), i), 'yyyy-MM-dd');
@@ -378,12 +441,30 @@ export const calcularMetricasPeriodo = (
     }
     if (esHabil && !operado) diasSinOperarSegundos.push(jornada);
 
-    // El óptimo solo tiene sentido en días hábiles.
-    const optimoDia = esHabil ? opt?.m3Optimo || 0 : 0;
+    // El óptimo solo tiene sentido en días hábiles. Según la base elegida se
+    // cuentan todos los hábiles o solo aquellos en que hubo operación.
+    const cuenta = esHabil && (baseCapacidad === 'habiles' || operado);
+    const optimoDia = cuenta ? opt?.m3Optimo || 0 : 0;
     const flotaDia = esHabil ? opt?.m3Actual || 0 : 0;
 
     m3Optimo += optimoDia;
     m3FlotaAsignada += flotaDia;
+
+    if (cuenta && opt?.m3OptimoPorSilice) {
+      Object.entries(opt.m3OptimoPorSilice).forEach(([sil, v]) => {
+        capacidadBrutaPorSilice.set(sil, (capacidadBrutaPorSilice.get(sil) || 0) + v);
+      });
+    }
+
+    // Sábado: jornada de 4 h en vez de 7,5 h, se analiza por separado.
+    if (esHabil && jornada === JORNADA_SAB) {
+      sabadosHabiles++;
+      capacidadBrutaSabados += optimoDia;
+      if (operado) {
+        sabadosOperados++;
+        brutoSabados += fase1Real;
+      }
+    }
 
     serieDiaria.push({
       fecha,
@@ -413,6 +494,17 @@ export const calcularMetricasPeriodo = (
 
   const cumplimientoFlota = porcentaje(fase1, m3FlotaAsignada);
   const cumplimientoCapacidad = porcentaje(fase1, m3Optimo);
+
+  // ── Producción vs capacidad, en m³ de producto ──────────────────────────
+  const capacidadProductoF1 = m3Optimo * RENDIMIENTO_PRODUCTO_F1;
+  const capacidadProductoF2 = m3Optimo * RENDIMIENTO_PRODUCTO_F2;
+  const capacidadProductoTotal = capacidadProductoF1 + capacidadProductoF2;
+  const cumplimientoF1 = porcentaje(productoFase1, capacidadProductoF1);
+  const cumplimientoF2 = porcentaje(productoFase2, capacidadProductoF2);
+  const cumplimientoTotal = porcentaje(productoFinalTotal, capacidadProductoTotal);
+
+  const capacidadProductoSabados = capacidadBrutaSabados * RENDIMIENTO_PRODUCTO_F1;
+  const productoSabados = brutoSabados * RENDIMIENTO_PRODUCTO_F1;
 
   // ── Estabilidad (sobre días efectivamente operados) ─────────────────────
   const m3DiasOperados = serieDiaria.filter(d => d.operado).map(d => d.fase1Real);
@@ -575,6 +667,11 @@ export const calcularMetricasPeriodo = (
     const f1 = fase1PorSilice.get(silice) || 0;
     const f2 = fase2PorSilice.get(silice) || 0;
     const residuo = f1 * FRACCION_RESIDUO;
+    const capBruta = capacidadBrutaPorSilice.get(silice) || 0;
+    const capF1 = capBruta * RENDIMIENTO_PRODUCTO_F1;
+    const capF2 = capBruta * RENDIMIENTO_PRODUCTO_F2;
+    const prodF1 = productoFase1PorSilice.get(silice) || 0;
+    const prodF2 = productoFase2PorSilice.get(silice) || 0;
     return {
       silice,
       fase1: Math.round(f1 * 100) / 100,
@@ -585,6 +682,11 @@ export const calcularMetricasPeriodo = (
       intensidadReproceso: porcentaje(f2, f1),
       m3Entregados: Math.round((m3EntregadosPorSilice.get(silice) || 0) * 100) / 100,
       ingreso: Math.round(ingresoPorSilice.get(silice) || 0),
+      productoFase1: Math.round(prodF1 * 100) / 100,
+      capacidadProductoF1: Math.round(capF1 * 100) / 100,
+      capacidadProductoF2: Math.round(capF2 * 100) / 100,
+      cumplimientoF1: porcentaje(prodF1, capF1),
+      cumplimientoF2: porcentaje(prodF2, capF2),
     };
   });
 
@@ -600,6 +702,7 @@ export const calcularMetricasPeriodo = (
     inicio,
     fin,
     diasCalendario,
+    baseCapacidad,
 
     fase1: Math.round(fase1 * 100) / 100,
     fase2: Math.round(fase2 * 100) / 100,
@@ -623,6 +726,21 @@ export const calcularMetricasPeriodo = (
     m3Optimo: Math.round(m3Optimo * 100) / 100,
     cumplimientoFlota,
     cumplimientoCapacidad,
+
+    capacidadProductoF1: Math.round(capacidadProductoF1 * 100) / 100,
+    capacidadProductoF2: Math.round(capacidadProductoF2 * 100) / 100,
+    capacidadProductoTotal: Math.round(capacidadProductoTotal * 100) / 100,
+    cumplimientoF1,
+    cumplimientoF2,
+    cumplimientoTotal,
+    brechaF1: Math.round(Math.max(0, capacidadProductoF1 - productoFase1) * 100) / 100,
+    brechaF2: Math.round(Math.max(0, capacidadProductoF2 - productoFase2) * 100) / 100,
+
+    sabadosHabiles,
+    sabadosOperados,
+    capacidadProductoSabados: Math.round(capacidadProductoSabados * 100) / 100,
+    productoSabados: Math.round(productoSabados * 100) / 100,
+    cumplimientoSabados: porcentaje(productoSabados, capacidadProductoSabados),
 
     diasHabiles,
     diasOperados,
@@ -732,14 +850,36 @@ export const generarConclusiones = (
     });
   }
 
-  // Capacidad instalada
-  if (actual.m3Optimo > 0 && actual.cumplimientoCapacidad < 70) {
+  // Fase 1 contra su capacidad
+  if (actual.capacidadProductoF1 > 0 && actual.cumplimientoF1 < 75) {
     out.push({
-      id: 'capacidad',
-      severidad: actual.cumplimientoCapacidad < 50 ? 'critico' : 'atencion',
-      titulo: `Se produjo el ${pct(actual.cumplimientoCapacidad)} de la capacidad instalada`,
-      detalle: `Fase 1 movió ${m3(actual.fase1)} de los ${m3(actual.m3Optimo)} que la operación podía mover con los tiempos de recorrido registrados.`,
-      accion: 'Comparar contra el cumplimiento de la flota asignada: si ese es alto, faltó asignar volquetas; si es bajo, el problema está en la ejecución.',
+      id: 'fase1-capacidad',
+      severidad: actual.cumplimientoF1 < 55 ? 'critico' : 'atencion',
+      titulo: `Fase 1 produjo el ${pct(actual.cumplimientoF1)} de lo que debía`,
+      detalle: `Se generaron ${m3(actual.productoFase1)} de arena directa de zaranda frente a los ${m3(actual.capacidadProductoF1)} que la operación podía dar en los días hábiles del período. Se dejaron de producir ${m3(actual.brechaF1)}.`,
+      accion: 'Revisar si la brecha viene de días sin operar, de volquetas sin asignar o de bajo rendimiento por volqueta.',
+    });
+  }
+
+  // Fase 2 contra su capacidad
+  if (actual.capacidadProductoF2 > 0 && actual.cumplimientoF2 < 60) {
+    out.push({
+      id: 'fase2-capacidad',
+      severidad: actual.cumplimientoF2 < 35 ? 'critico' : 'atencion',
+      titulo: `Fase 2 produjo el ${pct(actual.cumplimientoF2)} de lo que debía`,
+      detalle: `El reproceso del residuo aportó ${m3(actual.productoFase2)} de los ${m3(actual.capacidadProductoF2)} recuperables. Son ${m3(actual.brechaF2)} de producto terminado que se quedaron en el piso.`,
+      accion: 'Asignar volquetas fijas al reproceso y retomar la automatización de Fase 2.',
+    });
+  }
+
+  // Sábados
+  if (actual.sabadosHabiles > 0 && actual.sabadosOperados < actual.sabadosHabiles) {
+    out.push({
+      id: 'sabados',
+      severidad: actual.sabadosOperados === 0 ? 'critico' : 'atencion',
+      titulo: `Se operaron ${actual.sabadosOperados} de ${actual.sabadosHabiles} sábados`,
+      detalle: `Los sábados aportan ${m3(actual.capacidadProductoSabados)} de capacidad con su jornada de 4 horas, y se produjeron ${m3(actual.productoSabados)}.`,
+      accion: 'Definir si el sábado entra o no en la planeación: hoy se paga la disponibilidad y no se aprovecha.',
     });
   }
 

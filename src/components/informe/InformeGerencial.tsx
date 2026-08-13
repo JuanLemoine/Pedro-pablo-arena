@@ -11,14 +11,17 @@ import {
   Printer,
   ShoppingCart,
   Truck,
+  CalendarDays,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useInformeGerencial } from '@/hooks/useInformeGerencial';
 import type { DashboardFiltros } from '@/hooks/useDashboardResumen';
+import type { BaseCapacidad } from '@/lib/informe';
 import { exportarInformeExcel } from '@/lib/exportarInforme';
 import SeccionInforme from './SeccionInforme';
+import ProduccionVsCapacidad from './ProduccionVsCapacidad';
 import ResumenEjecutivo from './ResumenEjecutivo';
 import CumplimientoCapacidad from './CumplimientoCapacidad';
 import EmbudoFases from './EmbudoFases';
@@ -41,7 +44,8 @@ const rangoEnTexto = (inicio: string, fin: string) => {
 };
 
 const InformeGerencial = ({ filtros }: Props) => {
-  const { data, isLoading, error } = useInformeGerencial(filtros);
+  const [baseCapacidad, setBaseCapacidad] = useState<BaseCapacidad>('habiles');
+  const { data, isLoading, error } = useInformeGerencial(filtros, baseCapacidad);
   const [exportando, setExportando] = useState(false);
 
   const descargarExcel = () => {
@@ -141,6 +145,46 @@ const InformeGerencial = ({ filtros }: Props) => {
 
           <SeccionInforme
             numero={1}
+            titulo="Producción vs. capacidad, fase por fase"
+            pregunta="¿Cuánto produjimos en cada fase frente a lo que se debió producir?"
+            icono={Gauge}
+          >
+            <div className="no-print mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/30 p-2.5">
+              <span className="text-xs font-medium text-muted-foreground">Comparar contra la capacidad de:</span>
+              <div className="flex rounded-lg border border-border bg-background p-0.5">
+                {([
+                  ['habiles', 'Todos los días hábiles'],
+                  ['operados', 'Solo los días operados'],
+                ] as const).map(([valor, etiqueta]) => (
+                  <button
+                    key={valor}
+                    onClick={() => setBaseCapacidad(valor)}
+                    className={
+                      baseCapacidad === valor
+                        ? 'rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground'
+                        : 'rounded-md px-3 py-1 text-xs font-medium text-muted-foreground hover:text-foreground'
+                    }
+                  >
+                    {etiqueta}
+                  </button>
+                ))}
+              </div>
+              <span className="text-[11px] text-muted-foreground">
+                {baseCapacidad === 'habiles'
+                  ? 'Incluye el costo de los días que no se trabajó.'
+                  : 'Aísla el rendimiento de los días en que sí se trabajó.'}
+              </span>
+            </div>
+
+            <ProduccionVsCapacidad
+              actual={data.actual}
+              anterior={data.anterior}
+              tipoSilice={filtros.tipoSilice}
+            />
+          </SeccionInforme>
+
+          <SeccionInforme
+            numero={2}
             titulo="Conclusiones y recomendaciones"
             pregunta="¿Qué hay que hacer con lo que muestran los datos de este período?"
             icono={ClipboardList}
@@ -149,16 +193,16 @@ const InformeGerencial = ({ filtros }: Props) => {
           </SeccionInforme>
 
           <SeccionInforme
-            numero={2}
-            titulo="Producción vs. capacidad instalada"
-            pregunta="¿Produjimos lo que la operación podía producir?"
-            icono={Gauge}
+            numero={3}
+            titulo="Uso de la flota y días de operación"
+            pregunta="¿La brecha es por no trabajar, por faltar volquetas o por bajo rendimiento?"
+            icono={CalendarDays}
           >
             <CumplimientoCapacidad actual={data.actual} />
           </SeccionInforme>
 
           <SeccionInforme
-            numero={3}
+            numero={4}
             titulo="Fase 1 y Fase 2: del material excavado al producto"
             pregunta="¿Dónde está el cuello de botella: en sacar material o en reprocesarlo?"
             icono={Layers}
@@ -167,7 +211,7 @@ const InformeGerencial = ({ filtros }: Props) => {
           </SeccionInforme>
 
           <SeccionInforme
-            numero={4}
+            numero={5}
             titulo="Estabilidad de la operación"
             pregunta="¿La producción diaria es predecible o cambia de un día para otro?"
             icono={LineChart}
@@ -176,7 +220,7 @@ const InformeGerencial = ({ filtros }: Props) => {
           </SeccionInforme>
 
           <SeccionInforme
-            numero={5}
+            numero={6}
             titulo="Rendimiento de la flota"
             pregunta="¿Cuánto mueve cada volqueta y estamos usando la cantidad correcta?"
             icono={Truck}
@@ -185,7 +229,7 @@ const InformeGerencial = ({ filtros }: Props) => {
           </SeccionInforme>
 
           <SeccionInforme
-            numero={6}
+            numero={7}
             titulo="Resultado comercial"
             pregunta="¿A quién le vendimos, a qué precio y cuánto material regalamos?"
             icono={ShoppingCart}

@@ -9,6 +9,7 @@ import {
   calcularPeriodoAnterior,
   generarConclusiones,
   type AcopioRow,
+  type BaseCapacidad,
   type Conclusion,
   type MetricasPeriodo,
   type MovimientoRow,
@@ -87,7 +88,10 @@ const traerPeriodo = async (
  * Reutiliza `useOptimoDiario` (una vez por período) para no duplicar la lógica
  * del simulador, y pagina todas las consultas para no truncarse en 1.000 filas.
  */
-export const useInformeGerencial = (filtros: DashboardFiltros) => {
+export const useInformeGerencial = (
+  filtros: DashboardFiltros,
+  baseCapacidad: BaseCapacidad = 'habiles'
+) => {
   const rangoAnterior = useMemo(
     () => calcularPeriodoAnterior(filtros.fechaInicio, filtros.fechaFin),
     [filtros.fechaInicio, filtros.fechaFin]
@@ -128,7 +132,8 @@ export const useInformeGerencial = (filtros: DashboardFiltros) => {
       datos.data.actual.ventas,
       datos.data.actual.acopios,
       datos.data.actual.movimientos,
-      optimoActual.data ?? new Map()
+      optimoActual.data ?? new Map(),
+      baseCapacidad
     );
 
     const anterior = calcularMetricasPeriodo(
@@ -137,7 +142,8 @@ export const useInformeGerencial = (filtros: DashboardFiltros) => {
       datos.data.anterior.ventas,
       datos.data.anterior.acopios,
       datos.data.anterior.movimientos,
-      optimoAnterior.data ?? new Map()
+      optimoAnterior.data ?? new Map(),
+      baseCapacidad
     );
 
     return {
@@ -153,6 +159,7 @@ export const useInformeGerencial = (filtros: DashboardFiltros) => {
     filtros.fechaInicio,
     filtros.fechaFin,
     rangoAnterior,
+    baseCapacidad,
   ]);
 
   return { data, isLoading, error: datos.error };

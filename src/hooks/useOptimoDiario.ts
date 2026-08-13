@@ -8,6 +8,7 @@ import {
   labelFlota,
 } from '@/lib/simulador';
 import { getCapacidadVolqueta } from '@/lib/volquetas';
+import { traerTodo } from '@/lib/fetchTodo';
 import { eachDayOfInterval, format, parseISO } from 'date-fns';
 
 export interface OptimoPorDia {
@@ -27,6 +28,8 @@ export interface OptimoPorDia {
   woRound: number;                // nSmallOptimo + nLargeOptimo (= "mín. volquetas para el máximo")
   configOptimoLabel: string;      // p.ej. "1×14m³ + 1×7m³"
   m3Optimo: number;               // máximo "Cant m³ fase 1/día" alcanzable
+  /** m³ brutos óptimos desglosados por sílice, para comparar Peña vs Pozo. */
+  m3OptimoPorSilice: Record<string, number>;
   viajesOptimo: number;
   woOptimo: number;               // Wo teórico (decimal)
   // Balance
@@ -43,12 +46,18 @@ interface Params {
 interface TiempoRow { fecha: string; silice: string; tiempo_ida: number; tiempo_vuelta: number; }
 interface MovRow { fecha: string; placa: string; silice: string; }
 
+/**
+ * Las dos rutas de la operación. La capacidad instalada del día es la suma de
+ * ambas, exista o no actividad registrada. Arena Fina no tiene ruta propia.
+ */
+const SILICES_CON_RUTA = ['Silice A - Peña', 'Silice B - Pozo'];
+
 const vacio = (fecha: string): OptimoPorDia => ({
   fecha,
   nSmallActual: 0, nMediumActual: 0, nLargeActual: 0, wActual: 0, configActualLabel: '—',
   m3Actual: 0, viajesActual: 0,
   nSmallOptimo: 0, nLargeOptimo: 0, woRound: 0, configOptimoLabel: '—',
-  m3Optimo: 0, viajesOptimo: 0, woOptimo: 0,
+  m3Optimo: 0, m3OptimoPorSilice: {}, viajesOptimo: 0, woOptimo: 0,
   diferencia: 0, usedFallback: false,
 });
 
@@ -63,16 +72,21 @@ export const useOptimoDiario = ({ fechaInicio, fechaFin, tipoSilice }: Params) =
           .gte('fecha', fechaInicio)
           .lte('fecha', fechaFin),
         supabase.from('tiempos').select('tiempo_ida, tiempo_vuelta'),
-        supabase
-          .from('movimientos')
-          .select('fecha, placa, silice')
-          .eq('origen', 'Punto de excavación')
-          .gte('fecha', fechaInicio)
-          .lte('fecha', fechaFin),
+        // Paginado: un rango de varios meses supera las 1.000 filas por petición.
+        traerTodo<MovRow>((desde, hasta) =>
+          supabase
+            .from('movimientos')
+            .select('fecha, placa, silice')
+            .eq('origen', 'Punto de excavación')
+            .gte('fecha', fechaInicio)
+            .lte('fecha', fechaFin)
+            .order('id', { ascending: true })
+            .range(desde, hasta) as unknown as PromiseLike<{ data: MovRow[] | null; error: unknown }>
+        ),
       ]);
 
       const tiemposRango = (tiemposRangoRes.data ?? []) as TiempoRow[];
-      const movs = (movsRes.data ?? []) as MovRow[];
+      const movs = movsRes;
       const tiemposAll = (tiemposAllRes.data ?? []) as Pick<TiempoRow, 'tiempo_ida' | 'tiempo_vuelta'>[];
 
       const promedioHist = (() => {
@@ -93,15 +107,12 @@ export const useOptimoDiario = ({ fechaInicio, fechaFin, tipoSilice }: Params) =
       });
 
       const placasMap = new Map<string, Set<string>>();
-      const silicesPorFecha = new Map<string, Set<string>>();
       movs.forEach(m => {
         const filtroOk = !tipoSilice || tipoSilice === 'todos' || m.silice === tipoSilice;
         if (!filtroOk) return;
         const k = `${m.fecha}|${m.silice}`;
         if (!placasMap.has(k)) placasMap.set(k, new Set());
         placasMap.get(k)!.add(m.placa.toUpperCase());
-        if (!silicesPorFecha.has(m.fecha)) silicesPorFecha.set(m.fecha, new Set());
-        silicesPorFecha.get(m.fecha)!.add(m.silice);
       });
 
       const resultado = new Map<string, OptimoPorDia>();
@@ -112,16 +123,25 @@ export const useOptimoDiario = ({ fechaInicio, fechaFin, tipoSilice }: Params) =
         const jornada = jornadaSegundosParaFecha(fecha);
         if (jornada === 0) { resultado.set(fecha, vacio(fecha)); continue; }
 
+        /**
+         * La capacidad se calcula en TODOS los días hábiles, se haya operado o
+         * no: un día hábil sin operación es capacidad perdida y debe pesar en
+         * el cumplimiento. Antes solo se calculaba en los días con movimientos,
+         * lo que inflaba el porcentaje (ago-2025 en Peña daba 99 % porque se
+         * operaron pocos días y cada uno rindió bien).
+         *
+         * Las rutas de la operación son las dos: si no se filtra por sílice, la
+         * capacidad del día es la de Peña más la de Pozo, hayan operado o no.
+         */
         const silicesDelDia = tipoSilice && tipoSilice !== 'todos'
           ? [tipoSilice]
-          : Array.from(silicesPorFecha.get(fecha) ?? []);
-
-        if (silicesDelDia.length === 0) { resultado.set(fecha, vacio(fecha)); continue; }
+          : SILICES_CON_RUTA;
 
         let nSmallAct = 0, nMediumAct = 0, nLargeAct = 0;
         let viajesAct = 0, m3Act = 0;
         let viajesOpt = 0, m3Opt = 0, woOptSuma = 0;
         let nSmallOpt = 0, nLargeOpt = 0;
+        const m3OptPorSil: Record<string, number> = {};
         let usedFallback = false;
         const labelsActPorSil: string[] = [];
         const labelsOptPorSil: string[] = [];
@@ -164,6 +184,7 @@ export const useOptimoDiario = ({ fechaInicio, fechaFin, tipoSilice }: Params) =
           nLargeOpt += mejor.nLarge;
           viajesOpt += mejor.viajes;
           m3Opt += mejor.m3Bruto;
+          m3OptPorSil[sil] = (m3OptPorSil[sil] ?? 0) + mejor.m3Bruto;
           woOptSuma += mejor.Wo;
           if (multiSilice) labelsOptPorSil.push(`${sil}: ${mejor.label}`);
           else labelsOptPorSil.push(mejor.label);
@@ -185,6 +206,7 @@ export const useOptimoDiario = ({ fechaInicio, fechaFin, tipoSilice }: Params) =
           woRound,
           configOptimoLabel: labelsOptPorSil.length ? labelsOptPorSil.join(' · ') : '—',
           m3Optimo: Math.round(m3Opt * 100) / 100,
+          m3OptimoPorSilice: m3OptPorSil,
           viajesOptimo: viajesOpt,
           woOptimo: Math.round(woOptSuma * 100) / 100,
           diferencia: wActual - woRound,

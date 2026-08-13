@@ -1,4 +1,4 @@
-import { BadgeDollarSign, CalendarCheck, Gauge, Mountain, Tag, Truck } from 'lucide-react';
+import { BadgeDollarSign, CalendarCheck, Layers, Mountain, Truck, Gauge } from 'lucide-react';
 import KpiTile from './KpiTile';
 import { formatoM3, formatoMoneda, formatoMonedaCorta, formatoPorcentaje } from '@/lib/formato';
 import type { MetricasPeriodo } from '@/lib/informe';
@@ -31,23 +31,23 @@ const ResumenEjecutivo = ({ actual, anterior }: Props) => (
       sentido="masEsMejor"
     />
     <KpiTile
-      titulo="m³ excavados (Fase 1)"
-      valor={formatoM3(actual.fase1, 0)}
-      nota={`${actual.viajesFase1} viaje(s) al punto de zaranda`}
+      titulo="Fase 1: cumplimiento"
+      valor={formatoPorcentaje(actual.cumplimientoF1, 0)}
+      nota={`${formatoM3(actual.productoFase1, 0)} de ${formatoM3(actual.capacidadProductoF1, 0)} posibles`}
       icono={Mountain}
       tono="ambar"
-      actual={actual.fase1}
-      anterior={anterior?.fase1}
+      actual={actual.cumplimientoF1}
+      anterior={anterior?.cumplimientoF1}
       sentido="masEsMejor"
     />
     <KpiTile
-      titulo="Uso de la capacidad"
-      valor={formatoPorcentaje(actual.cumplimientoCapacidad)}
-      nota={`De ${formatoM3(actual.m3Optimo, 0)} posibles en los ${actual.diasOperados} día(s) operados`}
-      icono={Gauge}
-      tono="morado"
-      actual={actual.cumplimientoCapacidad}
-      anterior={anterior?.cumplimientoCapacidad}
+      titulo="Fase 2: cumplimiento"
+      valor={formatoPorcentaje(actual.cumplimientoF2, 0)}
+      nota={`${formatoM3(actual.productoFase2, 0)} de ${formatoM3(actual.capacidadProductoF2, 0)} posibles`}
+      icono={Layers}
+      tono="verde"
+      actual={actual.cumplimientoF2}
+      anterior={anterior?.cumplimientoF2}
       sentido="masEsMejor"
     />
     <KpiTile
@@ -65,13 +65,13 @@ const ResumenEjecutivo = ({ actual, anterior }: Props) => (
       sentido="masEsMejor"
     />
     <KpiTile
-      titulo="Precio por m³ entregado"
-      valor={formatoMoneda(actual.precioPorM3Entregado)}
-      nota={`Facturado ${formatoMoneda(actual.precioPorM3Facturado)} por m³`}
-      icono={Tag}
-      tono="gris"
-      actual={actual.precioPorM3Entregado}
-      anterior={anterior?.precioPorM3Entregado}
+      titulo="Producción total"
+      valor={formatoPorcentaje(actual.cumplimientoTotal, 0)}
+      nota={`${formatoM3(actual.productoFinalTotal, 0)} de ${formatoM3(actual.capacidadProductoTotal, 0)} · precio ${formatoMoneda(actual.precioPorM3Entregado)}/m³`}
+      icono={Gauge}
+      tono="morado"
+      actual={actual.cumplimientoTotal}
+      anterior={anterior?.cumplimientoTotal}
       sentido="masEsMejor"
     />
   </div>
