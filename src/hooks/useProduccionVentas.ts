@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
-import { calcularM3PorMovimiento } from '@/lib/volquetas';
+import { calcularM3PorMovimiento, getCapacidadVolqueta } from '@/lib/volquetas';
+import { traerTodo } from '@/lib/fetchTodo';
 import { format, startOfWeek, startOfMonth, parseISO, subDays, subWeeks, subMonths } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -12,6 +13,12 @@ interface DataPoint {
   fechaLabel: string;
   producido: number;
   vendido: number;
+  /**
+   * m³ BRUTOS llevados del punto de excavación a la zaranda. Es la única
+   * medida comparable con el óptimo del simulador, que también es bruto y
+   * también modela solo esa ruta.
+   */
+  fase1Bruto: number;
 }
 
 interface ResumenPorTipo {
@@ -19,6 +26,18 @@ interface ResumenPorTipo {
   producido: number;
   vendido: number;
 }
+
+interface MovimientoRow {
+  fecha: string;
+  placa: string;
+  silice: string;
+  origen: string;
+  destino: string;
+  cantidad_movimientos: number;
+}
+
+/** Los tipos generados de Supabase están desactualizados y colapsan a `never`. */
+type ConsultaPaginada<T> = PromiseLike<{ data: T[] | null; error: unknown }>;
 
 interface UseProduccionVentasParams {
   agrupacion: TipoAgrupacion;
@@ -32,6 +51,7 @@ interface ProduccionVentasData {
   resumenPorTipo: ResumenPorTipo[];
   totalProducido: number;
   totalVendido: number;
+  totalFase1Bruto: number;
 }
 
 export const useProduccionVentas = ({ agrupacion, tipoSilice, fechaInicio, fechaFin }: UseProduccionVentasParams) => {
@@ -67,16 +87,15 @@ export const useProduccionVentas = ({ agrupacion, tipoSilice, fechaInicio, fecha
       // Obtener movimientos (producción) con filtro de tipo
       // Nota: No filtramos por silice directamente porque el silice resultante puede cambiar
       // (Silice B desde Zaranda se convierte en Silice A)
-      const { data: allMovimientos, error: errorMov } = await supabase
-        .from('movimientos')
-        .select('fecha, placa, silice, origen, destino, cantidad_movimientos')
-        .gte('fecha', inicioStr)
-        .lte('fecha', finStr)
-        .order('fecha', { ascending: true });
-
-      if (errorMov) {
-        console.error('Error fetching movimientos:', errorMov);
-      }
+      const allMovimientos = await traerTodo<MovimientoRow>((desde, hasta) =>
+        supabase
+          .from('movimientos')
+          .select('fecha, placa, silice, origen, destino, cantidad_movimientos')
+          .gte('fecha', inicioStr)
+          .lte('fecha', finStr)
+          .order('id', { ascending: true })
+          .range(desde, hasta) as unknown as ConsultaPaginada<MovimientoRow>
+      );
 
       // Filtrar movimientos según el tipo de sílice RESULTANTE (no el registrado)
       const movimientos = tipoSilice === 'todos' 
@@ -153,7 +172,7 @@ export const useProduccionVentas = ({ agrupacion, tipoSilice, fechaInicio, fecha
       }));
 
       // Agrupar datos para la gráfica
-      const agrupados = new Map<string, { producido: number; vendido: number }>();
+      const agrupados = new Map<string, { producido: number; vendido: number; fase1Bruto: number }>();
 
       const getGroupKey = (fechaStr: string): { key: string; label: string } => {
         const fecha = parseISO(fechaStr);
@@ -185,15 +204,29 @@ export const useProduccionVentas = ({ agrupacion, tipoSilice, fechaInicio, fecha
       movimientos?.forEach(mov => {
         const { key } = getGroupKey(mov.fecha);
         const resultado = calcularM3PorMovimiento(mov.placa, mov.silice, mov.origen, mov.destino);
-        const existing = agrupados.get(key) || { producido: 0, vendido: 0 };
+        const existing = agrupados.get(key) || { producido: 0, vendido: 0, fase1Bruto: 0 };
         existing.producido += resultado.m3Producidos * mov.cantidad_movimientos;
+        agrupados.set(key, existing);
+      });
+
+      // Fase 1: m³ brutos del punto de excavación a la zaranda. Se recorren
+      // TODOS los movimientos y se filtra por el sílice registrado —en esta
+      // ruta el frente no cambia, a diferencia del reproceso desde zaranda,
+      // donde el Pozo sale convertido en Peña.
+      allMovimientos?.forEach(mov => {
+        if (mov.origen !== 'Punto de excavación' || mov.destino !== 'Zaranda') return;
+        if (tipoSilice !== 'todos' && mov.silice !== tipoSilice) return;
+        const { key } = getGroupKey(mov.fecha);
+        const existing = agrupados.get(key) || { producido: 0, vendido: 0, fase1Bruto: 0 };
+        existing.fase1Bruto +=
+          getCapacidadVolqueta(mov.placa) * (Number(mov.cantidad_movimientos) || 0);
         agrupados.set(key, existing);
       });
 
       // Procesar ventas - Por cada venta se suma 1 m³ adicional (yapa que se regala al comprador)
       ventas?.forEach(venta => {
         const { key } = getGroupKey(venta.fecha);
-        const existing = agrupados.get(key) || { producido: 0, vendido: 0 };
+        const existing = agrupados.get(key) || { producido: 0, vendido: 0, fase1Bruto: 0 };
         existing.vendido += Number(venta.cantidad_m3) + 1;
         agrupados.set(key, existing);
       });
@@ -209,17 +242,20 @@ export const useProduccionVentas = ({ agrupacion, tipoSilice, fechaInicio, fecha
           fecha: key,
           fechaLabel: label,
           producido: Math.round(data.producido * 100) / 100,
-          vendido: Math.round(data.vendido * 100) / 100
+          vendido: Math.round(data.vendido * 100) / 100,
+          fase1Bruto: Math.round(data.fase1Bruto * 100) / 100,
         });
       });
 
       // Calcular totales filtrados
       const totalProducido = datos.reduce((sum, d) => sum + d.producido, 0);
       const totalVendido = datos.reduce((sum, d) => sum + d.vendido, 0);
+      const totalFase1Bruto = datos.reduce((sum, d) => sum + d.fase1Bruto, 0);
 
       return {
         datos,
         resumenPorTipo,
+        totalFase1Bruto: Math.round(totalFase1Bruto * 100) / 100,
         totalProducido,
         totalVendido
       };

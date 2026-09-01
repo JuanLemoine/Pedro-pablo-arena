@@ -24,18 +24,18 @@ interface Props {
 
 const TooltipPersonalizado = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
-  const producido = payload.find((p: any) => p.dataKey === 'producido');
+  const entregado = payload.find((p: any) => p.dataKey === 'fase1Bruto');
   const optimo = payload.find((p: any) => p.dataKey === 'optimo');
   const d = payload[0]?.payload;
   return (
     <div className="bg-white border border-slate-200 rounded-lg shadow-lg p-3 text-xs space-y-1.5 max-w-[300px]">
       <p className="font-semibold text-slate-700">{label}</p>
-      {producido && (
+      {entregado && (
         <div className="flex items-center gap-2">
           <div className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-          <span className="text-slate-500">Producido:</span>
+          <span className="text-slate-500">Entregado a zaranda:</span>
           <span className="font-bold text-slate-800">
-            {Number(producido.value).toLocaleString('es-CO', { maximumFractionDigits: 2 })} m³
+            {Number(entregado.value).toLocaleString('es-CO', { maximumFractionDigits: 2 })} m³
           </span>
         </div>
       )}
@@ -54,6 +54,19 @@ const TooltipPersonalizado = ({ active, payload, label }: any) => {
           <div>
             <div><span className="text-slate-500">Óptimo:</span> <span className="font-bold text-slate-800">{Number(optimo.value).toLocaleString('es-CO', { maximumFractionDigits: 2 })} m³</span></div>
             <div className="text-slate-500 text-[11px]">Config ideal: {d?.configOptimoLabel ?? '—'}</div>
+            {entregado && optimo.value > 0 && (
+              <div className="text-slate-500 text-[11px]">
+                Cumplimiento:{' '}
+                <span className="font-semibold text-slate-700">
+                  {((Number(entregado.value) / Number(optimo.value)) * 100).toFixed(0)}%
+                </span>
+              </div>
+            )}
+            {d?.usedFallback && (
+              <div className="text-amber-700 text-[11px] mt-0.5">
+                Sin tiempos medidos ese día: se usó el promedio histórico.
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -90,6 +103,7 @@ const ProduccionDiariaLineChart = ({ tipoSilice = 'todos', fechaInicio, fechaFin
       configOptimoLabel: o?.configOptimoLabel ?? '—',
       configActualLabel: o?.configActualLabel ?? '—',
       m3Actual: o?.m3Actual ?? 0,
+      usedFallback: o?.usedFallback ?? false,
     };
   });
 
@@ -100,8 +114,14 @@ const ProduccionDiariaLineChart = ({ tipoSilice = 'todos', fechaInicio, fechaFin
     : 0;
 
   // Máximo del período
-  const maximo = data ? Math.max(...data.datos.map(d => d.producido)) : 0;
-  const diaPico = data?.datos.find(d => d.producido === maximo);
+  const maximo = data ? Math.max(...data.datos.map(d => d.fase1Bruto)) : 0;
+  const diaPico = data?.datos.find(d => d.fase1Bruto === maximo);
+
+  // Cumplimiento del período: entregado a zaranda sobre la capacidad de los
+  // mismos días. Ambos lados en m³ brutos y solo la ruta excavación → zaranda.
+  const optimoTotal = datosConOptimo.reduce((s, d) => s + d.optimo, 0);
+  const cumplimiento = optimoTotal > 0 ? ((data?.totalFase1Bruto ?? 0) / optimoTotal) * 100 : 0;
+  const diasSinTiempos = datosConOptimo.filter(d => d.usedFallback && d.optimo > 0).length;
 
   return (
     <Card className="shadow-card">
@@ -110,18 +130,19 @@ const ProduccionDiariaLineChart = ({ tipoSilice = 'todos', fechaInicio, fechaFin
           <div>
             <CardTitle className="text-lg font-semibold flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-primary" />
-              Producción Diaria de Arena
+              Fase 1: material entregado a la zaranda
             </CardTitle>
             <CardDescription>
-              m³ producidos por día en el período seleccionado
+              m³ brutos llevados del punto de excavación a la zaranda, frente a lo que se debió
+              entregar con la mejor flota. El reproceso de Fase 2 no entra aquí.
             </CardDescription>
           </div>
           {!isLoading && data && data.datos.length > 0 && (
             <div className="flex gap-4 text-sm shrink-0">
               <div className="text-right">
-                <p className="text-xs text-muted-foreground">Total</p>
+                <p className="text-xs text-muted-foreground">Entregado</p>
                 <p className="font-bold text-amber-600">
-                  {data.totalProducido.toLocaleString('es-CO', { maximumFractionDigits: 1 })} m³
+                  {data.totalFase1Bruto.toLocaleString('es-CO', { maximumFractionDigits: 1 })} m³
                 </p>
               </div>
               <div className="text-right">
@@ -130,6 +151,14 @@ const ProduccionDiariaLineChart = ({ tipoSilice = 'todos', fechaInicio, fechaFin
                   {optimoPromedio.toLocaleString('es-CO', { maximumFractionDigits: 1 })} m³
                 </p>
               </div>
+              {optimoTotal > 0 && (
+                <div className="text-right">
+                  <p className="text-xs text-muted-foreground">Cumplimiento</p>
+                  <p className="font-bold text-slate-700">
+                    {cumplimiento.toLocaleString('es-CO', { maximumFractionDigits: 0 })}%
+                  </p>
+                </div>
+              )}
               {diaPico && maximo > 0 && (
                 <div className="text-right">
                   <p className="text-xs text-muted-foreground">Pico</p>
@@ -199,15 +228,15 @@ const ProduccionDiariaLineChart = ({ tipoSilice = 'todos', fechaInicio, fechaFin
 
                 <Area
                   type="monotone"
-                  dataKey="producido"
-                  name="Producido"
+                  dataKey="fase1Bruto"
+                  name="Entregado a zaranda"
                   stroke="hsl(32,80%,50%)"
                   strokeWidth={2.5}
                   fill="url(#gradProduccion)"
                   dot={(props: any) => {
                     const { cx, cy, payload } = props;
-                    if (!payload.producido) return <g key={props.key} />;
-                    const isPico = payload.producido === maximo && maximo > 0;
+                    if (!payload.fase1Bruto) return <g key={props.key} />;
+                    const isPico = payload.fase1Bruto === maximo && maximo > 0;
                     return (
                       <circle
                         key={props.key}
@@ -224,6 +253,13 @@ const ProduccionDiariaLineChart = ({ tipoSilice = 'todos', fechaInicio, fechaFin
                 />
               </ComposedChart>
             </ResponsiveContainer>
+            {diasSinTiempos > 0 && (
+              <p className="pt-2 text-[11px] leading-relaxed text-amber-700">
+                {diasSinTiempos === datosConOptimo.filter(d => d.optimo > 0).length
+                  ? 'Ningún día del rango tiene tiempos de ida y vuelta medidos: el óptimo sale del promedio histórico, por eso la línea azul es plana.'
+                  : `${diasSinTiempos} día(s) del rango no tienen tiempos medidos: en esos el óptimo sale del promedio histórico.`}
+              </p>
+            )}
           </div>
         ) : (
           <div className="h-[300px] flex flex-col items-center justify-center text-muted-foreground gap-2">
