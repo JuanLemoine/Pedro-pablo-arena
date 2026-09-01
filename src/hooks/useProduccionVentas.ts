@@ -13,12 +13,14 @@ interface DataPoint {
   fechaLabel: string;
   producido: number;
   vendido: number;
-  /**
-   * m³ BRUTOS llevados del punto de excavación a la zaranda. Es la única
-   * medida comparable con el óptimo del simulador, que también es bruto y
-   * también modela solo esa ruta.
-   */
+  /** m³ BRUTOS transportados del punto de excavación a la zaranda. */
   fase1Bruto: number;
+  /**
+   * m³ de PRODUCTO de esa misma ruta (bruto × 67 %). Es la cifra que muestra
+   * la página de Movimientos como "m³ Producidos", y la que se grafica, para
+   * que las dos pantallas digan lo mismo del mismo día.
+   */
+  fase1Producto: number;
 }
 
 interface ResumenPorTipo {
@@ -52,6 +54,7 @@ interface ProduccionVentasData {
   totalProducido: number;
   totalVendido: number;
   totalFase1Bruto: number;
+  totalFase1Producto: number;
 }
 
 export const useProduccionVentas = ({ agrupacion, tipoSilice, fechaInicio, fechaFin }: UseProduccionVentasParams) => {
@@ -172,7 +175,10 @@ export const useProduccionVentas = ({ agrupacion, tipoSilice, fechaInicio, fecha
       }));
 
       // Agrupar datos para la gráfica
-      const agrupados = new Map<string, { producido: number; vendido: number; fase1Bruto: number }>();
+      const agrupados = new Map<
+        string,
+        { producido: number; vendido: number; fase1Bruto: number; fase1Producto: number }
+      >();
 
       const getGroupKey = (fechaStr: string): { key: string; label: string } => {
         const fecha = parseISO(fechaStr);
@@ -204,7 +210,7 @@ export const useProduccionVentas = ({ agrupacion, tipoSilice, fechaInicio, fecha
       movimientos?.forEach(mov => {
         const { key } = getGroupKey(mov.fecha);
         const resultado = calcularM3PorMovimiento(mov.placa, mov.silice, mov.origen, mov.destino);
-        const existing = agrupados.get(key) || { producido: 0, vendido: 0, fase1Bruto: 0 };
+        const existing = agrupados.get(key) || { producido: 0, vendido: 0, fase1Bruto: 0, fase1Producto: 0 };
         existing.producido += resultado.m3Producidos * mov.cantidad_movimientos;
         agrupados.set(key, existing);
       });
@@ -217,16 +223,19 @@ export const useProduccionVentas = ({ agrupacion, tipoSilice, fechaInicio, fecha
         if (mov.origen !== 'Punto de excavación' || mov.destino !== 'Zaranda') return;
         if (tipoSilice !== 'todos' && mov.silice !== tipoSilice) return;
         const { key } = getGroupKey(mov.fecha);
-        const existing = agrupados.get(key) || { producido: 0, vendido: 0, fase1Bruto: 0 };
-        existing.fase1Bruto +=
-          getCapacidadVolqueta(mov.placa) * (Number(mov.cantidad_movimientos) || 0);
+        const existing = agrupados.get(key) || { producido: 0, vendido: 0, fase1Bruto: 0, fase1Producto: 0 };
+        const viajes = Number(mov.cantidad_movimientos) || 0;
+        existing.fase1Bruto += getCapacidadVolqueta(mov.placa) * viajes;
+        existing.fase1Producto +=
+          calcularM3PorMovimiento(mov.placa, mov.silice, mov.origen, mov.destino).m3Producidos *
+          viajes;
         agrupados.set(key, existing);
       });
 
       // Procesar ventas - Por cada venta se suma 1 m³ adicional (yapa que se regala al comprador)
       ventas?.forEach(venta => {
         const { key } = getGroupKey(venta.fecha);
-        const existing = agrupados.get(key) || { producido: 0, vendido: 0, fase1Bruto: 0 };
+        const existing = agrupados.get(key) || { producido: 0, vendido: 0, fase1Bruto: 0, fase1Producto: 0 };
         existing.vendido += Number(venta.cantidad_m3) + 1;
         agrupados.set(key, existing);
       });
@@ -244,6 +253,7 @@ export const useProduccionVentas = ({ agrupacion, tipoSilice, fechaInicio, fecha
           producido: Math.round(data.producido * 100) / 100,
           vendido: Math.round(data.vendido * 100) / 100,
           fase1Bruto: Math.round(data.fase1Bruto * 100) / 100,
+          fase1Producto: Math.round(data.fase1Producto * 100) / 100,
         });
       });
 
@@ -251,11 +261,13 @@ export const useProduccionVentas = ({ agrupacion, tipoSilice, fechaInicio, fecha
       const totalProducido = datos.reduce((sum, d) => sum + d.producido, 0);
       const totalVendido = datos.reduce((sum, d) => sum + d.vendido, 0);
       const totalFase1Bruto = datos.reduce((sum, d) => sum + d.fase1Bruto, 0);
+      const totalFase1Producto = datos.reduce((sum, d) => sum + d.fase1Producto, 0);
 
       return {
         datos,
         resumenPorTipo,
         totalFase1Bruto: Math.round(totalFase1Bruto * 100) / 100,
+        totalFase1Producto: Math.round(totalFase1Producto * 100) / 100,
         totalProducido,
         totalVendido
       };
