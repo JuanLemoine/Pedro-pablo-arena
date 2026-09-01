@@ -143,8 +143,7 @@ const ProduccionDiariaLineChart = ({ tipoSilice = 'todos', fechaInicio, fechaFin
             </CardTitle>
             <CardDescription>
               m³ producidos en la ruta punto de excavación → zaranda, frente a lo que se debió
-              producir con la mejor flota. Misma cifra que la página de Movimientos con ese
-              filtro; el reproceso de Fase 2 no entra aquí.
+              producir con la mejor flota.
             </CardDescription>
           </div>
           {!isLoading && data && data.datos.length > 0 && (
