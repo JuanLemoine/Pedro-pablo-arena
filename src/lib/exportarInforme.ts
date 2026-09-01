@@ -23,7 +23,9 @@ const METRICAS: FilaMetrica[] = [
   { clave: 'Ingreso por ventas', valor: m => m.ingresoVentas, unidad: '$' },
   { clave: 'Ingreso por acopio', valor: m => m.ingresoAcopio, unidad: '$' },
   { clave: 'm³ facturados', valor: m => m.m3Facturados, unidad: 'm³' },
-  { clave: 'm³ entregados (con yapa)', valor: m => m.m3Entregados, unidad: 'm³' },
+  { clave: 'm³ a clientes (con yapa)', valor: m => m.m3EntregadoVentas, unidad: 'm³' },
+  { clave: 'm³ al acopio', valor: m => m.m3Acopio, unidad: 'm³' },
+  { clave: 'Producto final entregado', valor: m => m.m3Entregados, unidad: 'm³' },
   { clave: 'Despachos', valor: m => m.ventasRegistros, unidad: 'nº' },
   { clave: 'Precio por m³ facturado', valor: m => m.precioPorM3Facturado, unidad: '$' },
   { clave: 'Precio por m³ entregado', valor: m => m.precioPorM3Entregado, unidad: '$' },
@@ -121,7 +123,9 @@ export const exportarInformeExcel = (informe: InformeGerencial) => {
     'Fase 1 cumplimiento %': r1(s.cumplimientoF1),
     'Fase 2 capacidad': r1(s.capacidadProductoF2),
     'Fase 2 cumplimiento %': r1(s.cumplimientoF2),
-    'm³ entregados': r1(s.m3Entregados),
+    'm³ a clientes': r1(s.m3EntregadoVentas),
+    'm³ al acopio': r1(s.m3Acopio),
+    'Producto final entregado': r1(s.m3Entregados),
     'Ingreso ($)': r0(s.ingreso),
   }));
   filasFases.push({
@@ -137,13 +141,17 @@ export const exportarInformeExcel = (informe: InformeGerencial) => {
     'Fase 1 cumplimiento %': r1(actual.cumplimientoF1),
     'Fase 2 capacidad': r1(actual.capacidadProductoF2),
     'Fase 2 cumplimiento %': r1(actual.cumplimientoF2),
-    'm³ entregados': r1(actual.m3Entregados),
+    'm³ a clientes': r1(actual.m3EntregadoVentas),
+    'm³ al acopio': r1(actual.m3Acopio),
+    'Producto final entregado': r1(actual.m3Entregados),
     'Ingreso ($)': r0(actual.ingresoVentas),
   });
   const wsFases = XLSX.utils.json_to_sheet(filasFases);
   wsFases['!cols'] = [
     { wch: 22 }, { wch: 22 }, { wch: 30 }, { wch: 22 },
     { wch: 20 }, { wch: 28 }, { wch: 24 }, { wch: 15 }, { wch: 16 },
+    { wch: 20 }, { wch: 16 }, { wch: 20 }, { wch: 14 }, { wch: 14 },
+    { wch: 24 }, { wch: 16 },
   ];
   XLSX.utils.book_append_sheet(wb, wsFases, 'Fases y residuos');
 

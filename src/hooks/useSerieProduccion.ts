@@ -8,6 +8,7 @@ import { useOptimoDiario } from '@/hooks/useOptimoDiario';
 import {
   calcularM3PorMovimiento,
   esDestinoAlmacenamiento,
+  getCapacidadVolqueta,
 } from '@/lib/volquetas';
 import { RENDIMIENTO_PRODUCTO_F1, RENDIMIENTO_PRODUCTO_F2, type BaseCapacidad } from '@/lib/informe';
 import { porcentaje } from '@/lib/formato';
@@ -24,7 +25,10 @@ export interface PuntoSerie {
   capacidadF1: number;
   capacidadF2: number;
   capacidadTotal: number;
+  /** Producto final entregado = ventas (con yapa) + acopio. */
   entregado: number;
+  entregadoVentas: number;
+  entregadoAcopio: number;
   cumplimientoF1: number;
   cumplimientoF2: number;
   /** Sin movimientos registrados en el tramo: el 0 % puede ser falta de registro. */
@@ -41,6 +45,7 @@ interface MovRow {
   cantidad_movimientos: number;
 }
 interface VentaRow { fecha: string; silice: string; cantidad_m3: number; fuente: string | null; tipo_transaccion: string | null }
+interface AcopioRow { fecha: string; silice: string; placa: string; cantidad_viajes: number }
 
 type Consulta<T> = PromiseLike<{ data: T[] | null; error: unknown }>;
 
@@ -77,7 +82,7 @@ export const useSerieProduccion = (filtros: FiltrosSerie) => {
   const datos = useQuery({
     queryKey: ['serie-produccion-datos', inicio, fin],
     queryFn: async () => {
-      const [movimientos, ventas] = await Promise.all([
+      const [movimientos, ventas, acopios] = await Promise.all([
         traerTodo<MovRow>((desde, hasta) =>
           supabase
             .from('movimientos')
@@ -96,8 +101,17 @@ export const useSerieProduccion = (filtros: FiltrosSerie) => {
             .order('id', { ascending: true })
             .range(desde, hasta) as unknown as Consulta<VentaRow>
         ),
+        traerTodo<AcopioRow>((desde, hasta) =>
+          supabase
+            .from('acopios')
+            .select('fecha, silice, placa, cantidad_viajes')
+            .gte('fecha', inicio)
+            .lte('fecha', fin)
+            .order('id', { ascending: true })
+            .range(desde, hasta) as unknown as Consulta<AcopioRow>
+        ),
       ]);
-      return { movimientos, ventas };
+      return { movimientos, ventas, acopios };
     },
     staleTime: 60000,
   });
@@ -122,7 +136,8 @@ export const useSerieProduccion = (filtros: FiltrosSerie) => {
       etiqueta: etiquetaTramo(clave, agrupacion),
       productoF1: 0, productoF2: 0, productoTotal: 0,
       capacidadF1: 0, capacidadF2: 0, capacidadTotal: 0,
-      entregado: 0, cumplimientoF1: 0, cumplimientoF2: 0, sinRegistros: true,
+      entregado: 0, entregadoVentas: 0, entregadoAcopio: 0,
+      cumplimientoF1: 0, cumplimientoF2: 0, sinRegistros: true,
     });
     const dame = (fecha: string) => {
       const k = claveTramo(fecha, agrupacion);
@@ -161,10 +176,17 @@ export const useSerieProduccion = (filtros: FiltrosSerie) => {
       else if (mv.origen === 'Zaranda') { p.productoF2 += producto; p.sinRegistros = false; }
     });
 
-    // Entregado. La mina no aplica a ventas: se registran por sílice, no por frente.
+    // Producto final entregado = ventas (con la yapa de 1 m³ por despacho) más
+    // lo llevado al acopio. La mina no aplica: ventas y acopios se registran por
+    // sílice, no por frente.
     datos.data.ventas.forEach(v => {
       if (!coincideSilice(v.silice)) return;
-      dame(v.fecha).entregado += (Number(v.cantidad_m3) || 0) + 1;
+      dame(v.fecha).entregadoVentas += (Number(v.cantidad_m3) || 0) + 1;
+    });
+    datos.data.acopios.forEach(a => {
+      if (!coincideSilice(a.silice)) return;
+      dame(a.fecha).entregadoAcopio +=
+        getCapacidadVolqueta(a.placa) * (Number(a.cantidad_viajes) || 0);
     });
 
     const r = (n: number) => Math.round(n * 10) / 10;
@@ -178,7 +200,9 @@ export const useSerieProduccion = (filtros: FiltrosSerie) => {
         capacidadF1: r(p.capacidadF1),
         capacidadF2: r(p.capacidadF2),
         capacidadTotal: r(p.capacidadF1 + p.capacidadF2),
-        entregado: r(p.entregado),
+        entregadoVentas: r(p.entregadoVentas),
+        entregadoAcopio: r(p.entregadoAcopio),
+        entregado: r(p.entregadoVentas + p.entregadoAcopio),
         cumplimientoF1: porcentaje(p.productoF1, p.capacidadF1),
         cumplimientoF2: porcentaje(p.productoF2, p.capacidadF2),
       }));

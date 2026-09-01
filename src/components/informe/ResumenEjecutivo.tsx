@@ -21,9 +21,9 @@ const ResumenEjecutivo = ({ actual, anterior }: Props) => (
       sentido="masEsMejor"
     />
     <KpiTile
-      titulo="m³ entregados"
+      titulo="Producto final entregado"
       valor={formatoM3(actual.m3Entregados, 0)}
-      nota={`${actual.ventasRegistros} despacho(s), incluye la yapa`}
+      nota={`${formatoM3(actual.m3EntregadoVentas, 0)} a clientes + ${formatoM3(actual.m3Acopio, 0)} al acopio`}
       icono={Truck}
       tono="azul"
       actual={actual.m3Entregados}

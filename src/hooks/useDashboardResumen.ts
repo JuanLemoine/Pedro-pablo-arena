@@ -22,7 +22,7 @@ export interface ResumenPorFuente {
 export interface ResumenVentas {
   totalRegistros: number;
   totalM3Vendidos: number;   // suma de cantidad_m3 del recibo
-  totalM3Entregados: number; // totalM3Vendidos + 1 por cada venta (m³ de yapa)
+  totalM3Entregados: number; // totalM3Vendidos + 1 por cada venta (m³ de yapa). Solo la pata de clientes.
   totalValor: number;
   porTipo: { tipo: string; registros: number; valor: number }[];
   porSilice: { silice: string; registros: number; m3Vendidos: number; m3Entregados: number }[];
@@ -121,6 +121,8 @@ export interface DashboardResumen {
   porFuente: ResumenPorFuente[];
   clientes: ResumenCliente[];
   totalCombinado: number;
+  /** Producto final entregado = ventas (con yapa) + acopio. */
+  productoFinalEntregado: number;
   anticiposPorNIT: AnticipoPorNIT[];
 }
 
@@ -366,7 +368,21 @@ export const useDashboardResumen = (filtros: DashboardFiltros) => {
         }))
         .sort((a, b) => b.valorTotal - a.valorTotal);
 
-      return { ventas, acopio, movimientos, porFuente, clientes, totalCombinado: Math.round(ventas.totalValor + acopio.totalValor), anticiposPorNIT };
+      return {
+        ventas,
+        acopio,
+        movimientos,
+        porFuente,
+        clientes,
+        totalCombinado: Math.round(ventas.totalValor + acopio.totalValor),
+        /**
+         * Producto final entregado: lo que salió hacia clientes (facturado más
+         * la yapa) más lo que se llevó al acopio. Es la fila "Producto final
+         * entregado" del informe diario de la empresa.
+         */
+        productoFinalEntregado: Math.round((ventas.totalM3Entregados + acopio.totalM3) * 100) / 100,
+        anticiposPorNIT,
+      };
     },
     staleTime: 15000,
     refetchInterval: 30000,

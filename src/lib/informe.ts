@@ -107,6 +107,11 @@ export interface MetricasSilice {
   fase2: number;
   productoFase2: number;
   intensidadReproceso: number;
+  /** Entregado a clientes: facturado + yapa. */
+  m3EntregadoVentas: number;
+  /** Producto llevado al acopio en el período. */
+  m3Acopio: number;
+  /** Producto final entregado = ventas (con yapa) + acopio. */
   m3Entregados: number;
   ingreso: number;
   // Producción vs capacidad, en m³ de producto
@@ -226,6 +231,12 @@ export interface MetricasPeriodo {
   // Comercial
   ventasRegistros: number;
   m3Facturados: number;
+  /** Entregado a clientes: facturado + 1 m³ de yapa por despacho. */
+  m3EntregadoVentas: number;
+  /**
+   * Producto final entregado = ventas (con yapa) + acopio, igual que la fila
+   * "Producto final entregado" del informe diario de la empresa.
+   */
   m3Entregados: number;
   ingresoVentas: number;
   viajesAcopio: number;
@@ -536,7 +547,7 @@ export const calcularMetricasPeriodo = (
   let ingresoVentas = 0;
   const ventasFacturables = ventas.filter(v => v.tipo_transaccion !== 'Donación');
   const clienteMap = new Map<string, ClienteInforme>();
-  const m3EntregadosPorSilice = new Map<string, number>();
+  const m3EntregadoVentasPorSilice = new Map<string, number>();
   const ingresoPorSilice = new Map<string, number>();
   const preciosPorSilice = new Map<string, number[]>();
 
@@ -548,7 +559,10 @@ export const calcularMetricasPeriodo = (
     m3Facturados += m3;
     if (aporta) ingresoVentas += valor;
 
-    m3EntregadosPorSilice.set(v.silice, (m3EntregadosPorSilice.get(v.silice) || 0) + m3 + 1);
+    m3EntregadoVentasPorSilice.set(
+      v.silice,
+      (m3EntregadoVentasPorSilice.get(v.silice) || 0) + m3 + 1
+    );
     if (aporta) ingresoPorSilice.set(v.silice, (ingresoPorSilice.get(v.silice) || 0) + valor);
 
     if (v.tipo_transaccion !== 'Donación' && m3 > 0) {
@@ -578,7 +592,8 @@ export const calcularMetricasPeriodo = (
   });
 
   const ventasRegistros = ventas.length;
-  const m3Entregados = m3Facturados + ventasRegistros;
+  /** Lo que salió hacia clientes: lo facturado más 1 m³ de yapa por despacho. */
+  const m3EntregadoVentas = m3Facturados + ventasRegistros;
   const m3Yapa = ventasRegistros; // 1 m³ regalado por venta
 
   /**
@@ -629,14 +644,24 @@ export const calcularMetricasPeriodo = (
   let viajesAcopio = 0;
   let m3Acopio = 0;
   let ingresoAcopio = 0;
+  const m3AcopioPorSilice = new Map<string, number>();
   acopios.forEach(a => {
     placasConActividad.add(a.placa.toUpperCase());
     const viajes = Number(a.cantidad_viajes) || 0;
     const m3 = getCapacidadVolqueta(a.placa) * viajes;
     viajesAcopio += viajes;
     m3Acopio += m3;
+    m3AcopioPorSilice.set(a.silice, (m3AcopioPorSilice.get(a.silice) || 0) + m3);
     ingresoAcopio += m3 * (PRECIO_M3[a.silice] ?? 0);
   });
+
+  /**
+   * Producto final entregado: lo que salió hacia clientes más lo que se llevó
+   * al acopio. Es la definición que usa la fila "Producto final entregado" del
+   * informe diario de la empresa (ventas con yapa + viajes de acopio), y es la
+   * única que cuadra con el ingreso total, que también suma el acopio.
+   */
+  const m3Entregados = m3EntregadoVentas + m3Acopio;
 
   // ── Clientes ────────────────────────────────────────────────────────────
   const clientes = Array.from(clienteMap.values())
@@ -659,7 +684,8 @@ export const calcularMetricasPeriodo = (
     new Set([
       ...fase1PorSilice.keys(),
       ...fase2PorSilice.keys(),
-      ...m3EntregadosPorSilice.keys(),
+      ...m3EntregadoVentasPorSilice.keys(),
+      ...m3AcopioPorSilice.keys(),
     ])
   ).sort();
 
@@ -672,6 +698,8 @@ export const calcularMetricasPeriodo = (
     const capF2 = capBruta * RENDIMIENTO_PRODUCTO_F2;
     const prodF1 = productoFase1PorSilice.get(silice) || 0;
     const prodF2 = productoFase2PorSilice.get(silice) || 0;
+    const entVentas = m3EntregadoVentasPorSilice.get(silice) || 0;
+    const entAcopio = m3AcopioPorSilice.get(silice) || 0;
     return {
       silice,
       fase1: Math.round(f1 * 100) / 100,
@@ -680,7 +708,9 @@ export const calcularMetricasPeriodo = (
       fase2: Math.round(f2 * 100) / 100,
       productoFase2: Math.round((productoFase2PorSilice.get(silice) || 0) * 100) / 100,
       intensidadReproceso: porcentaje(f2, f1),
-      m3Entregados: Math.round((m3EntregadosPorSilice.get(silice) || 0) * 100) / 100,
+      m3EntregadoVentas: Math.round(entVentas * 100) / 100,
+      m3Acopio: Math.round(entAcopio * 100) / 100,
+      m3Entregados: Math.round((entVentas + entAcopio) * 100) / 100,
       ingreso: Math.round(ingresoPorSilice.get(silice) || 0),
       productoFase1: Math.round(prodF1 * 100) / 100,
       capacidadProductoF1: Math.round(capF1 * 100) / 100,
@@ -751,6 +781,7 @@ export const calcularMetricasPeriodo = (
 
     ventasRegistros,
     m3Facturados: Math.round(m3Facturados * 100) / 100,
+    m3EntregadoVentas: Math.round(m3EntregadoVentas * 100) / 100,
     m3Entregados: Math.round(m3Entregados * 100) / 100,
     ingresoVentas: Math.round(ingresoVentas),
     viajesAcopio,
@@ -758,7 +789,7 @@ export const calcularMetricasPeriodo = (
     ingresoAcopio: Math.round(ingresoAcopio),
     ingresoTotal: Math.round(ingresoVentas + ingresoAcopio),
     precioPorM3Facturado: Math.round(dividir(ingresoVentas, m3Facturados)),
-    precioPorM3Entregado: Math.round(dividir(ingresoVentas, m3Entregados)),
+    precioPorM3Entregado: Math.round(dividir(ingresoVentas, m3EntregadoVentas)),
     m3Yapa,
     valorYapa: Math.round(valorYapa),
     coberturaVentas: porcentaje(productoFinalTotal, m3Entregados),
@@ -956,7 +987,7 @@ export const generarConclusiones = (
       id: 'cobertura',
       severidad: actual.coberturaVentas < 70 ? 'critico' : 'atencion',
       titulo: `La producción cubrió el ${pct(actual.coberturaVentas)} de lo entregado`,
-      detalle: `Se produjeron ${m3(actual.productoFinalTotal)} y se entregaron ${m3(actual.m3Entregados)}. La diferencia sale del inventario acumulado.`,
+      detalle: `Se produjeron ${m3(actual.productoFinalTotal)} y se entregaron ${m3(actual.m3Entregados)} (${m3(actual.m3EntregadoVentas)} a clientes y ${m3(actual.m3Acopio)} al acopio). La diferencia sale del inventario acumulado.`,
       accion: 'Si el patrón se repite, el inventario se agota: hay que subir producción o moderar el compromiso comercial.',
     });
   }
@@ -996,7 +1027,7 @@ export const generarConclusiones = (
       id: 'yapa',
       severidad: pesoYapa > 12 ? 'atencion' : 'bien',
       titulo: `La yapa entregada equivale a ${cop(actual.valorYapa)} (${pct(pesoYapa)} de las ventas)`,
-      detalle: `Se facturaron ${m3(actual.m3Facturados)} y se entregaron ${m3(actual.m3Entregados)}: ${m3(actual.m3Yapa)} de más, un m³ por cada uno de los ${actual.ventasRegistros} despachos.`,
+      detalle: `Se facturaron ${m3(actual.m3Facturados)} y salieron ${m3(actual.m3EntregadoVentas)} hacia clientes: ${m3(actual.m3Yapa)} de más, un m³ por cada uno de los ${actual.ventasRegistros} despachos.`,
       accion: 'Decidir si la yapa es política comercial o costumbre. Si es política, incorporarla al precio.',
     });
   }

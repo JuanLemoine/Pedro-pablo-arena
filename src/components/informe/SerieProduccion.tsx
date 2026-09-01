@@ -93,7 +93,9 @@ const TooltipPunto = ({ active, payload, label }: TooltipProps) => {
       {fila('Capacidad Fase 2', formatoM3(d.capacidadF2, 0))}
       {fila('Cumplimiento F2', formatoPorcentaje(d.cumplimientoF2, 0), 'text-green-700')}
       <div className="my-1 border-t border-slate-100" />
-      {fila('Entregado', formatoM3(d.entregado, 0), 'text-blue-700')}
+      {fila('Entregado total', formatoM3(d.entregado, 0), 'text-blue-700')}
+      {fila('· a clientes', formatoM3(d.entregadoVentas, 0))}
+      {fila('· al acopio', formatoM3(d.entregadoAcopio, 0))}
       {d.sinRegistros && (
         <p className="pt-1 text-[11px] font-medium text-red-600">
           Sin movimientos registrados en este tramo
@@ -208,7 +210,7 @@ const SerieProduccion = ({ tipoSilice, baseCapacidad }: Props) => {
               <Bar dataKey="productoF1" name="Producido Fase 1" fill={COLOR.productoF1} radius={[3, 3, 0, 0]} maxBarSize={20} />
               <Bar dataKey="capacidadF2" name="Capacidad Fase 2" fill={COLOR.capacidadF2} radius={[3, 3, 0, 0]} maxBarSize={20} />
               <Bar dataKey="productoF2" name="Producido Fase 2" fill={COLOR.productoF2} radius={[3, 3, 0, 0]} maxBarSize={20} />
-              <Line dataKey="entregado" name="Entregado" stroke={COLOR.entregado} strokeWidth={2.5} dot={{ r: 3 }} type="monotone" />
+              <Line dataKey="entregado" name="Producto final entregado" stroke={COLOR.entregado} strokeWidth={2.5} dot={{ r: 3 }} type="monotone" />
             </ComposedChart>
           </ResponsiveContainer>
         </div>
@@ -216,7 +218,8 @@ const SerieProduccion = ({ tipoSilice, baseCapacidad }: Props) => {
 
       <p className="text-[11px] leading-relaxed text-muted-foreground">
         Las barras claras son la capacidad de cada fase y las oscuras lo producido: la diferencia es
-        lo que se dejó de producir. La línea azul es lo entregado a clientes.
+        lo que se dejó de producir. La línea azul es el producto final entregado: lo despachado
+        a clientes (con la yapa de 1 m³ por viaje) más lo llevado al acopio.
         {mina !== 'todas' && ' El filtro de mina aplica a la producción; la capacidad es por ruta y no se filtra por mina, así que el porcentaje de un solo frente no es comparable con el total.'}
         {tramosSinRegistro > 0 &&
           ` ${tramosSinRegistro} tramo(s) del rango no tienen ningún movimiento registrado: ahí el 0 % puede ser falta de registro y no falta de producción.`}

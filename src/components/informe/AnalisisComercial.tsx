@@ -39,7 +39,7 @@ const AnalisisComercial = ({ actual, anterior }: Props) => {
             {formatoMoneda(actual.ingresoVentas)}
           </p>
           <p className="mt-1 text-xs text-green-700">
-            {formatoM3(actual.m3Entregados, 0)} entregados en {actual.ventasRegistros} despacho(s) ·{' '}
+            {formatoM3(actual.m3EntregadoVentas, 0)} entregados en {actual.ventasRegistros} despacho(s) ·{' '}
             {formatoPorcentaje(pesoVentas, 0)} del ingreso
           </p>
         </div>

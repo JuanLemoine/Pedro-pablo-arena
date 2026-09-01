@@ -91,7 +91,7 @@ const CumplimientoCapacidad = ({ actual }: Props) => {
                 <th className="pb-2 pr-4 text-left font-medium">Tipo de arena</th>
                 <th className="pb-2 pr-4 text-right font-medium">m³ excavados</th>
                 <th className="pb-2 pr-4 text-right font-medium">Producto de zaranda</th>
-                <th className="pb-2 text-right font-medium">m³ entregados</th>
+                <th className="pb-2 text-right font-medium">Producto final entregado</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/50">

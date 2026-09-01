@@ -518,9 +518,9 @@ const Dashboard = () => {
                   <ResumenChip label="Registros" value={resumen.ventas.totalRegistros.toString()} color="bg-green-50 border-green-200" />
                   <ResumenChip label="Valor total" value={`$${resumen.ventas.totalValor.toLocaleString('es-CO')}`} color="bg-emerald-50 border-emerald-200" />
                   <ResumenChip label="m³ facturados" value={`${resumen.ventas.totalM3Vendidos.toLocaleString('es-CO', { maximumFractionDigits: 1 })} m³`} color="bg-blue-50 border-blue-200" />
-                  <ResumenChip label="m³ entregados" value={`${resumen.ventas.totalM3Entregados.toLocaleString('es-CO', { maximumFractionDigits: 1 })} m³`} color="bg-sky-50 border-sky-200" />
+                  <ResumenChip label="m³ a clientes" value={`${resumen.ventas.totalM3Entregados.toLocaleString('es-CO', { maximumFractionDigits: 1 })} m³`} color="bg-sky-50 border-sky-200" />
                 </div>
-                <p className="text-[10px] text-muted-foreground">+1 m³ de yapa por venta · {resumen.ventas.totalRegistros} venta(s)</p>
+                <p className="text-[10px] text-muted-foreground">+1 m³ de yapa por venta · {resumen.ventas.totalRegistros} venta(s) · el acopio va aparte</p>
                 {resumen.ventas.porTipo.length > 0 && (
                   <div className="space-y-1">
                     <p className="text-xs text-muted-foreground font-medium">Por tipo</p>
@@ -627,6 +627,17 @@ const Dashboard = () => {
                 <div className="p-4 rounded-xl bg-teal-50 border border-teal-200 text-center">
                   <p className="text-xs text-teal-600 mb-1">Ingreso total del período</p>
                   <p className="text-3xl font-bold text-teal-800">${resumen.totalCombinado.toLocaleString('es-CO')}</p>
+                  <p className="mt-2 border-t border-teal-200 pt-2 text-xs text-teal-600">
+                    Producto final entregado{' '}
+                    <span className="font-semibold text-teal-800">
+                      {resumen.productoFinalEntregado.toLocaleString('es-CO', { maximumFractionDigits: 1 })} m³
+                    </span>
+                  </p>
+                  <p className="text-[10px] text-teal-600/80">
+                    {resumen.ventas.totalM3Entregados.toLocaleString('es-CO', { maximumFractionDigits: 1 })} m³ a clientes
+                    {' + '}
+                    {resumen.acopio.totalM3.toLocaleString('es-CO', { maximumFractionDigits: 1 })} m³ al acopio
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-xs">
