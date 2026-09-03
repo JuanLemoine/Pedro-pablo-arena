@@ -60,6 +60,17 @@ interface MovRow { fecha: string; placa: string; silice: string; }
  */
 const SILICES_CON_RUTA = ['Silice A - Peña', 'Silice B - Pozo'];
 
+/**
+ * Cada frente se planea con una flota distinta, y el óptimo debe simularse con
+ * la que realmente se puede armar ahí:
+ *   - Peña: flota homogénea, solo volquetas de 7 m³.
+ *   - Pozo: se incluye la de 14 m³ en la búsqueda de la mejor combinación.
+ */
+const INCLUYE_VOLQUETA_GRANDE: Record<string, boolean> = {
+  'Silice A - Peña': false,
+  'Silice B - Pozo': true,
+};
+
 const vacio = (fecha: string): OptimoPorDia => ({
   fecha,
   nSmallActual: 0, nMediumActual: 0, nLargeActual: 0, wActual: 0, configActualLabel: '—',
@@ -210,7 +221,9 @@ export const useOptimoDiario = ({ fechaInicio, fechaFin, tipoSilice }: Params) =
           }
 
           // Óptimo teórico (mejor combinación dados los tiempos)
-          const mejor = calcularMejorConfig(tiempos.ida, tiempos.vuelta, jornada);
+          const mejor = calcularMejorConfig(tiempos.ida, tiempos.vuelta, jornada, {
+            incluirLarge: INCLUYE_VOLQUETA_GRANDE[sil] ?? true,
+          });
           nSmallOpt += mejor.nSmall;
           nLargeOpt += mejor.nLarge;
           viajesOpt += mejor.viajes;

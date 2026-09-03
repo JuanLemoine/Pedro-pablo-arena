@@ -208,6 +208,9 @@ export function calcularOptimoTeorico(
  * 8 m³ aquí movería el cumplimiento histórico de todos los períodos por una
  * volqueta que casi no se asigna, y además con parámetros estimados. La flota
  * REAL sí la cuenta con su capacidad correcta (ver `calcularOptimoDia`).
+ *
+ * `incluirLarge: false` deja solo las homogéneas de 7 m³. Se usa para el frente
+ * de Peña, que se planea sin la volqueta de 14 m³ (ver `useOptimoDiario`).
  */
 export interface MejorConfig {
   nSmall: number;
