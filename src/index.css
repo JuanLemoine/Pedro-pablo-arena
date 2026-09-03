@@ -193,7 +193,10 @@
    `display` para poder ocultar todo el árbol de la aplicación (sidebar, filtros,
    resto del dashboard) sin sacar el informe de su contenedor. */
 @media print {
-  body * {
+  /* Solo se oculta lo demás cuando el informe está en pantalla; si el dashboard
+     está en otra pestaña, se imprime la página tal cual en vez de una hoja en
+     blanco. */
+  body:has(#informe-gerencial) * {
     visibility: hidden;
   }
 

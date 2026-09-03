@@ -9,8 +9,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   TrendingUp,
+  LayoutDashboard,
+  ClipboardList,
   DollarSign,
   Truck,
   Package,
@@ -87,8 +90,16 @@ const ResumenChip = ({ label, value, color }: { label: string; value: string; co
   </div>
 );
 
+/** Cuántos clientes se muestran por defecto en el resumen de clientes. */
+const TOP_CLIENTES = 5;
+
 const Dashboard = () => {
   const navigate = useNavigate();
+
+  /** Pestaña visible. Los filtros de arriba aplican a todas por igual. */
+  const [seccion, setSeccion] = useState('resumen');
+  /** El resumen de clientes muestra solo el top 5; esto lo expande a la lista completa. */
+  const [verTodosClientes, setVerTodosClientes] = useState(false);
 
   // ── Filtros ─────────────────────────────────────────────────────────────────
   const [filtros, setFiltros] = useState<Filtros>({
@@ -498,6 +509,30 @@ const Dashboard = () => {
         </CardContent>
       </Card>
 
+      {/* ── Secciones ────────────────────────────────────────────────────────── */}
+      <Tabs value={seccion} onValueChange={setSeccion} className="space-y-6">
+        <TabsList className="no-print flex h-auto w-full flex-wrap justify-start gap-1 p-1">
+          <TabsTrigger value="resumen" className="gap-1.5 text-sm">
+            <LayoutDashboard className="h-4 w-4" />
+            Resumen
+          </TabsTrigger>
+          <TabsTrigger value="comercial" className="gap-1.5 text-sm">
+            <Users className="h-4 w-4" />
+            Comercial
+          </TabsTrigger>
+          <TabsTrigger value="produccion" className="gap-1.5 text-sm">
+            <Package className="h-4 w-4" />
+            Producción
+          </TabsTrigger>
+          <TabsTrigger value="informe" className="gap-1.5 text-sm">
+            <ClipboardList className="h-4 w-4" />
+            Informe de Gestión
+          </TabsTrigger>
+        </TabsList>
+
+        {/* ── Resumen ──────────────────────────────────────────────────────── */}
+        <TabsContent value="resumen" className="space-y-6 focus-visible:outline-none">
+
       {/* ── Resumen por sección ──────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-4">
 
@@ -690,6 +725,11 @@ const Dashboard = () => {
         </Card>
       </div>
 
+        </TabsContent>
+
+        {/* ── Comercial ────────────────────────────────────────────────────── */}
+        <TabsContent value="comercial" className="space-y-6 focus-visible:outline-none">
+
       {/* ── Ventas por Fuente ───────────────────────────────────────────────── */}
       <Card className="shadow-card">
         <CardHeader>
@@ -764,7 +804,11 @@ const Dashboard = () => {
                 Resumen de Clientes
               </CardTitle>
               <CardDescription>
-                {resumen ? `${resumen.clientes.length} cliente(s) con compras en el período` : 'Cargando…'}
+                {resumen
+                  ? verTodosClientes || resumen.clientes.length <= TOP_CLIENTES
+                    ? `${resumen.clientes.length} cliente(s) con compras en el período`
+                    : `Top ${TOP_CLIENTES} por valor, de ${resumen.clientes.length} cliente(s) en el período`
+                  : 'Cargando…'}
               </CardDescription>
             </div>
             <button onClick={() => navigate('/ventas')} className="text-sm text-primary hover:underline flex items-center gap-1">
@@ -796,7 +840,7 @@ const Dashboard = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/50">
-                  {resumen?.clientes.map((c) => (
+                  {(verTodosClientes ? resumen?.clientes : resumen?.clientes.slice(0, TOP_CLIENTES))?.map((c) => (
                     <tr key={c.placa} className="hover:bg-muted/30 transition-colors">
                       <td className="py-3 pr-4">
                         <div className="flex items-center gap-2">
@@ -846,6 +890,21 @@ const Dashboard = () => {
                   ))}
                 </tbody>
               </table>
+
+              {resumen && resumen.clientes.length > TOP_CLIENTES && (
+                <div className="pt-3 text-center">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setVerTodosClientes(v => !v)}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    {verTodosClientes
+                      ? `Ver solo el top ${TOP_CLIENTES}`
+                      : `Ver los ${resumen.clientes.length} clientes`}
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
@@ -895,6 +954,11 @@ const Dashboard = () => {
           </CardContent>
         </Card>
       )}
+
+        </TabsContent>
+
+        {/* ── Producción ───────────────────────────────────────────────────── */}
+        <TabsContent value="produccion" className="space-y-6 focus-visible:outline-none">
 
       {/* ── KPI Cards ────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -1009,8 +1073,14 @@ const Dashboard = () => {
         fechaFin={filtros.fechaFin}
       />
 
-      {/* ── Informe de Gestión ───────────────────────────────────────────────── */}
-      <InformeGerencial filtros={filtros} />
+        </TabsContent>
+
+        {/* ── Informe de Gestión ───────────────────────────────────────────── */}
+        <TabsContent value="informe" className="focus-visible:outline-none">
+          <InformeGerencial filtros={filtros} />
+        </TabsContent>
+
+      </Tabs>
 
     </div>
   );
