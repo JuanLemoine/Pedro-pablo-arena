@@ -149,7 +149,7 @@ const ProduccionDiariaLineChart = ({ tipoSilice = 'todos', fechaInicio, fechaFin
           <div>
             <CardTitle className="text-lg font-semibold flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-primary" />
-              Fase 1: material entregado a la zaranda
+              Fase 1: material llevado a la zaranda
             </CardTitle>
             <CardDescription>
               m³ brutos llevados del punto de excavación a la zaranda, frente a lo que se debió
