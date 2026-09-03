@@ -23,6 +23,18 @@ interface Props {
   fechaFin?: string;
 }
 
+/**
+ * Fecha(s) de las mediciones de ida y vuelta que se usaron ese día. Puede haber
+ * dos (Peña y Pozo se miden por separado), así que se listan sin repetir.
+ */
+const etiquetaTiempos = (usados?: Record<string, { fecha: string }>): string => {
+  const fechas = [...new Set(Object.values(usados ?? {}).map(t => t.fecha).filter(Boolean))].sort();
+  if (fechas.length === 0) return '';
+  return fechas
+    .map(f => format(new Date(f + 'T00:00:00'), 'd MMM yyyy', { locale: es }))
+    .join(' · ');
+};
+
 const TooltipPersonalizado = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   const entregado = payload.find((p: any) => p.dataKey === 'fase1Producto');
@@ -69,9 +81,9 @@ const TooltipPersonalizado = ({ active, payload, label }: any) => {
                 </span>
               </div>
             )}
-            {d?.usedFallback && (
+            {d?.usedFallback && d?.tiemposLabel && (
               <div className="text-amber-700 text-[11px] mt-0.5">
-                Sin tiempos medidos ese día: se usó el promedio histórico.
+                Sin medición ese día: se usó la última registrada ({d.tiemposLabel}).
               </div>
             )}
           </div>
@@ -113,6 +125,8 @@ const ProduccionDiariaLineChart = ({ tipoSilice = 'todos', fechaInicio, fechaFin
       configActualLabel: o?.configActualLabel ?? '—',
       m3Actual: o?.m3Actual ?? 0,
       usedFallback: o?.usedFallback ?? false,
+      /** Fecha(s) de las mediciones de ida y vuelta con las que se calculó el óptimo. */
+      tiemposLabel: etiquetaTiempos(o?.tiemposUsados),
     };
   });
 
@@ -131,6 +145,8 @@ const ProduccionDiariaLineChart = ({ tipoSilice = 'todos', fechaInicio, fechaFin
   const optimoTotal = datosConOptimo.reduce((s, d) => s + d.optimo, 0);
   const cumplimiento = optimoTotal > 0 ? ((data?.totalFase1Producto ?? 0) / optimoTotal) * 100 : 0;
   const diasSinTiempos = datosConOptimo.filter(d => d.usedFallback && d.optimo > 0).length;
+  /** Con qué medición se está calculando el óptimo cuando ningún día tiene la suya. */
+  const ultimaMedicion = datosConOptimo[datosConOptimo.length - 1]?.tiemposLabel ?? '';
 
   return (
     <Card className="shadow-card">
@@ -268,8 +284,8 @@ const ProduccionDiariaLineChart = ({ tipoSilice = 'todos', fechaInicio, fechaFin
             {diasSinTiempos > 0 && (
               <p className="pt-2 text-[11px] leading-relaxed text-amber-700">
                 {diasSinTiempos === datosConOptimo.filter(d => d.optimo > 0).length
-                  ? 'Ningún día del rango tiene tiempos de ida y vuelta medidos: el óptimo sale del promedio histórico, por eso la línea azul es plana.'
-                  : `${diasSinTiempos} día(s) del rango no tienen tiempos medidos: en esos el óptimo sale del promedio histórico.`}
+                  ? `Ningún día del rango tiene medición propia de ida y vuelta: el óptimo usa la última registrada${ultimaMedicion ? ` (${ultimaMedicion})` : ''}, por eso la línea azul es plana.`
+                  : `${diasSinTiempos} día(s) del rango no tienen medición propia: en esos el óptimo usa la última registrada antes de esa fecha.`}
               </p>
             )}
           </div>

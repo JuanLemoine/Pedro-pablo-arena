@@ -241,8 +241,8 @@ const InformeGerencial = ({ filtros }: Props) => {
             <Activity className="mt-0.5 h-3 w-3 shrink-0" />
             Informe generado con los registros de ventas, acopios, movimientos internos y tiempos de
             recorrido cargados en el sistema. La capacidad óptima usa los tiempos de ida y vuelta del
-            día (o el promedio histórico si ese día no tiene medición) y la jornada legal: 7,5 h de
-            lunes a viernes y 4 h el sábado.
+            día (o la última medición registrada antes de él, si ese día no tiene la suya) y la
+            jornada legal: 7,5 h de lunes a viernes y 4 h el sábado.
           </p>
         </>
       )}

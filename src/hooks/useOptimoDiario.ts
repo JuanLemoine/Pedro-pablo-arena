@@ -34,7 +34,13 @@ export interface OptimoPorDia {
   woOptimo: number;               // Wo teórico (decimal)
   // Balance
   diferencia: number;             // wActual - woRound
+  /** true si algún sílice usó una medición de otra fecha (la última anterior). */
   usedFallback: boolean;
+  /**
+   * Tiempos que se usaron ese día, por sílice, con la fecha de la que salieron.
+   * Si `fecha` no es la del día, es la última medición registrada antes de él.
+   */
+  tiemposUsados: Record<string, { fecha: string; ida: number; vuelta: number }>;
 }
 
 interface Params {
@@ -44,6 +50,8 @@ interface Params {
 }
 
 interface TiempoRow { fecha: string; silice: string; tiempo_ida: number; tiempo_vuelta: number; }
+/** Una medición de ida y vuelta con la fecha en que se tomó. */
+interface MedicionTiempo { fecha: string; ida: number; vuelta: number; }
 interface MovRow { fecha: string; placa: string; silice: string; }
 
 /**
@@ -58,20 +66,23 @@ const vacio = (fecha: string): OptimoPorDia => ({
   m3Actual: 0, viajesActual: 0,
   nSmallOptimo: 0, nLargeOptimo: 0, woRound: 0, configOptimoLabel: '—',
   m3Optimo: 0, m3OptimoPorSilice: {}, viajesOptimo: 0, woOptimo: 0,
-  diferencia: 0, usedFallback: false,
+  diferencia: 0, usedFallback: false, tiemposUsados: {},
 });
 
 export const useOptimoDiario = ({ fechaInicio, fechaFin, tipoSilice }: Params) => {
   return useQuery({
     queryKey: ['optimo-diario', fechaInicio, fechaFin, tipoSilice ?? 'todos'],
     queryFn: async (): Promise<Map<string, OptimoPorDia>> => {
-      const [tiemposRangoRes, tiemposAllRes, movsRes] = await Promise.all([
-        supabase
-          .from('tiempos')
-          .select('fecha, silice, tiempo_ida, tiempo_vuelta')
-          .gte('fecha', fechaInicio)
-          .lte('fecha', fechaFin),
-        supabase.from('tiempos').select('tiempo_ida, tiempo_vuelta'),
+      const [tiemposAll, movsRes] = await Promise.all([
+        // Todas las mediciones, no solo las del rango: para cada día se usa la
+        // última registrada hasta esa fecha.
+        traerTodo<TiempoRow>((desde, hasta) =>
+          supabase
+            .from('tiempos')
+            .select('fecha, silice, tiempo_ida, tiempo_vuelta')
+            .order('fecha', { ascending: true })
+            .range(desde, hasta) as unknown as PromiseLike<{ data: TiempoRow[] | null; error: unknown }>
+        ),
         // Paginado: un rango de varios meses supera las 1.000 filas por petición.
         traerTodo<MovRow>((desde, hasta) =>
           supabase
@@ -85,26 +96,45 @@ export const useOptimoDiario = ({ fechaInicio, fechaFin, tipoSilice }: Params) =
         ),
       ]);
 
-      const tiemposRango = (tiemposRangoRes.data ?? []) as TiempoRow[];
       const movs = movsRes;
-      const tiemposAll = (tiemposAllRes.data ?? []) as Pick<TiempoRow, 'tiempo_ida' | 'tiempo_vuelta'>[];
 
-      const promedioHist = (() => {
-        if (tiemposAll.length === 0) return null;
-        const n = tiemposAll.length;
-        return {
-          ida: tiemposAll.reduce((s, t) => s + Number(t.tiempo_ida), 0) / n,
-          vuelta: tiemposAll.reduce((s, t) => s + Number(t.tiempo_vuelta), 0) / n,
-        };
-      })();
-
-      const tiemposMap = new Map<string, { ida: number; vuelta: number }>();
-      tiemposRango.forEach(t => {
-        tiemposMap.set(`${t.fecha}|${t.silice}`, {
-          ida: Number(t.tiempo_ida),
-          vuelta: Number(t.tiempo_vuelta),
-        });
+      /**
+       * Historial de mediciones por sílice, ordenado por fecha. Para un día
+       * dado se toma la última medición registrada hasta esa fecha: los tiempos
+       * de ida y vuelta se mantienen mientras no se vuelva a medir, así que la
+       * medición vigente es la más reciente, no un promedio de todo el histórico.
+       */
+      const historial = new Map<string, MedicionTiempo[]>();
+      tiemposAll.forEach(t => {
+        const lista = historial.get(t.silice) ?? [];
+        lista.push({ fecha: t.fecha, ida: Number(t.tiempo_ida), vuelta: Number(t.tiempo_vuelta) });
+        historial.set(t.silice, lista);
       });
+      historial.forEach(lista => lista.sort((a, b) => a.fecha.localeCompare(b.fecha)));
+
+      /** Promedio de todo el histórico: último recurso si un sílice nunca se midió. */
+      const promedioHist: MedicionTiempo | null = tiemposAll.length === 0 ? null : {
+        fecha: '',
+        ida: tiemposAll.reduce((s, t) => s + Number(t.tiempo_ida), 0) / tiemposAll.length,
+        vuelta: tiemposAll.reduce((s, t) => s + Number(t.tiempo_vuelta), 0) / tiemposAll.length,
+      };
+
+      /**
+       * La medición vigente de un sílice en una fecha: la última con fecha menor
+       * o igual. Si la fecha es anterior a la primera medición, se usa esa
+       * primera (lo más cercano que existe) y si el sílice no tiene ninguna, el
+       * promedio histórico.
+       */
+      const medicionVigente = (silice: string, fecha: string): MedicionTiempo | null => {
+        const lista = historial.get(silice);
+        if (!lista || lista.length === 0) return promedioHist;
+        let elegida: MedicionTiempo | null = null;
+        for (const m of lista) {
+          if (m.fecha > fecha) break;
+          elegida = m;
+        }
+        return elegida ?? lista[0];
+      };
 
       const placasMap = new Map<string, Set<string>>();
       movs.forEach(m => {
@@ -143,6 +173,7 @@ export const useOptimoDiario = ({ fechaInicio, fechaFin, tipoSilice }: Params) =
         let nSmallOpt = 0, nLargeOpt = 0;
         const m3OptPorSil: Record<string, number> = {};
         let usedFallback = false;
+        const tiemposUsados: Record<string, { fecha: string; ida: number; vuelta: number }> = {};
         const labelsActPorSil: string[] = [];
         const labelsOptPorSil: string[] = [];
         const multiSilice = silicesDelDia.length > 1;
@@ -157,10 +188,10 @@ export const useOptimoDiario = ({ fechaInicio, fechaFin, tipoSilice }: Params) =
             else nSmall++;
           });
 
-          const t = tiemposMap.get(`${fecha}|${sil}`);
-          if (!t) usedFallback = true;
-          const tiempos = t ?? promedioHist;
+          const tiempos = medicionVigente(sil, fecha);
           if (!tiempos) continue;
+          if (tiempos.fecha !== fecha) usedFallback = true;
+          tiemposUsados[sil] = { fecha: tiempos.fecha, ida: tiempos.ida, vuelta: tiempos.vuelta };
 
           // Actual (con volquetas realmente asignadas)
           if (nSmall + nMedium + nLarge > 0) {
@@ -211,6 +242,7 @@ export const useOptimoDiario = ({ fechaInicio, fechaFin, tipoSilice }: Params) =
           woOptimo: Math.round(woOptSuma * 100) / 100,
           diferencia: wActual - woRound,
           usedFallback,
+          tiemposUsados,
         });
       }
 
