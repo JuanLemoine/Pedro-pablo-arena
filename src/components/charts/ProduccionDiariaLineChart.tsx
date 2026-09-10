@@ -129,9 +129,9 @@ const ProduccionDiariaLineChart = ({ tipoSilice = 'todos', fechaInicio, fechaFin
   const diaPico = data?.datos.find(d => d.fase1Bruto === maximo);
 
   /**
-   * Óptimo del período: la suma de TODOS los días hábiles del rango filtrado,
-   * no solo la de los días con movimientos. Un día hábil en el que no se operó
-   * es capacidad perdida y debe pesar en el cumplimiento.
+   * Óptimo del período: la suma de TODOS los días de lunes a viernes del rango
+   * filtrado, no solo la de los días con movimientos. Un día L-V en el que no se
+   * operó es capacidad perdida y debe pesar en el cumplimiento; el sábado no cuenta.
    */
   const totalOptimo = totalizarOptimo(optimoMap);
   const cumplimiento = totalOptimo.m3Optimo > 0
@@ -168,7 +168,7 @@ const ProduccionDiariaLineChart = ({ tipoSilice = 'todos', fechaInicio, fechaFin
               </div>
               <div className="text-right">
                 <p className="text-xs text-muted-foreground">
-                  Óptimo · {totalOptimo.diasHabiles} día(s) hábil(es)
+                  Óptimo · {totalOptimo.diasLV} día(s) L-V
                 </p>
                 <p className="font-bold text-blue-600">
                   {totalOptimo.m3Optimo.toLocaleString('es-CO', { maximumFractionDigits: 1 })} m³

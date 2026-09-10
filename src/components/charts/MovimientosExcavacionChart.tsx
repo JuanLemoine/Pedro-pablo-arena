@@ -82,9 +82,9 @@ const MovimientosExcavacionChart = ({ tipoSilice, fechaInicio, fechaFin }: Props
   });
 
   /**
-   * Óptimo del período: la suma de TODOS los días hábiles del rango filtrado,
-   * no solo la de los días con movimientos. Un día hábil sin operar es
-   * capacidad perdida y debe pesar en el cumplimiento.
+   * Óptimo del período: la suma de TODOS los días de lunes a viernes del rango
+   * filtrado, no solo la de los días con movimientos. Un día L-V sin operar es
+   * capacidad perdida y debe pesar en el cumplimiento; el sábado no cuenta.
    */
   const totalOptimo = totalizarOptimo(optimoMap);
   const cumplimiento = totalOptimo.viajesOptimo > 0
@@ -112,7 +112,7 @@ const MovimientosExcavacionChart = ({ tipoSilice, fechaInicio, fechaFin }: Props
               </div>
               <div className="text-right">
                 <p className="text-xs text-muted-foreground">
-                  Óptimo · {totalOptimo.diasHabiles} día(s) hábil(es)
+                  Óptimo · {totalOptimo.diasLV} día(s) L-V
                 </p>
                 <p className="font-bold text-blue-600">
                   {totalOptimo.viajesOptimo.toLocaleString('es-CO')}
