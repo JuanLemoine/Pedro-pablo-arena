@@ -23,17 +23,23 @@ interface Props {
 
 const TooltipPersonalizado = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
-  const mov = payload.find((p: any) => p.dataKey === 'movimientos');
   const optimo = payload.find((p: any) => p.dataKey === 'optimo');
   const d = payload[0]?.payload;
   return (
     <div className="bg-white border border-slate-200 rounded-lg shadow-lg p-3 text-xs space-y-1.5 max-w-[300px]">
       <p className="font-semibold text-slate-700">{label}</p>
-      {mov && (
+      {d && (
         <div className="flex items-center gap-2">
           <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
           <span className="text-slate-500">Movimientos reales:</span>
-          <span className="font-bold text-slate-800">{mov.value}</span>
+          <span className="font-bold text-slate-800">{d.movimientos}</span>
+        </div>
+      )}
+      {d && (d.mov7 > 0 || d.mov8 > 0 || d.mov14 > 0) && (
+        <div className="pl-[18px] text-[11px] text-slate-500 space-y-0.5">
+          {d.mov14 > 0 && <p>{d.mov14} de la volqueta de 14 m³</p>}
+          {d.mov8 > 0 && <p>{d.mov8} de volquetas de 8 m³</p>}
+          {d.mov7 > 0 && <p>{d.mov7} de volquetas de 7 m³ (5,5 m³/viaje)</p>}
         </div>
       )}
       {d?.configActualLabel && d.configActualLabel !== '—' && (
@@ -109,6 +115,11 @@ const MovimientosExcavacionChart = ({ tipoSilice, fechaInicio, fechaFin }: Props
               <div className="text-right">
                 <p className="text-xs text-muted-foreground">Total</p>
                 <p className="font-bold text-emerald-600">{data.totalMovimientos.toLocaleString('es-CO')}</p>
+                <p className="text-[10px] text-muted-foreground">
+                  {data.total7.toLocaleString('es-CO')} de 7 m³
+                  {data.total8 > 0 && ` · ${data.total8.toLocaleString('es-CO')} de 8 m³`}
+                  {` · ${data.total14.toLocaleString('es-CO')} de 14 m³`}
+                </p>
               </div>
               <div className="text-right">
                 <p className="text-xs text-muted-foreground">
@@ -147,16 +158,45 @@ const MovimientosExcavacionChart = ({ tipoSilice, fechaInicio, fechaFin }: Props
         ) : isLoading ? (
           <Skeleton className="h-[300px] w-full" />
         ) : data && data.dias.length > 0 ? (
-          <div className="h-[300px]">
+          <>
+            <div className="flex flex-wrap gap-4 text-xs mb-3">
+              <span className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-sm inline-block" style={{ background: 'hsl(152,60%,40%)' }} />
+                Volquetas de 7 m³ (5,5 m³ por viaje)
+              </span>
+              {data.total8 > 0 && (
+                <span className="flex items-center gap-1.5">
+                  <span className="w-3 h-3 rounded-sm inline-block" style={{ background: 'hsl(38,85%,48%)' }} />
+                  Volquetas de 8 m³
+                </span>
+              )}
+              <span className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-sm inline-block" style={{ background: 'hsl(262,60%,55%)' }} />
+                Volqueta de 14 m³
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-4 border-t-2 border-dashed inline-block" style={{ borderColor: 'hsl(210,75%,52%)' }} />
+                Óptimo
+              </span>
+            </div>
+            <div className="h-[270px]">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart
                 data={diasConOptimo}
                 margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
               >
                 <defs>
-                  <linearGradient id="gradExcavacion" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(152,60%,40%)" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="hsl(152,60%,40%)" stopOpacity={0.02} />
+                  <linearGradient id="gradPeq" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="hsl(152,60%,40%)" stopOpacity={0.35} />
+                    <stop offset="95%" stopColor="hsl(152,60%,40%)" stopOpacity={0.05} />
+                  </linearGradient>
+                  <linearGradient id="gradMed" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="hsl(38,85%,48%)" stopOpacity={0.35} />
+                    <stop offset="95%" stopColor="hsl(38,85%,48%)" stopOpacity={0.05} />
+                  </linearGradient>
+                  <linearGradient id="gradGrande" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="hsl(262,60%,55%)" stopOpacity={0.35} />
+                    <stop offset="95%" stopColor="hsl(262,60%,55%)" stopOpacity={0.05} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(150,20%,92%)" vertical={false} />
@@ -192,34 +232,47 @@ const MovimientosExcavacionChart = ({ tipoSilice, fechaInicio, fechaFin }: Props
                   connectNulls
                 />
 
+                {/* Apiladas por tamaño de volqueta: el alto total sigue siendo
+                    el mismo número de movimientos del día. */}
                 <Area
                   type="monotone"
-                  dataKey="movimientos"
-                  name="Movimientos"
+                  stackId="flota"
+                  dataKey="mov7"
+                  name="7 m³ (5,5 m³/viaje)"
                   stroke="hsl(152,60%,40%)"
-                  strokeWidth={2.5}
-                  fill="url(#gradExcavacion)"
-                  dot={(props: any) => {
-                    const { cx, cy, payload } = props;
-                    if (!payload.movimientos) return <g key={props.key} />;
-                    const isPico = data.diaPico && payload.fecha === data.diaPico.fecha;
-                    return (
-                      <circle
-                        key={props.key}
-                        cx={cx}
-                        cy={cy}
-                        r={isPico ? 5 : 3}
-                        fill={isPico ? 'hsl(142,70%,35%)' : 'hsl(152,60%,40%)'}
-                        stroke="white"
-                        strokeWidth={isPico ? 2 : 1.5}
-                      />
-                    );
-                  }}
-                  activeDot={{ r: 6, strokeWidth: 2, stroke: 'white' }}
+                  strokeWidth={2}
+                  fill="url(#gradPeq)"
+                  dot={false}
+                  activeDot={{ r: 5, strokeWidth: 2, stroke: 'white' }}
+                />
+                {data.total8 > 0 && (
+                  <Area
+                    type="monotone"
+                    stackId="flota"
+                    dataKey="mov8"
+                    name="8 m³"
+                    stroke="hsl(38,85%,48%)"
+                    strokeWidth={2}
+                    fill="url(#gradMed)"
+                    dot={false}
+                    activeDot={{ r: 5, strokeWidth: 2, stroke: 'white' }}
+                  />
+                )}
+                <Area
+                  type="monotone"
+                  stackId="flota"
+                  dataKey="mov14"
+                  name="14 m³"
+                  stroke="hsl(262,60%,55%)"
+                  strokeWidth={2}
+                  fill="url(#gradGrande)"
+                  dot={false}
+                  activeDot={{ r: 5, strokeWidth: 2, stroke: 'white' }}
                 />
               </ComposedChart>
             </ResponsiveContainer>
-          </div>
+            </div>
+          </>
         ) : (
           <div className="h-[300px] flex flex-col items-center justify-center text-muted-foreground gap-2">
             <Pickaxe className="h-10 w-10 opacity-40" />

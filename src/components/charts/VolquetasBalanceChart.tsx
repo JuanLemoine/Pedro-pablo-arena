@@ -9,7 +9,6 @@ import {
   Tooltip,
   ResponsiveContainer,
   ReferenceLine,
-  Cell,
 } from 'recharts';
 import { Truck } from 'lucide-react';
 import { useOptimoDiario } from '@/hooks/useOptimoDiario';
@@ -21,6 +20,10 @@ interface Props {
   fechaInicio?: string;
   fechaFin?: string;
 }
+
+/** "+2 de más", "-1 falta" o "exacto", para leer el balance de una clase. */
+const signo = (dif: number): string =>
+  dif > 0 ? `${dif} de más` : dif < 0 ? `${Math.abs(dif)} falta(n)` : 'exacto';
 
 const TooltipPersonalizado = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
@@ -36,6 +39,11 @@ const TooltipPersonalizado = ({ active, payload, label }: any) => {
           <div><span className="text-slate-500">Flota real:</span> <span className="font-bold text-slate-800">{d.wActual}</span></div>
           <div className="text-slate-500 text-[11px]">{d.configActualLabel} · {d.m3Actual} m³</div>
         </div>
+      </div>
+      <div className="pl-[18px] text-[11px] text-slate-500 space-y-0.5">
+        <p>7 m³: {d.nSmallActual} real(es) vs {d.nSmallOptimo} óptima(s) → {signo(d.dif7)}</p>
+        {d.nMediumActual > 0 && <p>8 m³: {d.nMediumActual} real(es), el óptimo no la contempla</p>}
+        <p>14 m³: {d.nLargeActual} real(es) vs {d.nLargeOptimo} óptima(s) → {signo(d.dif14)}</p>
       </div>
       <div className="flex items-start gap-2">
         <div className="w-2.5 h-2.5 mt-1 rounded-full bg-blue-500 shrink-0" />
@@ -69,8 +77,19 @@ const VolquetasBalanceChart = ({ tipoSilice, fechaInicio, fechaFin }: Props) => 
         .map(d => ({
           ...d,
           fechaLabel: format(parseISO(d.fecha), 'd MMM', { locale: es }),
+          /**
+           * El balance separado por tamaño de volqueta. Las tres partes suman
+           * exactamente `diferencia`, así que la barra apilada mide lo mismo
+           * que antes pero deja ver de qué flota sale el sobrante o el faltante.
+           * La de 8 m³ siempre cuenta como sobrante: el óptimo no la contempla.
+           */
+          dif7: d.nSmallActual - d.nSmallOptimo,
+          dif8: d.nMediumActual,
+          dif14: d.nLargeActual - d.nLargeOptimo,
         }))
     : [];
+
+  const hayMedianas = datos.some(d => d.dif8 > 0);
 
   const diasDeMas = datos.filter(d => d.diferencia > 0).length;
   const diasFaltan = datos.filter(d => d.diferencia < 0).length;
@@ -119,18 +138,23 @@ const VolquetasBalanceChart = ({ tipoSilice, fechaInicio, fechaFin }: Props) => 
         ) : (
           <>
             {/* Leyenda */}
-            <div className="flex gap-4 text-xs mb-3">
+            <div className="flex flex-wrap gap-4 text-xs mb-3">
               <span className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-sm bg-orange-400 inline-block" />
-                De más
+                <span className="w-3 h-3 rounded-sm inline-block" style={{ background: 'hsl(152,60%,40%)' }} />
+                Volquetas de 7 m³ (5,5 m³ por viaje)
               </span>
+              {hayMedianas && (
+                <span className="flex items-center gap-1.5">
+                  <span className="w-3 h-3 rounded-sm inline-block" style={{ background: 'hsl(38,85%,48%)' }} />
+                  Volquetas de 8 m³
+                </span>
+              )}
               <span className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-sm bg-red-500 inline-block" />
-                Faltan
+                <span className="w-3 h-3 rounded-sm inline-block" style={{ background: 'hsl(262,60%,55%)' }} />
+                Volqueta de 14 m³
               </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-sm bg-green-500 inline-block" />
-                Exacto
+              <span className="text-muted-foreground">
+                Arriba de la línea sobran volquetas, abajo faltan.
               </span>
             </div>
             <div className="h-[260px]">
@@ -159,20 +183,30 @@ const VolquetasBalanceChart = ({ tipoSilice, fechaInicio, fechaFin }: Props) => 
                   />
                   <Tooltip content={<TooltipPersonalizado />} />
                   <ReferenceLine y={0} stroke="hsl(0,0%,60%)" strokeWidth={1.5} />
-                  <Bar dataKey="diferencia" name="Balance" radius={[3, 3, 0, 0]} maxBarSize={32}>
-                    {datos.map((entry, i) => (
-                      <Cell
-                        key={i}
-                        fill={
-                          entry.diferencia > 0
-                            ? 'hsl(30,90%,60%)'   // naranja — de más
-                            : entry.diferencia < 0
-                            ? 'hsl(0,72%,56%)'    // rojo — faltan
-                            : 'hsl(142,60%,45%)'  // verde — exacto
-                        }
-                      />
-                    ))}
-                  </Bar>
+                  {/* Apiladas por tamaño: las tres suman el balance del día. */}
+                  <Bar
+                    dataKey="dif7"
+                    stackId="bal"
+                    name="7 m³"
+                    fill="hsl(152,60%,40%)"
+                    maxBarSize={32}
+                  />
+                  {hayMedianas && (
+                    <Bar
+                      dataKey="dif8"
+                      stackId="bal"
+                      name="8 m³"
+                      fill="hsl(38,85%,48%)"
+                      maxBarSize={32}
+                    />
+                  )}
+                  <Bar
+                    dataKey="dif14"
+                    stackId="bal"
+                    name="14 m³"
+                    fill="hsl(262,60%,55%)"
+                    maxBarSize={32}
+                  />
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
