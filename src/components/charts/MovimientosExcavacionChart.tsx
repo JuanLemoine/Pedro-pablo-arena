@@ -12,7 +12,7 @@ import {
 } from 'recharts';
 import { Pickaxe } from 'lucide-react';
 import { useMovimientosExcavacion } from '@/hooks/useMovimientosExcavacion';
-import { useOptimoDiario } from '@/hooks/useOptimoDiario';
+import { useOptimoDiario, totalizarOptimo } from '@/hooks/useOptimoDiario';
 import { format } from 'date-fns';
 
 interface Props {
@@ -81,9 +81,14 @@ const MovimientosExcavacionChart = ({ tipoSilice, fechaInicio, fechaFin }: Props
     };
   });
 
-  const diasOptimo = diasConOptimo.filter(d => d.optimo > 0);
-  const optimoPromedio = diasOptimo.length > 0
-    ? Math.round((diasOptimo.reduce((s, d) => s + d.optimo, 0) / diasOptimo.length) * 10) / 10
+  /**
+   * Óptimo del período: la suma de TODOS los días hábiles del rango filtrado,
+   * no solo la de los días con movimientos. Un día hábil sin operar es
+   * capacidad perdida y debe pesar en el cumplimiento.
+   */
+  const totalOptimo = totalizarOptimo(optimoMap);
+  const cumplimiento = totalOptimo.viajesOptimo > 0
+    ? ((data?.totalMovimientos ?? 0) / totalOptimo.viajesOptimo) * 100
     : 0;
 
   return (
@@ -106,9 +111,22 @@ const MovimientosExcavacionChart = ({ tipoSilice, fechaInicio, fechaFin }: Props
                 <p className="font-bold text-emerald-600">{data.totalMovimientos.toLocaleString('es-CO')}</p>
               </div>
               <div className="text-right">
-                <p className="text-xs text-muted-foreground">Óptimo prom./día</p>
-                <p className="font-bold text-blue-600">{optimoPromedio}</p>
+                <p className="text-xs text-muted-foreground">
+                  Óptimo · {totalOptimo.diasHabiles} día(s) hábil(es)
+                </p>
+                <p className="font-bold text-blue-600">
+                  {totalOptimo.viajesOptimo.toLocaleString('es-CO')}
+                </p>
+                <p className="text-[10px] text-muted-foreground">{totalOptimo.viajesPorDia}/día</p>
               </div>
+              {totalOptimo.viajesOptimo > 0 && (
+                <div className="text-right">
+                  <p className="text-xs text-muted-foreground">Cumplimiento</p>
+                  <p className="font-bold text-slate-700">
+                    {cumplimiento.toLocaleString('es-CO', { maximumFractionDigits: 0 })}%
+                  </p>
+                </div>
+              )}
               {data.diaPico && (
                 <div className="text-right">
                   <p className="text-xs text-muted-foreground">Pico</p>

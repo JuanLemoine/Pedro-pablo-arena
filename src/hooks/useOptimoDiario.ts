@@ -265,3 +265,36 @@ export const useOptimoDiario = ({ fechaInicio, fechaFin, tipoSilice }: Params) =
     refetchInterval: 30000,
   });
 };
+
+export interface TotalesOptimo {
+  /** Días hábiles del rango filtrado (L-S). */
+  diasHabiles: number;
+  /** m³ brutos de fase 1 que se debieron llevar en todos esos días. */
+  m3Optimo: number;
+  /** Viajes que se debieron hacer en todos esos días. */
+  viajesOptimo: number;
+  m3PorDia: number;
+  viajesPorDia: number;
+}
+
+/**
+ * Óptimo acumulado del período, sumando SOLO los días hábiles del rango
+ * filtrado. Los domingos entran en el mapa con óptimo 0 y no cuentan; un día
+ * hábil en el que no se operó sí cuenta, porque esa capacidad se perdió.
+ */
+export const totalizarOptimo = (mapa?: Map<string, OptimoPorDia>): TotalesOptimo => {
+  let diasHabiles = 0, m3Optimo = 0, viajesOptimo = 0;
+  mapa?.forEach(dia => {
+    if (jornadaSegundosParaFecha(dia.fecha) <= 0) return;
+    diasHabiles++;
+    m3Optimo += dia.m3Optimo;
+    viajesOptimo += dia.viajesOptimo;
+  });
+  return {
+    diasHabiles,
+    m3Optimo: Math.round(m3Optimo * 100) / 100,
+    viajesOptimo,
+    m3PorDia: diasHabiles > 0 ? Math.round((m3Optimo / diasHabiles) * 100) / 100 : 0,
+    viajesPorDia: diasHabiles > 0 ? Math.round((viajesOptimo / diasHabiles) * 10) / 10 : 0,
+  };
+};

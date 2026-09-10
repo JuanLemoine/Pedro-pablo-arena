@@ -12,7 +12,7 @@ import {
 } from 'recharts';
 import { TrendingUp } from 'lucide-react';
 import { useProduccionVentas } from '@/hooks/useProduccionVentas';
-import { useOptimoDiario } from '@/hooks/useOptimoDiario';
+import { useOptimoDiario, totalizarOptimo } from '@/hooks/useOptimoDiario';
 import { format, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -124,20 +124,19 @@ const ProduccionDiariaLineChart = ({ tipoSilice = 'todos', fechaInicio, fechaFin
     };
   });
 
-  // Promedio del óptimo (sólo días con óptimo > 0)
-  const diasOptimo = datosConOptimo.filter(d => d.optimo > 0);
-  const optimoPromedio = diasOptimo.length > 0
-    ? diasOptimo.reduce((s, d) => s + d.optimo, 0) / diasOptimo.length
-    : 0;
-
   // Máximo del período
   const maximo = data ? Math.max(...data.datos.map(d => d.fase1Bruto)) : 0;
   const diaPico = data?.datos.find(d => d.fase1Bruto === maximo);
 
-  // Cumplimiento del período: llevado a la zaranda sobre la capacidad de los
-  // mismos días. Ambos lados en m³ brutos y solo la ruta excavación → zaranda.
-  const optimoTotal = datosConOptimo.reduce((s, d) => s + d.optimo, 0);
-  const cumplimiento = optimoTotal > 0 ? ((data?.totalFase1Bruto ?? 0) / optimoTotal) * 100 : 0;
+  /**
+   * Óptimo del período: la suma de TODOS los días hábiles del rango filtrado,
+   * no solo la de los días con movimientos. Un día hábil en el que no se operó
+   * es capacidad perdida y debe pesar en el cumplimiento.
+   */
+  const totalOptimo = totalizarOptimo(optimoMap);
+  const cumplimiento = totalOptimo.m3Optimo > 0
+    ? ((data?.totalFase1Bruto ?? 0) / totalOptimo.m3Optimo) * 100
+    : 0;
   const diasSinTiempos = datosConOptimo.filter(d => d.usedFallback && d.optimo > 0).length;
   /** Con qué medición se está calculando el óptimo cuando ningún día tiene la suya. */
   const ultimaMedicion = datosConOptimo[datosConOptimo.length - 1]?.tiemposLabel ?? '';
@@ -168,12 +167,17 @@ const ProduccionDiariaLineChart = ({ tipoSilice = 'todos', fechaInicio, fechaFin
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-xs text-muted-foreground">Óptimo prom./día</p>
+                <p className="text-xs text-muted-foreground">
+                  Óptimo · {totalOptimo.diasHabiles} día(s) hábil(es)
+                </p>
                 <p className="font-bold text-blue-600">
-                  {optimoPromedio.toLocaleString('es-CO', { maximumFractionDigits: 1 })} m³
+                  {totalOptimo.m3Optimo.toLocaleString('es-CO', { maximumFractionDigits: 1 })} m³
+                </p>
+                <p className="text-[10px] text-muted-foreground">
+                  {totalOptimo.m3PorDia.toLocaleString('es-CO', { maximumFractionDigits: 1 })} m³/día
                 </p>
               </div>
-              {optimoTotal > 0 && (
+              {totalOptimo.m3Optimo > 0 && (
                 <div className="text-right">
                   <p className="text-xs text-muted-foreground">Cumplimiento</p>
                   <p className="font-bold text-slate-700">
