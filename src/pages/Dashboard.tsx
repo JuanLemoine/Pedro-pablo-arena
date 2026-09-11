@@ -6,8 +6,6 @@ import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -21,7 +19,6 @@ import {
   BarChart3,
   ArrowDownUp,
   Layers,
-  CalendarIcon,
   SlidersHorizontal,
   RotateCcw,
   ShoppingCart,
@@ -47,6 +44,8 @@ import ProduccionDiariaLineChart from '@/components/charts/ProduccionDiariaLineC
 import MovimientosExcavacionChart from '@/components/charts/MovimientosExcavacionChart';
 import VolquetasBalanceChart from '@/components/charts/VolquetasBalanceChart';
 import InformeGerencial from '@/components/informe/InformeGerencial';
+import FechaPicker from '@/components/FechaPicker';
+import ComparadorPeriodos from '@/components/comparador/ComparadorPeriodos';
 import { format, startOfMonth } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -62,25 +61,6 @@ interface Filtros {
   tipoTransaccion: string;
   fuente: string;
 }
-
-// ── Pequeño picker de fecha reutilizable ─────────────────────────────────────
-const FechaPicker = ({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) => {
-  const [open, setOpen] = useState(false);
-  const date = value ? new Date(value + 'T00:00:00') : undefined;
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className={cn('justify-start gap-2 text-left font-normal min-w-[130px]', !value && 'text-muted-foreground')}>
-          <CalendarIcon className="h-3.5 w-3.5 shrink-0" />
-          {date ? format(date, 'dd MMM yyyy', { locale: es }) : label}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
-        <Calendar mode="single" selected={date} onSelect={(d) => { if (d) { onChange(format(d, 'yyyy-MM-dd')); setOpen(false); } }} initialFocus />
-      </PopoverContent>
-    </Popover>
-  );
-};
 
 // ── Chip de métrica compacta ──────────────────────────────────────────────────
 const ResumenChip = ({ label, value, color }: { label: string; value: string; color: string }) => (
@@ -1030,6 +1010,8 @@ const Dashboard = () => {
         </Card>
       )}
 
+      <ComparadorPeriodos seccion="comercial" filtros={filtros} />
+
         </TabsContent>
 
         {/* ── Producción ───────────────────────────────────────────────────── */}
@@ -1147,6 +1129,8 @@ const Dashboard = () => {
         fechaInicio={filtros.fechaInicio}
         fechaFin={filtros.fechaFin}
       />
+
+      <ComparadorPeriodos seccion="produccion" filtros={filtros} />
 
         </TabsContent>
 
