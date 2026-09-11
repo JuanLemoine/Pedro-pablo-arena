@@ -713,6 +713,81 @@ const Dashboard = () => {
                   <ResumenChip label="Movimientos" value={resumen.movimientos.totalMovimientos.toString()} color="bg-violet-50 border-violet-200" />
                   <ResumenChip label="m³ prod." value={resumen.movimientos.totalM3Producidos.toLocaleString('es-CO', { maximumFractionDigits: 1 })} color="bg-indigo-50 border-indigo-200" />
                 </div>
+                {/* m³ producidos según la fase del proceso */}
+                <div className="space-y-1.5">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    m³ producidos por fase
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <ResumenChip
+                      label={`Fase 1 · ${resumen.movimientos.viajesFase1} viajes`}
+                      value={`${resumen.movimientos.m3Fase1.toLocaleString('es-CO', { maximumFractionDigits: 1 })} m³`}
+                      color="bg-emerald-50 border-emerald-200"
+                    />
+                    <ResumenChip
+                      label={`Fase 2 · ${resumen.movimientos.viajesFase2} viajes`}
+                      value={`${resumen.movimientos.m3Fase2.toLocaleString('es-CO', { maximumFractionDigits: 1 })} m³`}
+                      color="bg-sky-50 border-sky-200"
+                    />
+                  </div>
+                  {resumen.movimientos.m3Otros > 0 && (
+                    <p className="text-[10px] text-muted-foreground">
+                      Otros {resumen.movimientos.m3Otros.toLocaleString('es-CO', { maximumFractionDigits: 1 })} m³:
+                      retornos a la zaranda y material llevado a patios de residuos.
+                    </p>
+                  )}
+                </div>
+
+                {/* Flota que movió el material, agrupada por tamaño */}
+                {resumen.movimientos.porTamano.length > 0 && (
+                  <div className="space-y-1.5">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Volquetas por tamaño
+                    </p>
+                    <div className="space-y-1">
+                      {resumen.movimientos.porTamano.map(t => (
+                        <div key={t.capacidad} className="flex items-center justify-between gap-2 text-xs">
+                          <span className="flex items-center gap-1.5 min-w-0">
+                            <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 text-[10px] px-1.5 py-0 shrink-0">
+                              {t.tamano}
+                            </Badge>
+                            <span className="text-muted-foreground truncate">
+                              {t.volquetas} volq · {t.movimientos} mov
+                            </span>
+                          </span>
+                          <span className="font-semibold tabular-nums shrink-0">
+                            {t.m3Producidos.toLocaleString('es-CO', { maximumFractionDigits: 1 })} m³
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Cuánto produjo cada volqueta, de mayor a menor */}
+                {resumen.movimientos.porVolqueta.length > 0 && (
+                  <div className="space-y-1.5">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      m³ por volqueta ({resumen.movimientos.porVolqueta.length})
+                    </p>
+                    <div className="max-h-44 overflow-y-auto pr-1 space-y-1">
+                      {resumen.movimientos.porVolqueta.map(v => (
+                        <div key={v.placa} className="flex items-center justify-between gap-2 text-xs">
+                          <span className="flex items-center gap-1.5 min-w-0">
+                            <span className="font-mono text-[11px] tracking-wider">{v.placa}</span>
+                            <span className="text-[10px] text-muted-foreground shrink-0">
+                              {v.tamano} · {v.movimientos} mov
+                            </span>
+                          </span>
+                          <span className="font-semibold tabular-nums shrink-0">
+                            {v.m3Producidos.toLocaleString('es-CO', { maximumFractionDigits: 1 })} m³
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   m³ de arena procesada aplicando los factores de producción (PF) por tipo de movimiento.
                 </p>

@@ -1,7 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { traerTodo } from '@/lib/fetchTodo';
-import { calcularM3PorMovimiento, getCapacidadVolqueta } from '@/lib/volquetas';
+import { clasificarPorCapacidad } from '@/lib/simulador';
+import {
+  calcularM3PorMovimiento,
+  getCapacidadVolqueta,
+  esDestinoAlmacenamiento,
+} from '@/lib/volquetas';
 
 export interface DashboardFiltros {
   fechaInicio: string;
@@ -43,10 +48,53 @@ export interface ResumenAcopio {
   porFuente: { fuente: string; viajes: number }[];
 }
 
+/**
+ * Nombre comercial del tamaño de la volqueta. Se usa la clase del simulador y
+ * no la capacidad registrada porque las dos no coinciden: la grande está
+ * registrada con 13 m³ (lo que carga por viaje) pero en la operación, en el
+ * simulador y en las gráficas se le dice "la de 14".
+ */
+const etiquetaTamano = (capacidad: number): string => {
+  const clase = clasificarPorCapacidad(capacidad);
+  return clase === 'large' ? '14 m³' : clase === 'medium' ? '8 m³' : '7 m³';
+};
+
+export interface MovimientosPorTamano {
+  /** Etiqueta legible del tamaño: "7 m³", "8 m³", "14 m³". */
+  tamano: string;
+  capacidad: number;
+  /** Volquetas distintas de ese tamaño que se movieron en el período. */
+  volquetas: number;
+  movimientos: number;
+  m3Producidos: number;
+}
+
+export interface MovimientosPorVolqueta {
+  placa: string;
+  capacidad: number;
+  /** Nombre comercial del tamaño: "7 m³", "8 m³", "14 m³". */
+  tamano: string;
+  movimientos: number;
+  m3Producidos: number;
+}
+
 export interface ResumenMovimientos {
   totalRegistros: number;
   totalMovimientos: number;
   totalM3Producidos: number;
+  /** m³ producidos llevando material del punto de excavación a la zaranda. */
+  m3Fase1: number;
+  /** m³ producidos reprocesando lo que sale de la zaranda. */
+  m3Fase2: number;
+  /**
+   * m³ producidos que no son ni Fase 1 ni Fase 2: retornos de trituradora y
+   * clasificadora a la zaranda, y el material llevado a patios de residuos.
+   */
+  m3Otros: number;
+  viajesFase1: number;
+  viajesFase2: number;
+  porTamano: MovimientosPorTamano[];
+  porVolqueta: MovimientosPorVolqueta[];
 }
 
 export interface ResumenCliente {
@@ -261,16 +309,76 @@ export const useDashboardResumen = (filtros: DashboardFiltros) => {
 
       let totalMovimientosCant = 0;
       let totalM3Mov = 0;
+      let m3Fase1 = 0, m3Fase2 = 0, m3Otros = 0;
+      let viajesFase1 = 0, viajesFase2 = 0;
+      /** Acumulado por placa; de ahí sale también el desglose por tamaño. */
+      const porPlaca = new Map<string, { capacidad: number; movimientos: number; m3: number }>();
+
       movData?.forEach(m => {
         const r = calcularM3PorMovimiento(m.placa, m.silice, m.origen, m.destino);
-        totalMovimientosCant += m.cantidad_movimientos;
-        totalM3Mov += r.m3Producidos * m.cantidad_movimientos;
+        const viajes = Number(m.cantidad_movimientos) || 0;
+        const m3 = r.m3Producidos * viajes;
+        totalMovimientosCant += viajes;
+        totalM3Mov += m3;
+
+        // Llevar material a un patio de residuos no es ni Fase 1 ni Fase 2:
+        // no entra a la zaranda ni se reprocesa. Misma regla que el informe.
+        if (esDestinoAlmacenamiento(m.destino)) {
+          m3Otros += m3;
+        } else if (m.origen === 'Punto de excavación') {
+          m3Fase1 += m3;
+          viajesFase1 += viajes;
+        } else if (m.origen === 'Zaranda') {
+          m3Fase2 += m3;
+          viajesFase2 += viajes;
+        } else {
+          m3Otros += m3; // retornos de trituradora y clasificadora a la zaranda
+        }
+
+        const placa = m.placa.toUpperCase();
+        const acum = porPlaca.get(placa)
+          ?? { capacidad: getCapacidadVolqueta(m.placa), movimientos: 0, m3: 0 };
+        acum.movimientos += viajes;
+        acum.m3 += m3;
+        porPlaca.set(placa, acum);
+      });
+
+      const porVolqueta: MovimientosPorVolqueta[] = Array.from(porPlaca.entries())
+        .map(([placa, d]) => ({
+          placa,
+          capacidad: d.capacidad,
+          tamano: etiquetaTamano(d.capacidad),
+          movimientos: d.movimientos,
+          m3Producidos: Math.round(d.m3 * 100) / 100,
+        }))
+        .sort((a, b) => b.m3Producidos - a.m3Producidos);
+
+      const tamanoMap = new Map<number, MovimientosPorTamano>();
+      porVolqueta.forEach(v => {
+        const t = tamanoMap.get(v.capacidad) ?? {
+          tamano: v.tamano,
+          capacidad: v.capacidad,
+          volquetas: 0,
+          movimientos: 0,
+          m3Producidos: 0,
+        };
+        t.volquetas += 1;
+        t.movimientos += v.movimientos;
+        t.m3Producidos = Math.round((t.m3Producidos + v.m3Producidos) * 100) / 100;
+        tamanoMap.set(v.capacidad, t);
       });
 
       const movimientos: ResumenMovimientos = {
         totalRegistros: movData?.length || 0,
         totalMovimientos: totalMovimientosCant,
         totalM3Producidos: Math.round(totalM3Mov * 100) / 100,
+        m3Fase1: Math.round(m3Fase1 * 100) / 100,
+        m3Fase2: Math.round(m3Fase2 * 100) / 100,
+        m3Otros: Math.round(m3Otros * 100) / 100,
+        viajesFase1,
+        viajesFase2,
+        porTamano: Array.from(tamanoMap.values()).sort((a, b) => b.capacidad - a.capacidad),
+        porVolqueta,
       };
 
       // ── Clientes ────────────────────────────────────────────────
