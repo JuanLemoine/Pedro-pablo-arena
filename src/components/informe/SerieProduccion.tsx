@@ -12,7 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { formatoM3, formatoNumero, formatoPorcentaje } from '@/lib/formato';
+import { formatoM3, formatoNumero, formatoPorcentaje, porcentaje } from '@/lib/formato';
 import type { BaseCapacidad } from '@/lib/informe';
 import {
   useSerieProduccion,
@@ -40,11 +40,9 @@ const AGRUPACIONES: { valor: Agrupacion; etiqueta: string }[] = [
 ];
 
 const COLOR = {
-  productoF1: 'hsl(32,80%,50%)',
-  productoF2: 'hsl(152,55%,42%)',
-  capacidadF1: 'hsl(32,55%,84%)',
-  capacidadF2: 'hsl(48,85%,66%)',
-  entregado: 'hsl(210,75%,52%)',
+  capacidadF1: 'hsl(32,75%,58%)',
+  capacidadF2: 'hsl(48,85%,60%)',
+  vendido: 'hsl(210,75%,52%)',
 };
 
 const Fecha = ({ valor, onChange, etiqueta }: { valor: string; onChange: (v: string) => void; etiqueta: string }) => {
@@ -85,21 +83,15 @@ const TooltipPunto = ({ active, payload, label }: TooltipProps) => {
   return (
     <div className="min-w-[250px] space-y-1 rounded-lg border border-slate-200 bg-white p-3 text-xs shadow-lg">
       <p className="font-semibold capitalize text-slate-700">{label}</p>
-      {fila('Producido Fase 1', formatoM3(d.productoF1, 0), 'text-amber-700')}
-      {fila('Capacidad Fase 1', formatoM3(d.capacidadF1, 0))}
-      {fila('Cumplimiento F1', formatoPorcentaje(d.cumplimientoF1, 0), 'text-amber-700')}
+      {fila('Capacidad Fase 1', formatoM3(d.capacidadF1, 0), 'text-amber-700')}
+      {fila('Capacidad Fase 2', formatoM3(d.capacidadF2, 0), 'text-yellow-700')}
+      {fila('Capacidad total', formatoM3(d.capacidadTotal, 0))}
       <div className="my-1 border-t border-slate-100" />
-      {fila('Producido Fase 2', formatoM3(d.productoF2, 0), 'text-green-700')}
-      {fila('Capacidad Fase 2', formatoM3(d.capacidadF2, 0))}
-      {fila('Cumplimiento F2', formatoPorcentaje(d.cumplimientoF2, 0), 'text-green-700')}
-      <div className="my-1 border-t border-slate-100" />
-      {fila('Entregado total', formatoM3(d.entregado, 0), 'text-blue-700')}
-      {fila('· a clientes', formatoM3(d.entregadoVentas, 0))}
-      {fila('· al acopio', formatoM3(d.entregadoAcopio, 0))}
-      {d.sinRegistros && (
-        <p className="pt-1 text-[11px] font-medium text-red-600">
-          Sin movimientos registrados en este tramo
-        </p>
+      {fila('Total vendido', formatoM3(d.vendido, 0), 'text-blue-700')}
+      {fila(
+        'Vendido sobre capacidad',
+        formatoPorcentaje(porcentaje(d.vendido, d.capacidadTotal), 0),
+        'text-blue-700'
       )}
     </div>
   );
@@ -124,15 +116,14 @@ const SerieProduccion = ({ tipoSilice, baseCapacidad }: Props) => {
     [inicio, fin, ambito, agrupacion, mina, baseCapacidad]
   );
   const { puntos, minas, isLoading } = useSerieProduccion(filtros);
-  const hayDatos = puntos.some(p => p.productoTotal > 0 || p.entregado > 0);
-  const tramosSinRegistro = puntos.filter(p => p.sinRegistros && p.capacidadF1 > 0).length;
+  const hayDatos = puntos.some(p => p.capacidadTotal > 0 || p.vendido > 0);
 
   return (
     <div className="evitar-corte space-y-3">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-foreground">
-            Producción y entregas frente a la capacidad
+            Capacidad de producción frente a lo vendido
           </p>
           <p className="text-xs text-muted-foreground">
             En m³ de producto ·{' '}
@@ -206,23 +197,20 @@ const SerieProduccion = ({ tipoSilice, baseCapacidad }: Props) => {
               <YAxis fontSize={11} tickLine={false} axisLine={false} stroke="hsl(0,0%,50%)" width={52} tickFormatter={v => formatoNumero(v)} />
               <Tooltip content={<TooltipPunto />} cursor={{ fill: 'hsl(0,0%,96%)' }} />
               <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
-              <Bar dataKey="capacidadF1" name="Capacidad Fase 1" fill={COLOR.capacidadF1} radius={[3, 3, 0, 0]} maxBarSize={20} />
-              <Bar dataKey="productoF1" name="Producido Fase 1" fill={COLOR.productoF1} radius={[3, 3, 0, 0]} maxBarSize={20} />
-              <Bar dataKey="capacidadF2" name="Capacidad Fase 2" fill={COLOR.capacidadF2} radius={[3, 3, 0, 0]} maxBarSize={20} />
-              <Bar dataKey="productoF2" name="Producido Fase 2" fill={COLOR.productoF2} radius={[3, 3, 0, 0]} maxBarSize={20} />
-              <Line dataKey="entregado" name="Producto final entregado" stroke={COLOR.entregado} strokeWidth={2.5} dot={{ r: 3 }} type="monotone" />
+              <Bar dataKey="capacidadF1" name="Capacidad Fase 1" fill={COLOR.capacidadF1} radius={[3, 3, 0, 0]} maxBarSize={26} />
+              <Bar dataKey="capacidadF2" name="Capacidad Fase 2" fill={COLOR.capacidadF2} radius={[3, 3, 0, 0]} maxBarSize={26} />
+              <Line dataKey="vendido" name="Total vendido" stroke={COLOR.vendido} strokeWidth={2.5} dot={{ r: 3 }} type="monotone" />
             </ComposedChart>
           </ResponsiveContainer>
         </div>
       )}
 
       <p className="text-[11px] leading-relaxed text-muted-foreground">
-        Las barras claras son la capacidad de cada fase y las oscuras lo producido: la diferencia es
-        lo que se dejó de producir. La línea azul es el producto final entregado: lo despachado
-        a clientes (con la yapa de 1 m³ por viaje) más lo llevado al acopio.
-        {mina !== 'todas' && ' El filtro de mina aplica a la producción; la capacidad es por ruta y no se filtra por mina, así que el porcentaje de un solo frente no es comparable con el total.'}
-        {tramosSinRegistro > 0 &&
-          ` ${tramosSinRegistro} tramo(s) del rango no tienen ningún movimiento registrado: ahí el 0 % puede ser falta de registro y no falta de producción.`}
+        Las dos barras son la capacidad que da el simulador con la mejor flota: la de Fase 1 aplica
+        el 67 % de rendimiento de la zaranda y la de Fase 2 el 23,1 % del reproceso. La línea azul
+        es el total vendido, o sea los m³ de las ventas registradas en la sección de Ventas, sin la
+        yapa y sin el acopio.
+        {mina !== 'todas' && ' La capacidad es por ruta y no se filtra por mina, así que con un filtro de mina activo la comparación no es directa.'}
       </p>
     </div>
   );
