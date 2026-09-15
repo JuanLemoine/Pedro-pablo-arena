@@ -20,6 +20,7 @@ import { useVentas, useCreateVentas, useUpdateVenta, useDeleteVenta } from '@/ho
 import { usePlacasClientes, useClientesInfo, formatearPlaca, validarPlaca } from '@/hooks/usePlacaCliente';
 import { ReciboInput } from '@/components/ReciboInput';
 import { MoneyInput } from '@/components/MoneyInput';
+import TableroTotales from '@/components/TableroTotales';
 
 type TipoTransaccion = 'Venta' | 'Donación' | 'Transferencia';
 
