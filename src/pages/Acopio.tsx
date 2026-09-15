@@ -12,7 +12,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Plus, Search, Truck, Trash2, Save, Check, ChevronsUpDown, ArrowLeft, CalendarIcon, Loader2, Edit, Filter, X, Download } from 'lucide-react';
+import { Plus, Search, Truck, Trash2, Save, Check, ChevronsUpDown, ArrowLeft, CalendarIcon, Loader2, Edit, Filter, X, Download, Package, Warehouse, DollarSign, Mountain } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
@@ -20,6 +20,8 @@ import { cn } from '@/lib/utils';
 import { useAcopios, useCreateAcopios, useUpdateAcopio, useDeleteAcopio } from '@/hooks/useAcopios';
 import { usePlacas } from '@/hooks/useVolquetas';
 import { getCapacidadVolqueta, calcularM3Producidos } from '@/lib/volquetas';
+import { PRECIO_M3 } from '@/hooks/useDashboardResumen';
+import TableroTotales from '@/components/TableroTotales';
 import { validarPlaca } from '@/lib/placas';
 
 interface AcopioForm {
@@ -207,6 +209,18 @@ const Acopio = () => {
   };
 
   const filteredAcopios = aplicarFiltros(acopios);
+
+  /**
+   * Totales de lo filtrado. El valor es a precio de lista de cada sílice: el
+   * acopio no se factura, así que es cuánto vale el producto almacenado.
+   */
+  const totalViajesAcopio = filteredAcopios.reduce((s, a) => s + a.cantidad_viajes, 0);
+  const m3Acopio = calcularM3Producidos(filteredAcopios);
+  const valorAcopio = filteredAcopios.reduce(
+    (s, a) => s + getCapacidadVolqueta(a.placa) * a.cantidad_viajes * (PRECIO_M3[a.silice] ?? 0),
+    0
+  );
+  const volquetasAcopio = new Set(filteredAcopios.map(a => a.placa.toUpperCase())).size;
 
   const exportarExcel = () => {
     const datos = filteredAcopios.map(a => ({
@@ -582,33 +596,43 @@ const Acopio = () => {
         </Card>
       )}
 
-      {/* Resumen de producción */}
-      {!isLoading && filteredAcopios.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Card className="shadow-card bg-amber-50 border-amber-200">
-            <CardContent className="p-4">
-              <p className="text-sm text-amber-700">Total Viajes</p>
-              <p className="text-2xl font-bold text-amber-800">
-                {filteredAcopios.reduce((sum, a) => sum + a.cantidad_viajes, 0)}
-              </p>
-            </CardContent>
-          </Card>
-          <Card className="shadow-card bg-blue-50 border-blue-200">
-            <CardContent className="p-4">
-              <p className="text-sm text-blue-700">m³ Producidos</p>
-              <p className="text-2xl font-bold text-blue-800">
-                {calcularM3Producidos(filteredAcopios).toLocaleString('es-CO')} m³
-              </p>
-            </CardContent>
-          </Card>
-          <Card className="shadow-card bg-green-50 border-green-200">
-            <CardContent className="p-4">
-              <p className="text-sm text-green-700">Registros</p>
-              <p className="text-2xl font-bold text-green-800">{filteredAcopios.length}</p>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+      {/* Totales de lo filtrado */}
+      <TableroTotales
+        indicadores={[
+          {
+            etiqueta: 'Registros',
+            valor: filteredAcopios.length.toLocaleString('es-CO'),
+            icono: Mountain,
+            tono: 'green',
+          },
+          {
+            etiqueta: 'Volquetas',
+            valor: volquetasAcopio.toLocaleString('es-CO'),
+            icono: Truck,
+            tono: 'blue',
+          },
+          {
+            etiqueta: 'Viajes',
+            valor: totalViajesAcopio.toLocaleString('es-CO'),
+            icono: Package,
+            tono: 'amber',
+          },
+          {
+            etiqueta: 'm³ al Acopio',
+            valor: m3Acopio.toLocaleString('es-CO', { maximumFractionDigits: 2 }),
+            nota: 'Capacidad de la volqueta × viajes',
+            icono: Warehouse,
+            tono: 'purple',
+          },
+          {
+            etiqueta: 'Valor a Precio de Lista',
+            valor: `$${Math.round(valorAcopio).toLocaleString('es-CO')}`,
+            nota: 'No facturado, es producto almacenado',
+            icono: DollarSign,
+            tono: 'teal',
+          },
+        ]}
+      />
 
       {/* Search and Table */}
       <Card className="shadow-card">

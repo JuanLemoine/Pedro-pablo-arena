@@ -36,6 +36,7 @@ import {
   DESTINO_ALMACEN_TIERRA,
 } from '@/lib/volquetas';
 import { validarPlaca } from '@/lib/placas';
+import TableroTotales from '@/components/TableroTotales';
 import { cn } from '@/lib/utils';
 
 const MINAS = [
@@ -259,6 +260,8 @@ const Movimientos = () => {
     const resultado = calcularM3PorMovimiento(m.placa, m.silice, m.origen, m.destino);
     return sum + resultado.m3Producidos * m.cantidad_movimientos;
   }, 0);
+  /** Viajes, no registros: una fila puede traer 20 viajes de la misma volqueta. */
+  const totalViajes = filteredMovimientos.reduce((sum, m) => sum + m.cantidad_movimientos, 0);
 
   const exportarExcel = () => {
     const datos = filteredMovimientos.map(m => {
@@ -527,81 +530,46 @@ const Movimientos = () => {
       </Card>
       )}
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-        <Card className="shadow-card bg-amber-50 border-amber-200">
-          <CardContent className="p-4 flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center">
-              <Mountain className="h-6 w-6 text-amber-600" />
-            </div>
-            <div>
-              <p className="text-sm text-amber-700">Minas Activas</p>
-              <p className="text-2xl font-bold text-amber-800">{new Set(filteredMovimientos.map(m => m.mina)).size}</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-card bg-blue-50 border-blue-200">
-          <CardContent className="p-4 flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center">
-              <Truck className="h-6 w-6 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-sm text-blue-700">Volquetas</p>
-              <p className="text-2xl font-bold text-blue-800">{new Set(filteredMovimientos.map(m => m.placa)).size}</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-card bg-green-50 border-green-200">
-          <CardContent className="p-4 flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-green-500/20 flex items-center justify-center">
-              <ArrowLeftRight className="h-6 w-6 text-green-600" />
-            </div>
-            <div>
-              <p className="text-sm text-green-700">Movimientos</p>
-              <p className="text-2xl font-bold text-green-800">{filteredMovimientos.length}</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* m³ brutos: capacidad de la volqueta × viajes, sin aplicar el PF. Es
-            la unidad en la que hablan el simulador y la gráfica de Fase 1 del
-            dashboard, así que tenerla aquí evita comparar peras con manzanas. */}
-        <Card className="shadow-card bg-orange-50 border-orange-200">
-          <CardContent className="p-4 flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-orange-500/20 flex items-center justify-center">
-              <Truck className="h-6 w-6 text-orange-600" />
-            </div>
-            <div>
-              <p className="text-sm text-orange-700">m³ Brutos</p>
-              <p className="text-2xl font-bold text-orange-800">
-                {m3Brutos.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </p>
-              <p className="text-[11px] text-orange-600">Transportados, antes del PF</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-card bg-purple-50 border-purple-200">
-          <CardContent className="p-4 flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center">
-              <ArrowLeftRight className="h-6 w-6 text-purple-600" />
-            </div>
-            <div>
-              <p className="text-sm text-purple-700">m³ Producidos</p>
-              <p className="text-2xl font-bold text-purple-800">
-                {m3Producidos.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </p>
-              <p className="text-[11px] text-purple-600">
-                {m3Brutos > 0
-                  ? `${((m3Producidos / m3Brutos) * 100).toLocaleString('es-CO', { maximumFractionDigits: 1 })} % de los brutos`
-                  : 'Después del PF'}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Totales de lo filtrado */}
+      <TableroTotales
+        indicadores={[
+          {
+            etiqueta: 'Minas Activas',
+            valor: new Set(filteredMovimientos.map(m => m.mina)).size.toLocaleString('es-CO'),
+            icono: Mountain,
+            tono: 'amber',
+          },
+          {
+            etiqueta: 'Volquetas',
+            valor: new Set(filteredMovimientos.map(m => m.placa)).size.toLocaleString('es-CO'),
+            icono: Truck,
+            tono: 'blue',
+          },
+          {
+            etiqueta: 'Movimientos',
+            valor: totalViajes.toLocaleString('es-CO'),
+            nota: `${filteredMovimientos.length.toLocaleString('es-CO')} registro(s)`,
+            icono: ArrowLeftRight,
+            tono: 'green',
+          },
+          {
+            etiqueta: 'm³ Brutos',
+            valor: m3Brutos.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+            nota: 'Transportados, antes del PF',
+            icono: Truck,
+            tono: 'orange',
+          },
+          {
+            etiqueta: 'm³ Producidos',
+            valor: m3Producidos.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+            nota: m3Brutos > 0
+              ? `${((m3Producidos / m3Brutos) * 100).toLocaleString('es-CO', { maximumFractionDigits: 1 })} % de los brutos`
+              : 'Después del PF',
+            icono: ArrowLeftRight,
+            tono: 'purple',
+          },
+        ]}
+      />
 
       {/* Form */}
       {showForm && (

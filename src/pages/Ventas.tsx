@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, Search, FileText, Trash2, Save, Warehouse, CalendarIcon, Loader2, User, AlertCircle, Edit, Filter, X, Download, CreditCard, Check } from 'lucide-react';
+import { Plus, Search, FileText, Trash2, Save, Warehouse, CalendarIcon, Loader2, User, AlertCircle, Edit, Filter, X, Download, CreditCard, Check, DollarSign, Users, Package } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -317,6 +317,24 @@ const Ventas = () => {
   };
 
   const filteredVentas = aplicarFiltros(ventas);
+
+  /**
+   * Totales de lo filtrado. El valor deja por fuera los consumos de anticipo,
+   * que no son ingreso nuevo: ese dinero ya se cobró cuando entró el anticipo.
+   * Los m³ a clientes suman la yapa de 1 m³ por despacho.
+   */
+  const m3Facturados = filteredVentas.reduce((s, v) => s + Number(v.cantidad_m3), 0);
+  const m3AClientes = m3Facturados + filteredVentas.length;
+  const extra = (v: unknown) => v as { descuenta_anticipo?: boolean | null; nombre_cliente?: string | null };
+  const consumoAnticipo = filteredVentas.reduce(
+    (s, v) => s + (extra(v).descuenta_anticipo ? Number(v.valor_total) : 0), 0
+  );
+  const valorCobrado = filteredVentas.reduce(
+    (s, v) => s + (extra(v).descuenta_anticipo ? 0 : Number(v.valor_total)), 0
+  );
+  const clientesDistintos = new Set(
+    filteredVentas.map(v => (extra(v).nombre_cliente || v.placa || '').toUpperCase())
+  ).size;
 
   const exportarExcel = () => {
     const datos = filteredVentas.map(v => ({
@@ -864,6 +882,47 @@ const Ventas = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Totales de lo filtrado */}
+      <TableroTotales
+        indicadores={[
+          {
+            etiqueta: 'Ventas',
+            valor: filteredVentas.length.toLocaleString('es-CO'),
+            nota: 'Registros del filtro',
+            icono: FileText,
+            tono: 'green',
+          },
+          {
+            etiqueta: 'Clientes',
+            valor: clientesDistintos.toLocaleString('es-CO'),
+            icono: Users,
+            tono: 'blue',
+          },
+          {
+            etiqueta: 'm³ Facturados',
+            valor: m3Facturados.toLocaleString('es-CO', { maximumFractionDigits: 2 }),
+            icono: Package,
+            tono: 'orange',
+          },
+          {
+            etiqueta: 'm³ a Clientes',
+            valor: m3AClientes.toLocaleString('es-CO', { maximumFractionDigits: 2 }),
+            nota: `Con ${filteredVentas.length.toLocaleString('es-CO')} m³ de yapa`,
+            icono: Warehouse,
+            tono: 'purple',
+          },
+          {
+            etiqueta: 'Valor Cobrado',
+            valor: `$${Math.round(valorCobrado).toLocaleString('es-CO')}`,
+            nota: consumoAnticipo > 0
+              ? `Sin $${Math.round(consumoAnticipo).toLocaleString('es-CO')} de anticipo consumido`
+              : 'Sin consumos de anticipo',
+            icono: DollarSign,
+            tono: 'teal',
+          },
+        ]}
+      />
 
       {/* Search and Table */}
       <Card className="shadow-card">

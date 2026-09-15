@@ -12,8 +12,9 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, CalendarIcon, Save, Loader2, Trash2, Edit, Search, Wallet, User, Download, Filter, X } from 'lucide-react';
+import { Plus, CalendarIcon, Save, Loader2, Trash2, Edit, Search, Wallet, User, Download, Filter, X, Users, DollarSign, TrendingDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import TableroTotales from '@/components/TableroTotales';
 import { toast } from 'sonner';
 import { MoneyInput } from '@/components/MoneyInput';
 import {
@@ -146,6 +147,17 @@ const Anticipos = () => {
   });
 
   const hayFiltros = !!searchTerm || !!filterBanco || !!filterFechaInicio || !!filterFechaFin;
+
+  /**
+   * Totales de lo filtrado, más el estado global de los saldos. Lo consumido y
+   * el saldo salen de `anticiposPorNIT`, que cruza contra TODAS las ventas del
+   * cliente, así que no dependen del filtro de fechas de esta pantalla.
+   */
+  const totalAnticipos = filteredAnticipos.reduce((s, a) => s + Number(a.valor), 0);
+  const clientesFiltrados = new Set(filteredAnticipos.map(a => a.nit)).size;
+  const consumoGlobal = anticiposPorNIT.reduce((s, a) => s + a.consumo, 0);
+  const saldoGlobal = anticiposPorNIT.reduce((s, a) => s + a.saldo, 0);
+  const clientesExcedidos = anticiposPorNIT.filter(a => a.saldo < 0).length;
 
   const limpiarFiltros = () => {
     setSearchTerm('');
@@ -440,6 +452,47 @@ const Anticipos = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Totales de lo filtrado */}
+      <TableroTotales
+        indicadores={[
+          {
+            etiqueta: 'Anticipos',
+            valor: filteredAnticipos.length.toLocaleString('es-CO'),
+            nota: 'Registros del filtro',
+            icono: Wallet,
+            tono: 'amber',
+          },
+          {
+            etiqueta: 'Clientes',
+            valor: clientesFiltrados.toLocaleString('es-CO'),
+            icono: Users,
+            tono: 'blue',
+          },
+          {
+            etiqueta: 'Valor Recibido',
+            valor: `$${Math.round(totalAnticipos).toLocaleString('es-CO')}`,
+            icono: DollarSign,
+            tono: 'green',
+          },
+          {
+            etiqueta: 'Consumido',
+            valor: `$${Math.round(consumoGlobal).toLocaleString('es-CO')}`,
+            nota: 'Histórico completo, sin filtrar',
+            icono: TrendingDown,
+            tono: 'purple',
+          },
+          {
+            etiqueta: 'Saldo',
+            valor: `$${Math.round(saldoGlobal).toLocaleString('es-CO')}`,
+            nota: clientesExcedidos > 0
+              ? `${clientesExcedidos} cliente(s) con saldo excedido`
+              : 'Histórico completo, sin filtrar',
+            icono: Wallet,
+            tono: saldoGlobal < 0 ? 'rose' : 'teal',
+          },
+        ]}
+      />
 
       {/* Historial */}
       <Card className="shadow-card">
