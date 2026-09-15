@@ -31,6 +31,7 @@ import { useMovimientos, useCreateMovimiento, useUpdateMovimiento, useDeleteMovi
 import { usePlacas } from '@/hooks/useVolquetas';
 import {
   calcularM3PorMovimiento,
+  getCapacidadVolqueta,
   DESTINO_ALMACEN_GRANZON,
   DESTINO_ALMACEN_TIERRA,
 } from '@/lib/volquetas';
@@ -244,6 +245,20 @@ const Movimientos = () => {
   };
 
   const filteredMovimientos = aplicarFiltros(movimientos);
+
+  /**
+   * Los dos totales de material de lo que está filtrado. El bruto es lo que
+   * transportaron las volquetas (capacidad × viajes) y el producido es eso
+   * después del factor de producción de cada ruta.
+   */
+  const m3Brutos = filteredMovimientos.reduce(
+    (sum, m) => sum + getCapacidadVolqueta(m.placa) * m.cantidad_movimientos,
+    0
+  );
+  const m3Producidos = filteredMovimientos.reduce((sum, m) => {
+    const resultado = calcularM3PorMovimiento(m.placa, m.silice, m.origen, m.destino);
+    return sum + resultado.m3Producidos * m.cantidad_movimientos;
+  }, 0);
 
   const exportarExcel = () => {
     const datos = filteredMovimientos.map(m => {
@@ -513,7 +528,7 @@ const Movimientos = () => {
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         <Card className="shadow-card bg-amber-50 border-amber-200">
           <CardContent className="p-4 flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center">
@@ -550,6 +565,24 @@ const Movimientos = () => {
           </CardContent>
         </Card>
 
+        {/* m³ brutos: capacidad de la volqueta × viajes, sin aplicar el PF. Es
+            la unidad en la que hablan el simulador y la gráfica de Fase 1 del
+            dashboard, así que tenerla aquí evita comparar peras con manzanas. */}
+        <Card className="shadow-card bg-orange-50 border-orange-200">
+          <CardContent className="p-4 flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-orange-500/20 flex items-center justify-center">
+              <Truck className="h-6 w-6 text-orange-600" />
+            </div>
+            <div>
+              <p className="text-sm text-orange-700">m³ Brutos</p>
+              <p className="text-2xl font-bold text-orange-800">
+                {m3Brutos.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </p>
+              <p className="text-[11px] text-orange-600">Transportados, antes del PF</p>
+            </div>
+          </CardContent>
+        </Card>
+
         <Card className="shadow-card bg-purple-50 border-purple-200">
           <CardContent className="p-4 flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center">
@@ -558,10 +591,12 @@ const Movimientos = () => {
             <div>
               <p className="text-sm text-purple-700">m³ Producidos</p>
               <p className="text-2xl font-bold text-purple-800">
-                {filteredMovimientos.reduce((sum, m) => {
-                  const resultado = calcularM3PorMovimiento(m.placa, m.silice, m.origen, m.destino);
-                  return sum + (resultado.m3Producidos * m.cantidad_movimientos);
-                }, 0).toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {m3Producidos.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </p>
+              <p className="text-[11px] text-purple-600">
+                {m3Brutos > 0
+                  ? `${((m3Producidos / m3Brutos) * 100).toLocaleString('es-CO', { maximumFractionDigits: 1 })} % de los brutos`
+                  : 'Después del PF'}
               </p>
             </div>
           </CardContent>
