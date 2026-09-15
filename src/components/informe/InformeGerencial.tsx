@@ -183,6 +183,19 @@ const InformeGerencial = ({ filtros }: Props) => {
               anterior={data.anterior}
               tipoSilice={filtros.tipoSilice}
             />
+
+            <div className="evitar-corte mt-6 border-t border-border/60 pt-5">
+              <ProduccionDiariaLineChart
+                tipoSilice={filtros.tipoSilice}
+                fechaInicio={filtros.fechaInicio}
+                fechaFin={filtros.fechaFin}
+                sinTarjeta
+              />
+            </div>
+
+            <div className="evitar-corte mt-6 border-t border-border/60 pt-5">
+              <VentasPorFechaChart filtros={filtros} sinTarjeta />
+            </div>
           </SeccionInforme>
 
           <SeccionInforme
@@ -210,15 +223,6 @@ const InformeGerencial = ({ filtros }: Props) => {
             icono={Layers}
           >
             <EmbudoFases actual={data.actual} />
-
-            <div className="evitar-corte mt-6 border-t border-border/60 pt-5">
-              <ProduccionDiariaLineChart
-                tipoSilice={filtros.tipoSilice}
-                fechaInicio={filtros.fechaInicio}
-                fechaFin={filtros.fechaFin}
-                sinTarjeta
-              />
-            </div>
           </SeccionInforme>
 
           <SeccionInforme
@@ -246,10 +250,6 @@ const InformeGerencial = ({ filtros }: Props) => {
             icono={ShoppingCart}
           >
             <AnalisisComercial actual={data.actual} anterior={data.anterior} />
-
-            <div className="evitar-corte mt-6 border-t border-border/60 pt-5">
-              <VentasPorFechaChart filtros={filtros} sinTarjeta />
-            </div>
           </SeccionInforme>
 
           <p className="flex items-start gap-2 px-1 text-[11px] leading-relaxed text-muted-foreground">
