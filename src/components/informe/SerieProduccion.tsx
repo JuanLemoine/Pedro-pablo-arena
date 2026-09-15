@@ -197,8 +197,10 @@ const SerieProduccion = ({ tipoSilice, baseCapacidad }: Props) => {
               <YAxis fontSize={11} tickLine={false} axisLine={false} stroke="hsl(0,0%,50%)" width={52} tickFormatter={v => formatoNumero(v)} />
               <Tooltip content={<TooltipPunto />} cursor={{ fill: 'hsl(0,0%,96%)' }} />
               <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
-              <Bar dataKey="capacidadF1" name="Capacidad Fase 1" fill={COLOR.capacidadF1} radius={[3, 3, 0, 0]} maxBarSize={26} />
-              <Bar dataKey="capacidadF2" name="Capacidad Fase 2" fill={COLOR.capacidadF2} radius={[3, 3, 0, 0]} maxBarSize={26} />
+              {/* Apiladas: la Fase 2 se monta sobre la Fase 1, así que el alto
+                  total de la barra es la capacidad total del tramo. */}
+              <Bar dataKey="capacidadF1" stackId="cap" name="Capacidad Fase 1" fill={COLOR.capacidadF1} maxBarSize={26} />
+              <Bar dataKey="capacidadF2" stackId="cap" name="Capacidad Fase 2" fill={COLOR.capacidadF2} radius={[3, 3, 0, 0]} maxBarSize={26} />
               <Line dataKey="vendido" name="Total vendido" stroke={COLOR.vendido} strokeWidth={2.5} dot={{ r: 3 }} type="monotone" />
             </ComposedChart>
           </ResponsiveContainer>
@@ -206,10 +208,11 @@ const SerieProduccion = ({ tipoSilice, baseCapacidad }: Props) => {
       )}
 
       <p className="text-[11px] leading-relaxed text-muted-foreground">
-        Las dos barras son la capacidad que da el simulador con la mejor flota: la de Fase 1 aplica
-        el 67 % de rendimiento de la zaranda y la de Fase 2 el 23,1 % del reproceso. La línea azul
-        es el total vendido, o sea los m³ de las ventas registradas en la sección de Ventas, sin la
-        yapa y sin el acopio.
+        La barra es la capacidad que da el simulador con la mejor flota, en dos tramos: abajo la de
+        Fase 1, que aplica el 67 % de rendimiento de la zaranda, y encima la de Fase 2, con el 23,1 %
+        del reproceso. El alto total de la barra es la capacidad total. La línea azul es el total
+        vendido, o sea los m³ de las ventas registradas en la sección de Ventas, sin la yapa y sin
+        el acopio.
         {mina !== 'todas' && ' La capacidad es por ruta y no se filtra por mina, así que con un filtro de mina activo la comparación no es directa.'}
       </p>
     </div>
