@@ -1,4 +1,4 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { piezasGrafico } from './marcoGrafico';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   ComposedChart,
@@ -20,6 +20,8 @@ interface Props {
   tipoSilice?: string;
   fechaInicio?: string;
   fechaFin?: string;
+  /** Sin la tarjeta envolvente, para incrustarla en una sección del informe. */
+  sinTarjeta?: boolean;
 }
 
 /**
@@ -86,7 +88,8 @@ const TooltipPersonalizado = ({ active, payload, label }: any) => {
   );
 };
 
-const ProduccionDiariaLineChart = ({ tipoSilice = 'todos', fechaInicio, fechaFin }: Props) => {
+const ProduccionDiariaLineChart = ({ tipoSilice = 'todos', fechaInicio, fechaFin, sinTarjeta }: Props) => {
+  const { Marco, Encabezado, Cuerpo, Titulo, Descripcion } = piezasGrafico(sinTarjeta);
   const parsedInicio = fechaInicio ? new Date(fechaInicio + 'T00:00:00') : undefined;
   const parsedFin = fechaFin ? new Date(fechaFin + 'T00:00:00') : undefined;
 
@@ -142,18 +145,18 @@ const ProduccionDiariaLineChart = ({ tipoSilice = 'todos', fechaInicio, fechaFin
   const ultimaMedicion = datosConOptimo[datosConOptimo.length - 1]?.tiemposLabel ?? '';
 
   return (
-    <Card className="shadow-card">
-      <CardHeader>
+    <Marco className={sinTarjeta ? undefined : 'shadow-card'}>
+      <Encabezado>
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           <div>
-            <CardTitle className="text-lg font-semibold flex items-center gap-2">
+            <Titulo className="text-lg font-semibold flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-primary" />
               Fase 1: material llevado a la zaranda
-            </CardTitle>
-            <CardDescription>
+            </Titulo>
+            <Descripcion>
               m³ brutos llevados del punto de excavación a la zaranda, frente a lo que se debió
               llevar con la mejor flota. Misma unidad que el "m³ fase 1" del simulador.
-            </CardDescription>
+            </Descripcion>
           </div>
           {!isLoading && data && data.datos.length > 0 && (
             <div className="flex gap-4 text-sm shrink-0">
@@ -197,9 +200,9 @@ const ProduccionDiariaLineChart = ({ tipoSilice = 'todos', fechaInicio, fechaFin
             </div>
           )}
         </div>
-      </CardHeader>
+      </Encabezado>
 
-      <CardContent>
+      <Cuerpo>
         {error ? (
           <div className="h-[300px] flex items-center justify-center text-destructive text-sm">
             Error al cargar datos
@@ -293,8 +296,8 @@ const ProduccionDiariaLineChart = ({ tipoSilice = 'todos', fechaInicio, fechaFin
             <p className="text-sm">No hay datos de producción en el período seleccionado</p>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </Cuerpo>
+    </Marco>
   );
 };
 
