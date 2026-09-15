@@ -43,7 +43,9 @@ const pesosCorto = (v: number) => {
 interface TooltipProps {
   active?: boolean;
   label?: string;
-  payload?: { payload?: { m3: number; valor: number; valorAnticipo: number; ventas: number } }[];
+  payload?: {
+    payload?: { m3: number; m3Facturado: number; valor: number; valorAnticipo: number; ventas: number };
+  }[];
 }
 
 const TooltipVentas = ({ active, payload, label }: TooltipProps) => {
@@ -59,11 +61,13 @@ const TooltipVentas = ({ active, payload, label }: TooltipProps) => {
   return (
     <div className="min-w-[230px] space-y-1 rounded-lg border border-slate-200 bg-white p-3 text-xs shadow-lg">
       <p className="font-semibold capitalize text-slate-700">{label}</p>
-      {fila('m³ facturados', m3(d.m3), 'text-blue-700')}
+      {fila('m³ a clientes', m3(d.m3), 'text-blue-700')}
+      {fila('· facturados', m3(d.m3Facturado))}
+      {fila('· de yapa', m3(d.ventas))}
       {fila('Valor cobrado', pesos(d.valor), 'text-green-700')}
       {d.valorAnticipo > 0 && fila('Contra anticipo', pesos(d.valorAnticipo))}
       {fila('Ventas', d.ventas.toLocaleString('es-CO'))}
-      {d.m3 > 0 && fila('Precio por m³', pesos((d.valor + d.valorAnticipo) / d.m3))}
+      {d.m3 > 0 && fila('Precio por m³ entregado', pesos((d.valor + d.valorAnticipo) / d.m3))}
     </div>
   );
 };
@@ -76,7 +80,7 @@ const TooltipVentas = ({ active, payload, label }: TooltipProps) => {
 const VentasPorFechaChart = ({ filtros, sinTarjeta }: Props) => {
   const { Marco, Encabezado, Cuerpo, Titulo, Descripcion } = piezasGrafico(sinTarjeta);
   const [agrupacion, setAgrupacion] = useState<AgrupacionVentas>('dia');
-  const { puntos, totalM3, totalValor, totalAnticipo, totalVentas, isLoading, error } =
+  const { puntos, totalM3, totalM3Facturado, totalValor, totalAnticipo, totalVentas, isLoading, error } =
     useVentasPorFecha(filtros, agrupacion);
 
   const precioPromedio = totalM3 > 0 ? (totalValor + totalAnticipo) / totalM3 : 0;
@@ -91,8 +95,9 @@ const VentasPorFechaChart = ({ filtros, sinTarjeta }: Props) => {
               Ventas por fecha
             </Titulo>
             <Descripcion>
-              m³ facturados y valor cobrado en cada fecha. El valor deja por fuera los consumos de
-              anticipo, que ya se cobraron antes.
+              m³ entregados a clientes y valor cobrado en cada fecha. Los m³ incluyen la yapa de
+              1 m³ por despacho; el valor deja por fuera los consumos de anticipo, que ya se
+              cobraron antes.
             </Descripcion>
           </div>
 
@@ -100,10 +105,10 @@ const VentasPorFechaChart = ({ filtros, sinTarjeta }: Props) => {
             {!isLoading && puntos.length > 0 && (
               <div className="flex gap-4 text-sm">
                 <div className="text-right">
-                  <p className="text-xs text-muted-foreground">m³ facturados</p>
+                  <p className="text-xs text-muted-foreground">m³ a clientes</p>
                   <p className="font-bold text-blue-600">{m3(totalM3)}</p>
                   <p className="text-[10px] text-muted-foreground">
-                    {totalVentas.toLocaleString('es-CO')} venta(s)
+                    {m3(totalM3Facturado)} facturados · {totalVentas.toLocaleString('es-CO')} venta(s)
                   </p>
                 </div>
                 <div className="text-right">
@@ -116,7 +121,7 @@ const VentasPorFechaChart = ({ filtros, sinTarjeta }: Props) => {
                   )}
                 </div>
                 <div className="text-right">
-                  <p className="text-xs text-muted-foreground">Precio por m³</p>
+                  <p className="text-xs text-muted-foreground">Precio por m³ entregado</p>
                   <p className="font-bold text-slate-700">{pesos(precioPromedio)}</p>
                 </div>
               </div>
@@ -182,7 +187,7 @@ const VentasPorFechaChart = ({ filtros, sinTarjeta }: Props) => {
                 <Bar
                   yAxisId="m3"
                   dataKey="m3"
-                  name="m³ facturados"
+                  name="m³ entregados a clientes"
                   fill={COLOR.m3}
                   radius={[3, 3, 0, 0]}
                   maxBarSize={26}

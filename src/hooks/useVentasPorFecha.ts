@@ -10,8 +10,13 @@ export type AgrupacionVentas = 'dia' | 'semana' | 'mes';
 export interface PuntoVentas {
   clave: string;
   etiqueta: string;
-  /** m³ facturados: la suma de `cantidad_m3` de las ventas del tramo. */
+  /**
+   * m³ entregados a clientes: lo facturado más la yapa de 1 m³ por despacho.
+   * Es lo que de verdad salió de la planta hacia el cliente.
+   */
   m3: number;
+  /** m³ facturados: la suma de `cantidad_m3`, sin la yapa. */
+  m3Facturado: number;
   /**
    * Valor cobrado. Deja por fuera los consumos de anticipo, que no son ingreso
    * nuevo: ese dinero ya entró cuando se registró el anticipo.
@@ -78,12 +83,15 @@ export const useVentasPorFecha = (filtros: DashboardFiltros, agrupacion: Agrupac
       clave,
       etiqueta: etiquetaTramo(clave, agrupacion),
       m3: 0,
+      m3Facturado: 0,
       valor: 0,
       valorAnticipo: 0,
       ventas: 0,
     };
     const valor = Number(v.valor_total) || 0;
-    p.m3 += Number(v.cantidad_m3) || 0;
+    const facturado = Number(v.cantidad_m3) || 0;
+    p.m3Facturado += facturado;
+    p.m3 += facturado + 1; // la yapa: 1 m³ de más por cada despacho
     p.ventas += 1;
     if (v.descuenta_anticipo) p.valorAnticipo += valor;
     else p.valor += valor;
@@ -93,11 +101,18 @@ export const useVentasPorFecha = (filtros: DashboardFiltros, agrupacion: Agrupac
   const r = (n: number) => Math.round(n * 100) / 100;
   const puntos = Array.from(tramos.values())
     .sort((a, b) => a.clave.localeCompare(b.clave))
-    .map(p => ({ ...p, m3: r(p.m3), valor: Math.round(p.valor), valorAnticipo: Math.round(p.valorAnticipo) }));
+    .map(p => ({
+      ...p,
+      m3: r(p.m3),
+      m3Facturado: r(p.m3Facturado),
+      valor: Math.round(p.valor),
+      valorAnticipo: Math.round(p.valorAnticipo),
+    }));
 
   return {
     puntos,
     totalM3: r(puntos.reduce((s, p) => s + p.m3, 0)),
+    totalM3Facturado: r(puntos.reduce((s, p) => s + p.m3Facturado, 0)),
     totalValor: puntos.reduce((s, p) => s + p.valor, 0),
     totalAnticipo: puntos.reduce((s, p) => s + p.valorAnticipo, 0),
     totalVentas: puntos.reduce((s, p) => s + p.ventas, 0),
