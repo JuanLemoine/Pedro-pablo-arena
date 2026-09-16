@@ -195,29 +195,46 @@
 }
 
 /* ── Impresión del Informe de Gestión ────────────────────────────────────────
-   Se imprime únicamente el bloque #informe-gerencial. Se usa `visibility` y no
-   `display` para poder ocultar todo el árbol de la aplicación (sidebar, filtros,
-   resto del dashboard) sin sacar el informe de su contenedor. */
+   Se imprime únicamente el bloque #informe-gerencial. Para lograrlo se ocultan
+   las ramas del árbol que NO llevan al informe y se aplanan las que sí, de modo
+   que el informe queda en el flujo normal del documento.
+
+   La versión anterior escondía todo con `visibility` y sacaba el informe del
+   flujo con `position: absolute`. Eso funciona para una hoja, pero un elemento
+   posicionado en absoluto solo imprime su primera página: con el informe ya
+   paginado, el PDF salía en blanco. */
 @media print {
-  /* Solo se oculta lo demás cuando el informe está en pantalla; si el dashboard
-     está en otra pestaña, se imprime la página tal cual en vez de una hoja en
-     blanco. */
-  body:has(#informe-gerencial) * {
-    visibility: hidden;
+  html,
+  body {
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
   }
 
-  #informe-gerencial,
-  #informe-gerencial * {
-    visibility: visible;
+  /* Todo lo que no es el informe, no lo contiene y no está dentro de él. */
+  body:has(#informe-gerencial)
+    *:not(:has(#informe-gerencial)):not(#informe-gerencial):not(#informe-gerencial *) {
+    display: none !important;
+  }
+
+  /* La cadena de ancestros se aplana para que el informe use la hoja entera. */
+  body:has(#informe-gerencial) *:has(#informe-gerencial) {
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: auto !important;
+    max-width: none !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    position: static !important;
+    background: #fff !important;
   }
 
   #informe-gerencial {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    padding: 0;
-    margin: 0;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
   }
 
   .no-print {
@@ -225,7 +242,7 @@
   }
 
   .solo-impresion {
-    display: block;
+    display: block !important;
   }
 
   /* Cada bloque de la carátula arranca en su propia hoja. */
