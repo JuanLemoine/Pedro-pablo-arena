@@ -32,6 +32,7 @@ import AnalisisComercial from './AnalisisComercial';
 import ConclusionesRecomendaciones from './ConclusionesRecomendaciones';
 import PortadaImpresion from './PortadaImpresion';
 import EfectividadVenta from './EfectividadVenta';
+import PortadillaImpresion from './PortadillaImpresion';
 import ProduccionDiariaLineChart from '@/components/charts/ProduccionDiariaLineChart';
 import VentasPorFechaChart from '@/components/charts/VentasPorFechaChart';
 
@@ -76,8 +77,17 @@ const InformeGerencial = ({ filtros }: Props) => {
 
   return (
     <div id="informe-gerencial" className="space-y-5">
-      {/* ── Encabezado ────────────────────────────────────────────────────── */}
-      <div className="flex flex-col gap-3 rounded-xl border border-primary/20 bg-gradient-to-br from-amber-50/60 to-white p-5 sm:flex-row sm:items-start sm:justify-between">
+      {/* Pie repetido en cada hoja del PDF. */}
+      <div className="pie-impresion">
+        <div className="flex justify-between">
+          <span>Sucesores Pedro Pablo Rozo Guaquetá e Hijos S.A.S. · Reporte de gestión</span>
+          <span>{rangoEnTexto(filtros.fechaInicio, filtros.fechaFin)}</span>
+        </div>
+      </div>
+
+      {/* ── Encabezado ────────────────────────────────────────────────────────
+          Solo en pantalla: en el PDF la carátula dice lo mismo y mejor. */}
+      <div className="no-print flex flex-col gap-3 rounded-xl border border-primary/20 bg-gradient-to-br from-amber-50/60 to-white p-5 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-primary">
             Sucesores Pedro Pablo Rozo Guaquetá e Hijos S.A.S.
@@ -156,6 +166,12 @@ const InformeGerencial = ({ filtros }: Props) => {
 
           <ResumenEjecutivo actual={data.actual} anterior={data.anterior} />
 
+          <PortadillaImpresion
+            numero="Bloque 1"
+            titulo="Producción frente a la capacidad"
+            bajada="Cuánto se produjo en cada fase contra lo que la operación podía producir, y qué parte de la brecha viene de no trabajar, de la flota o del rendimiento."
+          />
+
           <SeccionInforme
             numero={1}
             titulo="Producción vs. capacidad, fase por fase"
@@ -227,6 +243,12 @@ const InformeGerencial = ({ filtros }: Props) => {
             <CumplimientoCapacidad actual={data.actual} />
           </SeccionInforme>
 
+          <PortadillaImpresion
+            numero="Bloque 2"
+            titulo="Estudio de procesos internos"
+            bajada="Dónde está el cuello de botella entre sacar material y reprocesarlo, qué tan estable es la operación y cuánto rinde cada volqueta."
+          />
+
           <SeccionInforme
             numero={4}
             titulo="Fase 1 y Fase 2: del material excavado al producto"
@@ -253,6 +275,12 @@ const InformeGerencial = ({ filtros }: Props) => {
           >
             <RendimientoFlota actual={data.actual} />
           </SeccionInforme>
+
+          <PortadillaImpresion
+            numero="Bloque 3"
+            titulo="Resultado comercial"
+            bajada="Si la producción alcanzó para cubrir lo despachado, a quién se le vendió, a qué precio y cuánto material se regaló."
+          />
 
           <SeccionInforme
             numero={7}

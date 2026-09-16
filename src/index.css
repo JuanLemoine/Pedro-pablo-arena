@@ -190,7 +190,8 @@
 
 /* La carátula, el índice y la nota metodológica solo existen en el PDF: en
    pantalla el informe ya vive dentro del dashboard y no necesita caratula. */
-.solo-impresion {
+.solo-impresion,
+.pie-impresion {
   display: none;
 }
 
@@ -303,7 +304,54 @@
     display: table-header-group;
   }
 
+  /* ── Formato de láminas ──────────────────────────────────────────────────
+     El reporte de gestión de la empresa se presenta en diapositivas 16:9, así
+     que el PDF se imprime apaisado y cada bloque ocupa una hoja completa. */
   @page {
-    margin: 1.5cm;
+    size: A4 landscape;
+    margin: 1.2cm 1.6cm 1.8cm;
+  }
+
+  /* Una hoja apaisada A4 con márgenes deja unos 17,5 cm de alto útil. */
+  #informe-gerencial > section,
+  #informe-gerencial .pagina-impresion,
+  #informe-gerencial .lamina-separadora {
+    min-height: 16.5cm;
+  }
+
+  /* Las láminas separadoras van a sangre, con el fondo oscuro de la marca. */
+  .lamina-separadora {
+    display: flex !important;
+    align-items: center;
+    background: hsl(30 25% 14%) !important;
+    color: #fff;
+    padding: 0 2.5cm;
+    margin: 0 -1.6cm;
+    break-before: page;
+    page-break-before: always;
+    break-after: page;
+    page-break-after: always;
+  }
+
+  /* Tipografía un punto más grande: el PDF se lee proyectado o impreso, no a
+     30 cm de la pantalla. */
+  #informe-gerencial {
+    font-size: 11.5pt;
+  }
+  #informe-gerencial h3 {
+    font-size: 17pt;
+  }
+
+  /* Pie de página repetido en cada hoja. Chrome repite los elementos fijos. */
+  .pie-impresion {
+    display: block !important;
+    position: fixed;
+    bottom: -1.2cm;
+    left: 0;
+    right: 0;
+    border-top: 1px solid hsl(35 20% 80%);
+    padding-top: 4px;
+    font-size: 8pt;
+    color: hsl(30 15% 45%);
   }
 }
