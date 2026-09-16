@@ -188,6 +188,12 @@
   }
 }
 
+/* La carátula, el índice y la nota metodológica solo existen en el PDF: en
+   pantalla el informe ya vive dentro del dashboard y no necesita caratula. */
+.solo-impresion {
+  display: none;
+}
+
 /* ── Impresión del Informe de Gestión ────────────────────────────────────────
    Se imprime únicamente el bloque #informe-gerencial. Se usa `visibility` y no
    `display` para poder ocultar todo el árbol de la aplicación (sidebar, filtros,
@@ -218,13 +224,38 @@
     display: none !important;
   }
 
+  .solo-impresion {
+    display: block;
+  }
+
+  /* Cada bloque de la carátula arranca en su propia hoja. */
+  .pagina-impresion {
+    break-after: page;
+    page-break-after: always;
+  }
+
+  /* Y cada sección numerada del informe también, para que el PDF se lea como
+     un documento y no como un scroll continuo partido a la brava. */
+  #informe-gerencial > section {
+    break-before: page;
+    page-break-before: always;
+  }
+
+  /* Salvo la primera, que va pegada al resumen ejecutivo. */
+  #informe-gerencial > section:first-of-type {
+    break-before: auto;
+    page-break-before: auto;
+  }
+
   /* Las tarjetas se ven mejor impresas con borde plano que con sombra. */
   #informe-gerencial .shadow-card,
   #informe-gerencial section {
     box-shadow: none !important;
   }
 
-  #informe-gerencial section,
+  /* Las secciones ya arrancan en hoja nueva; obligarlas además a no partirse
+     hace que una sección más alta que una página se salga del papel. Solo los
+     bloques marcados como `evitar-corte` se mantienen enteros. */
   #informe-gerencial .evitar-corte {
     break-inside: avoid;
     page-break-inside: avoid;
@@ -234,6 +265,25 @@
   * {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+  }
+
+  /* Un título no debe quedar solo al final de una hoja. */
+  #informe-gerencial h1,
+  #informe-gerencial h2,
+  #informe-gerencial h3 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  #informe-gerencial table {
+    break-inside: auto;
+  }
+  #informe-gerencial tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  #informe-gerencial thead {
+    display: table-header-group;
   }
 
   @page {

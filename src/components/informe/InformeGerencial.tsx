@@ -12,6 +12,7 @@ import {
   ShoppingCart,
   Truck,
   CalendarDays,
+  PackageCheck,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -29,6 +30,8 @@ import EstabilidadOperacion from './EstabilidadOperacion';
 import RendimientoFlota from './RendimientoFlota';
 import AnalisisComercial from './AnalisisComercial';
 import ConclusionesRecomendaciones from './ConclusionesRecomendaciones';
+import PortadaImpresion from './PortadaImpresion';
+import EfectividadVenta from './EfectividadVenta';
 import ProduccionDiariaLineChart from '@/components/charts/ProduccionDiariaLineChart';
 import VentasPorFechaChart from '@/components/charts/VentasPorFechaChart';
 
@@ -143,6 +146,14 @@ const InformeGerencial = ({ filtros }: Props) => {
         </div>
       ) : (
         <>
+          <PortadaImpresion
+            actual={data.actual}
+            anterior={data.anterior}
+            rangoTexto={rangoEnTexto(filtros.fechaInicio, filtros.fechaFin)}
+            rangoAnteriorTexto={rangoEnTexto(data.rangoAnterior.inicio, data.rangoAnterior.fin)}
+            filtros={filtros}
+          />
+
           <ResumenEjecutivo actual={data.actual} anterior={data.anterior} />
 
           <SeccionInforme
@@ -245,6 +256,15 @@ const InformeGerencial = ({ filtros }: Props) => {
 
           <SeccionInforme
             numero={7}
+            titulo="¿Se vende lo que se produce?"
+            pregunta="¿La producción del período alcanzó para cubrir lo que se despachó?"
+            icono={PackageCheck}
+          >
+            <EfectividadVenta actual={data.actual} anterior={data.anterior} />
+          </SeccionInforme>
+
+          <SeccionInforme
+            numero={8}
             titulo="Resultado comercial"
             pregunta="¿A quién le vendimos, a qué precio y cuánto material regalamos?"
             icono={ShoppingCart}
