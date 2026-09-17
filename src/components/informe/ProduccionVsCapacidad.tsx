@@ -16,9 +16,9 @@ const tono = (pct: number) =>
 const barra = (pct: number) =>
   pct >= 85 ? 'bg-green-500' : pct >= 60 ? 'bg-amber-500' : 'bg-red-500';
 
-/** Comparación grande de una fase: producido, capacidad, % y brecha. */
+/** Comparación grande: producido, capacidad, % y brecha. */
 const Fase = ({
-  numero,
+  encabezado,
   titulo,
   explicacion,
   producido,
@@ -27,7 +27,8 @@ const Fase = ({
   brecha,
   cumplimientoAnterior,
 }: {
-  numero: 1 | 2;
+  /** Lo que va arriba en pequeño: "Fase 1", "Fases 1 + 2"… */
+  encabezado: string;
   titulo: string;
   explicacion: string;
   producido: number;
@@ -47,7 +48,7 @@ const Fase = ({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Fase {numero}
+            {encabezado}
           </p>
           <p className="font-semibold leading-tight text-foreground">{titulo}</p>
           <p className="mt-0.5 text-xs text-muted-foreground">{explicacion}</p>
@@ -106,7 +107,7 @@ const ProduccionVsCapacidad = ({ actual, anterior, tipoSilice }: Props) => {
     <div className="space-y-5">
       <div className="grid gap-4 lg:grid-cols-2">
         <Fase
-          numero={1}
+          encabezado="Fase 1"
           titulo="Arena directa de zaranda"
           explicacion="67 % de lo que se excava sale como producto sin reprocesar"
           producido={actual.productoFase1}
@@ -116,38 +117,26 @@ const ProduccionVsCapacidad = ({ actual, anterior, tipoSilice }: Props) => {
           cumplimientoAnterior={anterior?.cumplimientoF1}
         />
         <Fase
-          numero={2}
-          titulo="Arena recuperada del residuo"
-          explicacion="23,1 % adicional que se obtiene reprocesando lo que la zaranda descarta"
-          producido={actual.productoFase2}
-          capacidad={actual.capacidadProductoF2}
-          cumplimiento={actual.cumplimientoF2}
-          brecha={actual.brechaF2}
-          cumplimientoAnterior={anterior?.cumplimientoF2}
+          encabezado="Fases 1 + 2"
+          titulo="Producción acumulada"
+          explicacion="La arena directa de zaranda más la recuperada del residuo, contra la capacidad de las dos fases juntas"
+          producido={actual.productoFinalTotal}
+          capacidad={actual.capacidadProductoTotal}
+          cumplimiento={actual.cumplimientoTotal}
+          brecha={actual.brechaF1 + actual.brechaF2}
+          cumplimientoAnterior={anterior?.cumplimientoTotal}
         />
       </div>
 
-      <div className="evitar-corte rounded-xl border border-primary/20 bg-primary/5 p-4">
-        <div className="flex flex-wrap items-baseline justify-between gap-3">
-          <div>
-            <p className="font-semibold text-foreground">Producción total del período</p>
-            <p className="text-xs text-muted-foreground">Las dos fases sumadas</p>
-          </div>
-          <p className={cn('text-3xl font-bold tabular-nums', tono(actual.cumplimientoTotal))}>
-            {formatoPorcentaje(actual.cumplimientoTotal, 0)}
-          </p>
-        </div>
-        <p className="mt-1 text-sm tabular-nums text-muted-foreground">
-          {formatoM3(actual.productoFinalTotal, 0)} producidos de{' '}
-          {formatoM3(actual.capacidadProductoTotal, 0)} posibles · se entregaron{' '}
-          {formatoM3(actual.m3Entregados, 0)}
-        </p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          {actual.baseCapacidad === 'habiles'
-            ? `Capacidad medida sobre los ${actual.diasHabiles} días hábiles del período, hayan operado o no.`
-            : `Capacidad medida solo sobre los ${actual.diasOperados} días en que sí se operó.`}
-        </p>
-      </div>
+      <p className="text-xs text-muted-foreground">
+        De la producción acumulada, {formatoM3(actual.productoFase2, 0)} salieron del reproceso de
+        Fase 2, sobre una capacidad de {formatoM3(actual.capacidadProductoF2, 0)} (
+        {formatoPorcentaje(actual.cumplimientoF2, 0)}). Se entregaron{' '}
+        {formatoM3(actual.m3Entregados, 0)}.{' '}
+        {actual.baseCapacidad === 'habiles'
+          ? `La capacidad se midió sobre los ${actual.diasHabiles} días hábiles del período, hayan operado o no.`
+          : `La capacidad se midió solo sobre los ${actual.diasOperados} días en que sí se operó.`}
+      </p>
 
       <p className="rounded-lg border border-border bg-muted/40 p-3 text-sm leading-relaxed text-foreground">
         {veredicto}
