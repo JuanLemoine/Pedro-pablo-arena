@@ -47,6 +47,7 @@ import InformeGerencial from '@/components/informe/InformeGerencial';
 import FechaPicker from '@/components/FechaPicker';
 import ComparadorPeriodos from '@/components/comparador/ComparadorPeriodos';
 import VentasPorFechaChart from '@/components/charts/VentasPorFechaChart';
+import InformeVentasDetalle from '@/components/comercial/InformeVentasDetalle';
 import { format, startOfMonth } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -1012,6 +1013,8 @@ const Dashboard = () => {
       )}
 
       <VentasPorFechaChart filtros={filtros} />
+
+      <InformeVentasDetalle filtros={filtros} />
 
       <ComparadorPeriodos seccion="comercial" filtros={filtros} />
 
