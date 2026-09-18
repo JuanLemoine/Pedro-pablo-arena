@@ -11,20 +11,19 @@ interface Props {
 
 const nombreCorto = (silice: string) => silice.replace('Silice ', '');
 
+/** La meta es cubrir lo entregado: del 100 % para arriba está bien. */
 const tono = (pct: number) =>
-  pct >= 85 ? 'text-green-700' : pct >= 60 ? 'text-amber-700' : 'text-red-600';
+  pct >= 100 ? 'text-green-700' : pct >= 80 ? 'text-amber-700' : 'text-red-600';
 const barra = (pct: number) =>
-  pct >= 85 ? 'bg-green-500' : pct >= 60 ? 'bg-amber-500' : 'bg-red-500';
+  pct >= 100 ? 'bg-green-500' : pct >= 80 ? 'bg-amber-500' : 'bg-red-500';
 
-/** Comparación grande: producido, capacidad, % y brecha. */
+/** Comparación grande: producido contra lo entregado a clientes. */
 const Fase = ({
   encabezado,
   titulo,
   explicacion,
   producido,
-  capacidad,
-  cumplimiento,
-  brecha,
+  entregado,
   cumplimientoAnterior,
 }: {
   /** Lo que va arriba en pequeño: "Fase 1", "Fases 1 + 2"… */
@@ -32,11 +31,12 @@ const Fase = ({
   titulo: string;
   explicacion: string;
   producido: number;
-  capacidad: number;
-  cumplimiento: number;
-  brecha: number;
+  /** m³ que salieron hacia clientes en el período. */
+  entregado: number;
   cumplimientoAnterior?: number;
 }) => {
+  const cumplimiento = entregado > 0 ? (producido / entregado) * 100 : 0;
+  const diferencia = producido - entregado;
   const ancho = Math.min(100, Math.max(0, cumplimiento));
   const delta =
     cumplimientoAnterior !== undefined && cumplimientoAnterior > 0
@@ -81,12 +81,21 @@ const Fase = ({
           <p className="text-sm font-bold tabular-nums text-foreground">{formatoM3(producido, 0)}</p>
         </div>
         <div>
-          <p className="text-[11px] text-muted-foreground">Debió producirse</p>
-          <p className="text-sm font-bold tabular-nums text-foreground">{formatoM3(capacidad, 0)}</p>
+          <p className="text-[11px] text-muted-foreground">Entregado en ventas</p>
+          <p className="text-sm font-bold tabular-nums text-foreground">{formatoM3(entregado, 0)}</p>
         </div>
         <div>
-          <p className="text-[11px] text-muted-foreground">Se dejó de producir</p>
-          <p className="text-sm font-bold tabular-nums text-red-600">{formatoM3(brecha, 0)}</p>
+          <p className="text-[11px] text-muted-foreground">
+            {diferencia >= 0 ? 'Sobró' : 'Salió de inventario'}
+          </p>
+          <p
+            className={cn(
+              'text-sm font-bold tabular-nums',
+              diferencia >= 0 ? 'text-green-700' : 'text-red-600'
+            )}
+          >
+            {formatoM3(Math.abs(diferencia), 0)}
+          </p>
         </div>
       </div>
     </div>
@@ -94,14 +103,22 @@ const Fase = ({
 };
 
 const ProduccionVsCapacidad = ({ actual, anterior, tipoSilice }: Props) => {
+  /** Cuánto de lo despachado a clientes cubrió cada nivel de producción. */
+  const cobF1 = actual.m3EntregadoVentas > 0
+    ? (actual.productoFase1 / actual.m3EntregadoVentas) * 100
+    : 0;
+  const cobTotal = actual.m3EntregadoVentas > 0
+    ? (actual.productoFinalTotal / actual.m3EntregadoVentas) * 100
+    : 0;
+
   const veredicto =
-    actual.capacidadProductoF1 === 0
-      ? 'No hay días hábiles con tiempos de recorrido en el período, así que no se puede calcular la capacidad.'
-      : actual.cumplimientoF1 >= 75 && actual.cumplimientoF2 < 40
-      ? `Fase 1 está cumpliendo (${formatoPorcentaje(actual.cumplimientoF1, 0)}) pero Fase 2 no (${formatoPorcentaje(actual.cumplimientoF2, 0)}): hay material de sobra para reprocesar y no se está haciendo. Ahí están ${formatoM3(actual.brechaF2, 0)} de producto sin generar.`
-      : actual.cumplimientoF1 < 60
-      ? `Fase 1 solo alcanzó el ${formatoPorcentaje(actual.cumplimientoF1, 0)} de su capacidad: el cuello de botella está en sacar material, y mientras eso no mejore Fase 2 tampoco tiene con qué trabajar.`
-      : `Entre las dos fases se dejaron de producir ${formatoM3(actual.brechaF1 + actual.brechaF2, 0)} de los ${formatoM3(actual.capacidadProductoTotal, 0)} que la operación podía dar.`;
+    actual.m3EntregadoVentas === 0
+      ? 'No hubo ventas registradas en el período, así que no hay contra qué comparar la producción.'
+      : cobF1 >= 100
+      ? `La Fase 1 sola cubrió el ${formatoPorcentaje(cobF1, 0)} de lo despachado: lo que sale directo de la zaranda alcanza para atender la demanda, y todo lo que aporte el reproceso se suma al inventario.`
+      : cobTotal >= 100
+      ? `La Fase 1 sola no alcanzó (${formatoPorcentaje(cobF1, 0)} de lo despachado), pero con el reproceso la producción llegó al ${formatoPorcentaje(cobTotal, 0)}: la operación depende de la Fase 2 para cubrir las ventas.`
+      : `Ni con el reproceso se cubrió lo despachado: la producción acumulada llegó al ${formatoPorcentaje(cobTotal, 0)} y los ${formatoM3(actual.m3EntregadoVentas - actual.productoFinalTotal, 0)} que faltaron salieron del inventario acumulado.`;
 
   return (
     <div className="space-y-5">
@@ -109,30 +126,37 @@ const ProduccionVsCapacidad = ({ actual, anterior, tipoSilice }: Props) => {
         <Fase
           encabezado="Fase 1"
           titulo="Arena directa de zaranda"
-          explicacion="67 % de lo que se excava sale como producto sin reprocesar"
+          explicacion="67 % de lo que se excava sale como producto sin reprocesar. ¿Alcanza por sí sola para cubrir lo que se despachó?"
           producido={actual.productoFase1}
-          capacidad={actual.capacidadProductoF1}
-          cumplimiento={actual.cumplimientoF1}
-          brecha={actual.brechaF1}
-          cumplimientoAnterior={anterior?.cumplimientoF1}
+          entregado={actual.m3EntregadoVentas}
+          cumplimientoAnterior={
+            anterior && anterior.m3EntregadoVentas > 0
+              ? (anterior.productoFase1 / anterior.m3EntregadoVentas) * 100
+              : undefined
+          }
         />
         <Fase
           encabezado="Fases 1 + 2"
           titulo="Producción acumulada"
-          explicacion="La arena directa de zaranda más la recuperada del residuo, contra la capacidad de las dos fases juntas"
+          explicacion="La arena directa de zaranda más la recuperada del residuo, contra lo que se despachó a clientes"
           producido={actual.productoFinalTotal}
-          capacidad={actual.capacidadProductoTotal}
-          cumplimiento={actual.cumplimientoTotal}
-          brecha={actual.brechaF1 + actual.brechaF2}
-          cumplimientoAnterior={anterior?.cumplimientoTotal}
+          entregado={actual.m3EntregadoVentas}
+          cumplimientoAnterior={
+            anterior && anterior.m3EntregadoVentas > 0
+              ? (anterior.productoFinalTotal / anterior.m3EntregadoVentas) * 100
+              : undefined
+          }
         />
       </div>
 
-      <p className="text-xs text-muted-foreground">
-        De la producción acumulada, {formatoM3(actual.productoFase2, 0)} salieron del reproceso de
-        Fase 2, sobre una capacidad de {formatoM3(actual.capacidadProductoF2, 0)} (
-        {formatoPorcentaje(actual.cumplimientoF2, 0)}). Se entregaron{' '}
-        {formatoM3(actual.m3Entregados, 0)}.{' '}
+      <p className="text-xs leading-relaxed text-muted-foreground">
+        Las dos barras se miden contra los {formatoM3(actual.m3EntregadoVentas, 0)} que salieron
+        hacia clientes, yapa incluida. Al acopio fueron {formatoM3(actual.m3Acopio, 0)} más, que no
+        entran en esta comparación. Frente a la capacidad instalada, la producción acumulada llegó
+        al {formatoPorcentaje(actual.cumplimientoTotal, 0)} de los{' '}
+        {formatoM3(actual.capacidadProductoTotal, 0)} posibles, y el reproceso de Fase 2 aportó{' '}
+        {formatoM3(actual.productoFase2, 0)} de una capacidad de{' '}
+        {formatoM3(actual.capacidadProductoF2, 0)} ({formatoPorcentaje(actual.cumplimientoF2, 0)}).{' '}
         {actual.baseCapacidad === 'habiles'
           ? `La capacidad se midió sobre los ${actual.diasHabiles} días hábiles del período, hayan operado o no.`
           : `La capacidad se midió solo sobre los ${actual.diasOperados} días en que sí se operó.`}

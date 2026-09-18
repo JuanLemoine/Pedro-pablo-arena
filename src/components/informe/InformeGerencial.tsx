@@ -174,8 +174,8 @@ const InformeGerencial = ({ filtros }: Props) => {
 
           <SeccionInforme
             numero={1}
-            titulo="Producción vs. capacidad, fase por fase"
-            pregunta="¿Cuánto produjimos en cada fase frente a lo que se debió producir?"
+            titulo="Producción frente a lo que se entregó"
+            pregunta="¿Lo que produjimos en cada fase alcanzó para cubrir lo que se despachó a clientes?"
             icono={Gauge}
           >
             <div className="no-print mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/30 p-2.5">
