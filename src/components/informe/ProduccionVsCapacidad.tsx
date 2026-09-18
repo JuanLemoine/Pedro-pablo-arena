@@ -11,37 +11,43 @@ interface Props {
 
 const nombreCorto = (silice: string) => silice.replace('Silice ', '');
 
-/** La meta es cubrir lo entregado: del 100 % para arriba está bien. */
-const tono = (pct: number) =>
-  pct >= 100 ? 'text-green-700' : pct >= 80 ? 'text-amber-700' : 'text-red-600';
-const barra = (pct: number) =>
-  pct >= 100 ? 'bg-green-500' : pct >= 80 ? 'bg-amber-500' : 'bg-red-500';
+/**
+ * Qué tan holgada es la capacidad frente a lo vendido. Que sobre capacidad no
+ * es malo en sí —es margen para crecer— pero si las ventas apenas rozan el
+ * techo instalado, ahí sí hay un problema de capacidad.
+ */
+const tono = (veces: number) =>
+  veces >= 1.5 ? 'text-green-700' : veces >= 1 ? 'text-amber-700' : 'text-red-600';
+const barra = (veces: number) =>
+  veces >= 1.5 ? 'bg-green-500' : veces >= 1 ? 'bg-amber-500' : 'bg-red-500';
 
-/** Comparación grande: producido contra lo entregado a clientes. */
-const Fase = ({
+/**
+ * Una capacidad contra el total vendido, que es el punto de referencia: el
+ * mismo par de la gráfica "Capacidad de producción frente a lo vendido".
+ */
+const Capacidad = ({
   encabezado,
   titulo,
   explicacion,
-  producido,
-  entregado,
-  cumplimientoAnterior,
+  capacidad,
+  vendido,
+  vecesAnterior,
 }: {
   /** Lo que va arriba en pequeño: "Fase 1", "Fases 1 + 2"… */
   encabezado: string;
   titulo: string;
   explicacion: string;
-  producido: number;
-  /** m³ que salieron hacia clientes en el período. */
-  entregado: number;
-  cumplimientoAnterior?: number;
+  capacidad: number;
+  /** m³ vendidos en el período: la referencia contra la que se lee todo. */
+  vendido: number;
+  vecesAnterior?: number;
 }) => {
-  const cumplimiento = entregado > 0 ? (producido / entregado) * 100 : 0;
-  const diferencia = producido - entregado;
-  const ancho = Math.min(100, Math.max(0, cumplimiento));
-  const delta =
-    cumplimientoAnterior !== undefined && cumplimientoAnterior > 0
-      ? cumplimiento - cumplimientoAnterior
-      : null;
+  /** Cuántas veces la capacidad cubre lo vendido. */
+  const veces = vendido > 0 ? capacidad / vendido : 0;
+  /** Y qué porción de esa capacidad se absorbió con las ventas. */
+  const absorbido = capacidad > 0 ? (vendido / capacidad) * 100 : 0;
+  const excedente = capacidad - vendido;
+  const delta = vecesAnterior !== undefined && vecesAnterior > 0 ? veces - vecesAnterior : null;
 
   return (
     <div className="evitar-corte rounded-xl border border-border bg-card p-4">
@@ -54,47 +60,55 @@ const Fase = ({
           <p className="mt-0.5 text-xs text-muted-foreground">{explicacion}</p>
         </div>
         <div className="shrink-0 text-right">
-          <p className={cn('text-3xl font-bold leading-none tabular-nums', tono(cumplimiento))}>
-            {formatoPorcentaje(cumplimiento, 0)}
+          <p className={cn('text-3xl font-bold leading-none tabular-nums', tono(veces))}>
+            {veces.toLocaleString('es-CO', { maximumFractionDigits: 1 })}×
           </p>
+          <p className="text-[11px] text-muted-foreground">lo vendido</p>
           {delta !== null && (
             <p
               className={cn(
                 'mt-1 text-[11px] font-medium',
-                delta > 0.5 ? 'text-green-600' : delta < -0.5 ? 'text-red-600' : 'text-muted-foreground'
+                delta > 0.05 ? 'text-green-600' : delta < -0.05 ? 'text-red-600' : 'text-muted-foreground'
               )}
             >
-              {delta > 0 ? '+' : ''}
-              {formatoPorcentaje(delta, 1).replace(' %', ' pp')} vs. anterior
+              {delta > 0 ? '+' : '−'}
+              {Math.abs(delta).toLocaleString('es-CO', { maximumFractionDigits: 1 })}× vs. anterior
             </p>
           )}
         </div>
       </div>
 
+      {/* La barra es la capacidad; lo pintado es la parte que se vendió. */}
       <div className="mt-3 h-4 w-full overflow-hidden rounded-full bg-muted">
-        <div className={cn('h-4 rounded-full transition-all', barra(cumplimiento))} style={{ width: `${ancho}%` }} />
+        <div
+          className={cn('h-4 rounded-full transition-all', barra(veces))}
+          style={{ width: `${Math.min(100, Math.max(0, absorbido))}%` }}
+        />
       </div>
+      <p className="mt-1 text-[11px] text-muted-foreground">
+        Las ventas absorbieron el {formatoPorcentaje(absorbido, 0)} de esta capacidad
+      </p>
 
       <div className="mt-2 grid grid-cols-3 gap-2 text-center">
         <div>
-          <p className="text-[11px] text-muted-foreground">Producido</p>
-          <p className="text-sm font-bold tabular-nums text-foreground">{formatoM3(producido, 0)}</p>
+          <p className="text-[11px] text-muted-foreground">Capacidad</p>
+          <p className="text-sm font-bold tabular-nums text-foreground">{formatoM3(capacidad, 0)}</p>
         </div>
         <div>
-          <p className="text-[11px] text-muted-foreground">Entregado en ventas</p>
-          <p className="text-sm font-bold tabular-nums text-foreground">{formatoM3(entregado, 0)}</p>
+          <p className="text-[11px] text-muted-foreground">Total vendido</p>
+          <p className="text-sm font-bold tabular-nums text-sky-700">{formatoM3(vendido, 0)}</p>
         </div>
         <div>
           <p className="text-[11px] text-muted-foreground">
-            {diferencia >= 0 ? 'Sobró' : 'Salió de inventario'}
+            {excedente >= 0 ? 'Capacidad sin vender' : 'Vendido de más'}
           </p>
           <p
             className={cn(
               'text-sm font-bold tabular-nums',
-              diferencia >= 0 ? 'text-green-700' : 'text-red-600'
+              excedente >= 0 ? 'text-foreground' : 'text-red-600'
             )}
           >
-            {formatoM3(Math.abs(diferencia), 0)}
+            {formatoM3(Math.abs(excedente), 0)}
           </p>
         </div>
       </div>
@@ -103,60 +117,54 @@ const Fase = ({
 };
 
 const ProduccionVsCapacidad = ({ actual, anterior, tipoSilice }: Props) => {
-  /** Cuánto de lo despachado a clientes cubrió cada nivel de producción. */
-  const cobF1 = actual.m3EntregadoVentas > 0
-    ? (actual.productoFase1 / actual.m3EntregadoVentas) * 100
-    : 0;
-  const cobTotal = actual.m3EntregadoVentas > 0
-    ? (actual.productoFinalTotal / actual.m3EntregadoVentas) * 100
-    : 0;
+  /** El total vendido es la referencia: los m³ de las ventas registradas. */
+  const vendido = actual.m3Facturados;
+  const vecesF1 = vendido > 0 ? actual.capacidadProductoF1 / vendido : 0;
+  const vecesTotal = vendido > 0 ? actual.capacidadProductoTotal / vendido : 0;
+  const vecesAnteriorF1 =
+    anterior && anterior.m3Facturados > 0
+      ? anterior.capacidadProductoF1 / anterior.m3Facturados
+      : undefined;
+  const vecesAnteriorTotal =
+    anterior && anterior.m3Facturados > 0
+      ? anterior.capacidadProductoTotal / anterior.m3Facturados
+      : undefined;
 
   const veredicto =
-    actual.m3EntregadoVentas === 0
-      ? 'No hubo ventas registradas en el período, así que no hay contra qué comparar la producción.'
-      : cobF1 >= 100
-      ? `La Fase 1 sola cubrió el ${formatoPorcentaje(cobF1, 0)} de lo despachado: lo que sale directo de la zaranda alcanza para atender la demanda, y todo lo que aporte el reproceso se suma al inventario.`
-      : cobTotal >= 100
-      ? `La Fase 1 sola no alcanzó (${formatoPorcentaje(cobF1, 0)} de lo despachado), pero con el reproceso la producción llegó al ${formatoPorcentaje(cobTotal, 0)}: la operación depende de la Fase 2 para cubrir las ventas.`
-      : `Ni con el reproceso se cubrió lo despachado: la producción acumulada llegó al ${formatoPorcentaje(cobTotal, 0)} y los ${formatoM3(actual.m3EntregadoVentas - actual.productoFinalTotal, 0)} que faltaron salieron del inventario acumulado.`;
+    vendido === 0
+      ? 'No hubo ventas registradas en el período, así que no hay referencia contra la cual leer la capacidad.'
+      : vecesF1 >= 1
+      ? `Solo con la Fase 1 la planta podía producir ${vecesF1.toLocaleString('es-CO', { maximumFractionDigits: 1 })} veces lo que se vendió, y sumando el reproceso ${vecesTotal.toLocaleString('es-CO', { maximumFractionDigits: 1 })} veces. Quedaron ${formatoM3(actual.capacidadProductoTotal - vendido, 0)} de capacidad sin vender: el límite del negocio hoy está en la demanda, no en la planta.`
+      : vecesTotal >= 1
+      ? `La Fase 1 sola no daba para cubrir lo vendido (${vecesF1.toLocaleString('es-CO', { maximumFractionDigits: 1 })} veces), y solo sumando el reproceso la capacidad alcanza (${vecesTotal.toLocaleString('es-CO', { maximumFractionDigits: 1 })} veces). El negocio depende de la Fase 2 para sostener las ventas.`
+      : `Ni con el reproceso la capacidad instalada alcanza para lo que se está vendiendo: faltaron ${formatoM3(vendido - actual.capacidadProductoTotal, 0)}. Se está despachando contra inventario y la planta es el cuello de botella.`;
 
   return (
     <div className="space-y-5">
       <div className="grid gap-4 lg:grid-cols-2">
-        <Fase
+        <Capacidad
           encabezado="Fase 1"
-          titulo="Arena directa de zaranda"
-          explicacion="67 % de lo que se excava sale como producto sin reprocesar. ¿Alcanza por sí sola para cubrir lo que se despachó?"
-          producido={actual.productoFase1}
-          entregado={actual.m3EntregadoVentas}
-          cumplimientoAnterior={
-            anterior && anterior.m3EntregadoVentas > 0
-              ? (anterior.productoFase1 / anterior.m3EntregadoVentas) * 100
-              : undefined
-          }
+          titulo="Capacidad Fase 1"
+          explicacion="Lo que la planta podía producir sacando arena directa de zaranda, sin reprocesar nada"
+          capacidad={actual.capacidadProductoF1}
+          vendido={vendido}
+          vecesAnterior={vecesAnteriorF1}
         />
-        <Fase
+        <Capacidad
           encabezado="Fases 1 + 2"
-          titulo="Producción acumulada"
-          explicacion="La arena directa de zaranda más la recuperada del residuo, contra lo que se despachó a clientes"
-          producido={actual.productoFinalTotal}
-          entregado={actual.m3EntregadoVentas}
-          cumplimientoAnterior={
-            anterior && anterior.m3EntregadoVentas > 0
-              ? (anterior.productoFinalTotal / anterior.m3EntregadoVentas) * 100
-              : undefined
-          }
+          titulo="Capacidad total"
+          explicacion="La de Fase 1 más el 23,1 % que aporta reprocesar el residuo de la zaranda"
+          capacidad={actual.capacidadProductoTotal}
+          vendido={vendido}
+          vecesAnterior={vecesAnteriorTotal}
         />
       </div>
 
       <p className="text-xs leading-relaxed text-muted-foreground">
-        Las dos barras se miden contra los {formatoM3(actual.m3EntregadoVentas, 0)} que salieron
-        hacia clientes, yapa incluida. Al acopio fueron {formatoM3(actual.m3Acopio, 0)} más, que no
-        entran en esta comparación. Frente a la capacidad instalada, la producción acumulada llegó
-        al {formatoPorcentaje(actual.cumplimientoTotal, 0)} de los{' '}
-        {formatoM3(actual.capacidadProductoTotal, 0)} posibles, y el reproceso de Fase 2 aportó{' '}
-        {formatoM3(actual.productoFase2, 0)} de una capacidad de{' '}
-        {formatoM3(actual.capacidadProductoF2, 0)} ({formatoPorcentaje(actual.cumplimientoF2, 0)}).{' '}
+        Es el mismo par de la gráfica de arriba: las dos capacidades contra el total vendido, que
+        son los {formatoM3(vendido, 0)} de las ventas registradas, sin la yapa y sin el acopio.
+        Aparte de eso se produjo de verdad {formatoM3(actual.productoFinalTotal, 0)} y se llevaron{' '}
+        {formatoM3(actual.m3Acopio, 0)} al acopio.{' '}
         {actual.baseCapacidad === 'habiles'
           ? `La capacidad se midió sobre los ${actual.diasHabiles} días hábiles del período, hayan operado o no.`
           : `La capacidad se midió solo sobre los ${actual.diasOperados} días en que sí se operó.`}
