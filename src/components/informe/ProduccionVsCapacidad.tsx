@@ -89,14 +89,16 @@ const Capacidad = ({
           style={{ width: `${Math.min(100, Math.max(0, absorbido))}%` }}
         />
       </div>
-      <p className="mt-1 text-[11px] text-muted-foreground">
-        Las ventas absorbieron el {formatoPorcentaje(absorbido, 0)} de esta capacidad
-      </p>
-
-      <div className="mt-2 grid grid-cols-3 gap-2 text-center">
+      <div className="mt-2 grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
         <div>
           <p className="text-[11px] text-muted-foreground">Capacidad</p>
           <p className="text-sm font-bold tabular-nums text-foreground">{formatoM3(capacidad, 0)}</p>
+        </div>
+        <div>
+          <p className="text-[11px] text-muted-foreground">% cubierto</p>
+          <p className={cn('text-sm font-bold tabular-nums', tono(veces))}>
+            {formatoPorcentaje(absorbido, 0)}
+          </p>
         </div>
         <div>
           <p className="text-[11px] text-muted-foreground">Total entregado</p>
