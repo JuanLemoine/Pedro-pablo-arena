@@ -1,6 +1,8 @@
+import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import { formatoM3, formatoPorcentaje } from '@/lib/formato';
 import type { MetricasPeriodo } from '@/lib/informe';
+import { RENDIMIENTO_PRODUCTO_F1, RENDIMIENTO_PRODUCTO_F2 } from '@/lib/informe';
 import SerieProduccion from './SerieProduccion';
 
 interface Props {
@@ -32,15 +34,17 @@ const Capacidad = ({
   capacidad,
   vendido,
   vecesAnterior,
+  supuestos,
 }: {
   /** Lo que va arriba en pequeño: "Fase 1", "Fases 1 + 2"… */
   encabezado: string;
   titulo: string;
   explicacion: string;
   capacidad: number;
-  /** m³ vendidos en el período: la referencia contra la que se lee todo. */
+  /** m³ entregados (ventas + acopio): la referencia contra la que se lee todo. */
   vendido: number;
   vecesAnterior?: number;
+  supuestos?: ReactNode;
 }) => {
   /** Cuántas veces la capacidad cubre lo vendido. */
   const veces = vendido > 0 ? capacidad / vendido : 0;
@@ -95,12 +99,12 @@ const Capacidad = ({
           <p className="text-sm font-bold tabular-nums text-foreground">{formatoM3(capacidad, 0)}</p>
         </div>
         <div>
-          <p className="text-[11px] text-muted-foreground">Total vendido</p>
+          <p className="text-[11px] text-muted-foreground">Total entregado</p>
           <p className="text-sm font-bold tabular-nums text-sky-700">{formatoM3(vendido, 0)}</p>
         </div>
         <div>
           <p className="text-[11px] text-muted-foreground">
-            {excedente >= 0 ? 'Capacidad sin vender' : 'Vendido de más'}
+            {excedente >= 0 ? 'Capacidad libre' : 'Entregado de más'}
           </p>
           <p
             className={cn(
@@ -112,32 +116,73 @@ const Capacidad = ({
           </p>
         </div>
       </div>
+
+      {supuestos && (
+        <div className="mt-3 border-t border-border/50 pt-3">
+          {supuestos}
+        </div>
+      )}
     </div>
   );
 };
 
+const nombreCortoSilice = (s: string) => s.replace('Silice A - ', '').replace('Silice B - ', '').replace('Silice C - ', '');
+
 const ProduccionVsCapacidad = ({ actual, anterior, tipoSilice }: Props) => {
-  /** El total vendido es la referencia: los m³ de las ventas registradas. */
-  const vendido = actual.m3Facturados;
+  /**
+   * La referencia de lo entregado incluye ventas (con yapa) más el acopio:
+   * todo el material que salió de la operación hacia algún destino.
+   */
+  const vendido = actual.m3Entregados;
   const vecesF1 = vendido > 0 ? actual.capacidadProductoF1 / vendido : 0;
   const vecesTotal = vendido > 0 ? actual.capacidadProductoTotal / vendido : 0;
   const vecesAnteriorF1 =
-    anterior && anterior.m3Facturados > 0
-      ? anterior.capacidadProductoF1 / anterior.m3Facturados
+    anterior && anterior.m3Entregados > 0
+      ? anterior.capacidadProductoF1 / anterior.m3Entregados
       : undefined;
   const vecesAnteriorTotal =
-    anterior && anterior.m3Facturados > 0
-      ? anterior.capacidadProductoTotal / anterior.m3Facturados
+    anterior && anterior.m3Entregados > 0
+      ? anterior.capacidadProductoTotal / anterior.m3Entregados
       : undefined;
 
   const veredicto =
     vendido === 0
-      ? 'No hubo ventas registradas en el período, así que no hay referencia contra la cual leer la capacidad.'
+      ? 'No hubo material entregado en el período, así que no hay referencia contra la cual leer la capacidad.'
       : vecesF1 >= 1
-      ? `Solo con la Fase 1 la planta podía producir ${vecesF1.toLocaleString('es-CO', { maximumFractionDigits: 1 })} veces lo que se vendió, y sumando el reproceso ${vecesTotal.toLocaleString('es-CO', { maximumFractionDigits: 1 })} veces. Quedaron ${formatoM3(actual.capacidadProductoTotal - vendido, 0)} de capacidad sin vender: el límite del negocio hoy está en la demanda, no en la planta.`
+      ? `Solo con la Fase 1 la planta podía producir ${vecesF1.toLocaleString('es-CO', { maximumFractionDigits: 1 })} veces lo que se entregó, y sumando el reproceso ${vecesTotal.toLocaleString('es-CO', { maximumFractionDigits: 1 })} veces. Quedaron ${formatoM3(actual.capacidadProductoTotal - vendido, 0)} de capacidad libre: el límite del negocio hoy está en la demanda, no en la planta.`
       : vecesTotal >= 1
-      ? `La Fase 1 sola no daba para cubrir lo vendido (${vecesF1.toLocaleString('es-CO', { maximumFractionDigits: 1 })} veces), y solo sumando el reproceso la capacidad alcanza (${vecesTotal.toLocaleString('es-CO', { maximumFractionDigits: 1 })} veces). El negocio depende de la Fase 2 para sostener las ventas.`
-      : `Ni con el reproceso la capacidad instalada alcanza para lo que se está vendiendo: faltaron ${formatoM3(vendido - actual.capacidadProductoTotal, 0)}. Se está despachando contra inventario y la planta es el cuello de botella.`;
+      ? `La Fase 1 sola no daba para cubrir lo entregado (${vecesF1.toLocaleString('es-CO', { maximumFractionDigits: 1 })} veces), y solo sumando el reproceso la capacidad alcanza (${vecesTotal.toLocaleString('es-CO', { maximumFractionDigits: 1 })} veces). El negocio depende de la Fase 2 para sostener las entregas.`
+      : `Ni con el reproceso la capacidad instalada alcanza para lo que se está entregando: faltaron ${formatoM3(vendido - actual.capacidadProductoTotal, 0)}. Se está despachando contra inventario y la planta es el cuello de botella.`;
+
+  /** Supuestos del simulador: se muestran en cada tarjeta de capacidad. */
+  const supuestosNode = (
+    <div className="space-y-1.5">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+        Supuestos del simulador
+      </p>
+      <div className="flex flex-wrap gap-1.5">
+        {actual.configOptimoModa !== '—' && (
+          <span className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+            🚛 Flota: {actual.configOptimoModa}
+          </span>
+        )}
+        <span className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+          ⏱ Jornada: 7,5 h L–V · 4 h sáb
+        </span>
+        {actual.tiemposResumen.map(t => (
+          <span
+            key={t.silice}
+            className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-[11px] text-muted-foreground"
+          >
+            {nombreCortoSilice(t.silice)}: {t.idaMin} min ida · {t.vueltaMin} min vuelta
+          </span>
+        ))}
+        <span className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+          PF: {(RENDIMIENTO_PRODUCTO_F1 * 100).toFixed(0)}% F1 · {(RENDIMIENTO_PRODUCTO_F2 * 100).toFixed(1)}% F2
+        </span>
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-5">
@@ -149,6 +194,7 @@ const ProduccionVsCapacidad = ({ actual, anterior, tipoSilice }: Props) => {
           capacidad={actual.capacidadProductoF1}
           vendido={vendido}
           vecesAnterior={vecesAnteriorF1}
+          supuestos={supuestosNode}
         />
         <Capacidad
           encabezado="Fases 1 + 2"
@@ -157,14 +203,15 @@ const ProduccionVsCapacidad = ({ actual, anterior, tipoSilice }: Props) => {
           capacidad={actual.capacidadProductoTotal}
           vendido={vendido}
           vecesAnterior={vecesAnteriorTotal}
+          supuestos={supuestosNode}
         />
       </div>
 
       <p className="text-xs leading-relaxed text-muted-foreground">
-        Es el mismo par de la gráfica de arriba: las dos capacidades contra el total vendido, que
-        son los {formatoM3(vendido, 0)} de las ventas registradas, sin la yapa y sin el acopio.
-        Aparte de eso se produjo de verdad {formatoM3(actual.productoFinalTotal, 0)} y se llevaron{' '}
-        {formatoM3(actual.m3Acopio, 0)} al acopio.{' '}
+        Las dos capacidades se comparan contra el total entregado:{' '}
+        {formatoM3(actual.m3EntregadoVentas, 0)} a clientes (ventas con yapa) más{' '}
+        {formatoM3(actual.m3Acopio, 0)} al acopio = {formatoM3(vendido, 0)} en total.
+        La producción real fue {formatoM3(actual.productoFinalTotal, 0)}.{' '}
         {actual.baseCapacidad === 'habiles'
           ? `La capacidad se midió sobre los ${actual.diasHabiles} días hábiles del período, hayan operado o no.`
           : `La capacidad se midió solo sobre los ${actual.diasOperados} días en que sí se operó.`}

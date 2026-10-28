@@ -164,12 +164,27 @@ export interface PrecioReferencia {
   valorNoPercibido: number;
 }
 
+export interface SupuestoTiempo {
+  silice: string;
+  /** Promedio de tiempos de ida usados en el período, en minutos. */
+  idaMin: number;
+  /** Promedio de tiempos de vuelta usados en el período, en minutos. */
+  vueltaMin: number;
+}
+
 export interface MetricasPeriodo {
   inicio: string;
   fin: string;
   diasCalendario: number;
   /** Sobre qué días se acumuló la capacidad de este cálculo. */
   baseCapacidad: BaseCapacidad;
+  /**
+   * Configuración óptima de flota más frecuente del período (moda),
+   * tal como la calcula el simulador: p.ej. "Peña: 2×7m³ · Pozo: 1×14m³+1×7m³".
+   */
+  configOptimoModa: string;
+  /** Tiempos de recorrido promediados sobre los días del período, por sílice. */
+  tiemposResumen: SupuestoTiempo[];
 
   // Producción
   fase1: number;
@@ -427,6 +442,9 @@ export const calcularMetricasPeriodo = (
   let m3Optimo = 0;
   let diasHabiles = 0;
   let diasOperados = 0;
+  // Para derivar supuestos del simulador
+  const configCount = new Map<string, number>();
+  const tiemposAcum = new Map<string, { sumaIda: number; sumaVuelta: number; n: number }>();
   // Para estimar lo que se dejó de producir los días sin operar.
   let segundosOperados = 0;
   const diasSinOperarSegundos: number[] = [];
@@ -442,6 +460,20 @@ export const calcularMetricasPeriodo = (
     const jornada = jornadaSegundosParaFecha(fecha);
     const esHabil = jornada > 0;
     const opt = optimoPorDia.get(fecha);
+
+    if (esHabil && opt) {
+      if (opt.configOptimoLabel && opt.configOptimoLabel !== '—') {
+        configCount.set(opt.configOptimoLabel, (configCount.get(opt.configOptimoLabel) || 0) + 1);
+      }
+      Object.entries(opt.tiemposUsados).forEach(([sil, t]) => {
+        const prev = tiemposAcum.get(sil) ?? { sumaIda: 0, sumaVuelta: 0, n: 0 };
+        prev.sumaIda += t.ida;
+        prev.sumaVuelta += t.vuelta;
+        prev.n += 1;
+        tiemposAcum.set(sil, prev);
+      });
+    }
+
     const fase1Real = fase1PorDia.get(fecha) || 0;
     const operado = fase1Real > 0;
 
@@ -502,6 +534,20 @@ export const calcularMetricasPeriodo = (
     (s, jornada) => s + m3RealPorSegundo * jornada,
     0
   );
+
+  // ── Supuestos del simulador ─────────────────────────────────────────────
+  let configOptimoModa = '—';
+  let maxConfigCount = 0;
+  configCount.forEach((count, label) => {
+    if (count > maxConfigCount) { maxConfigCount = count; configOptimoModa = label; }
+  });
+  const tiemposResumen: SupuestoTiempo[] = Array.from(tiemposAcum.entries())
+    .map(([silice, t]) => ({
+      silice,
+      idaMin: Math.round((t.sumaIda / t.n) / 60),
+      vueltaMin: Math.round((t.sumaVuelta / t.n) / 60),
+    }))
+    .sort((a, b) => a.silice.localeCompare(b.silice));
 
   const cumplimientoFlota = porcentaje(fase1, m3FlotaAsignada);
   const cumplimientoCapacidad = porcentaje(fase1, m3Optimo);
@@ -733,6 +779,8 @@ export const calcularMetricasPeriodo = (
     fin,
     diasCalendario,
     baseCapacidad,
+    configOptimoModa,
+    tiemposResumen,
 
     fase1: Math.round(fase1 * 100) / 100,
     fase2: Math.round(fase2 * 100) / 100,
