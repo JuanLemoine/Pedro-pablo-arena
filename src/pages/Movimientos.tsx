@@ -66,18 +66,16 @@ const getDestinosDisponibles = (silice: string, origen: string): string[] => {
   }
 
   if (silice === 'Silice A - Peña') {
-    // Silice A - Peña: desde punto de excavación va a Zaranda o al patio de tierra
     if (origen === 'Punto de excavación') {
-      return ['Zaranda', DESTINO_ALMACEN_TIERRA];
+      return ['Zaranda', 'Trituradora', 'Clasificadora', DESTINO_ALMACEN_TIERRA];
     }
     // Silice A - Peña: desde Zaranda va a Trituradora, Clasificadora o Repaso
     if (origen === 'Zaranda') {
       return ['Trituradora', 'Clasificadora', 'Repaso', 'Revolver', DESTINO_ALMACEN_GRANZON];
     }
   } else if (silice === 'Silice B - Pozo' || silice === 'Silice C - Arena Fina') {
-    // Desde punto de excavación va a Zaranda, Trituradora o al patio de tierra
     if (origen === 'Punto de excavación') {
-      return ['Zaranda', 'Trituradora', DESTINO_ALMACEN_TIERRA];
+      return ['Zaranda', 'Trituradora', 'Clasificadora', DESTINO_ALMACEN_TIERRA];
     }
     // Desde Zaranda va a Trituradora, Clasificadora o Repaso
     if (origen === 'Zaranda') {

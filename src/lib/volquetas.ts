@@ -138,6 +138,8 @@ const PORCENTAJES_ARENA = {
   'Silice A - Peña': {
     'Punto de excavación': {
       'Zaranda': PF_EXCAVACION_ZARANDA,
+      'Trituradora': PF_EXCAVACION_TRITURADORA_POZO,
+      'Clasificadora': PF_EXCAVACION_TRITURADORA_POZO,
       [DESTINO_ALMACEN_TIERRA]: PF_ALMACENAMIENTO,
     },
     'Zaranda': {
@@ -160,6 +162,7 @@ const PORCENTAJES_ARENA = {
     'Punto de excavación': {
       'Zaranda': PF_EXCAVACION_ZARANDA,
       'Trituradora': PF_EXCAVACION_TRITURADORA_POZO,
+      'Clasificadora': PF_EXCAVACION_TRITURADORA_POZO,
       [DESTINO_ALMACEN_TIERRA]: PF_ALMACENAMIENTO,
     },
     'Zaranda': {
@@ -181,6 +184,7 @@ const PORCENTAJES_ARENA = {
     'Punto de excavación': {
       'Zaranda': PF_EXCAVACION_ZARANDA,
       'Trituradora': PF_EXCAVACION_TRITURADORA_POZO,
+      'Clasificadora': PF_EXCAVACION_TRITURADORA_POZO,
       [DESTINO_ALMACEN_TIERRA]: PF_ALMACENAMIENTO,
     },
     'Zaranda': {
