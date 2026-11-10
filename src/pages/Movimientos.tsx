@@ -56,34 +56,18 @@ const getOrigenesDisponibles = (_silice: string): string[] => {
   return ['Punto de excavación', 'Zaranda', 'Trituradora', 'Clasificadora'];
 };
 
-// Función para obtener los destinos disponibles según el tipo de sílice y origen
-// El granzón lo generan las tres máquinas (zaranda, trituradora y clasificadora)
-// y se lleva a su patio; la tierra sale del frente de excavación.
-const getDestinosDisponibles = (silice: string, origen: string): string[] => {
-  // Retorno a zaranda o salida del granzón que produce la máquina
-  if (origen === 'Trituradora' || origen === 'Clasificadora') {
-    return ['Zaranda', DESTINO_ALMACEN_GRANZON];
-  }
+const TODOS_DESTINOS = [
+  'Zaranda',
+  'Trituradora',
+  'Clasificadora',
+  'Repaso',
+  'Revolver',
+  DESTINO_ALMACEN_GRANZON,
+  DESTINO_ALMACEN_TIERRA,
+];
 
-  if (silice === 'Silice A - Peña') {
-    if (origen === 'Punto de excavación') {
-      return ['Zaranda', 'Trituradora', 'Clasificadora', DESTINO_ALMACEN_TIERRA];
-    }
-    // Silice A - Peña: desde Zaranda va a Trituradora, Clasificadora o Repaso
-    if (origen === 'Zaranda') {
-      return ['Trituradora', 'Clasificadora', 'Repaso', 'Revolver', DESTINO_ALMACEN_GRANZON];
-    }
-  } else if (silice === 'Silice B - Pozo' || silice === 'Silice C - Arena Fina') {
-    if (origen === 'Punto de excavación') {
-      return ['Zaranda', 'Trituradora', 'Clasificadora', DESTINO_ALMACEN_TIERRA];
-    }
-    // Desde Zaranda va a Trituradora, Clasificadora o Repaso
-    if (origen === 'Zaranda') {
-      return ['Trituradora', 'Clasificadora', 'Repaso', DESTINO_ALMACEN_GRANZON];
-    }
-  }
-  return [];
-};
+const getDestinosDisponibles = (_silice: string, origen: string): string[] =>
+  TODOS_DESTINOS.filter(d => d !== origen);
 
 const Movimientos = () => {
   const { data: movimientos = [], isLoading, error } = useMovimientos();

@@ -140,6 +140,9 @@ const PORCENTAJES_ARENA = {
       'Zaranda': PF_EXCAVACION_ZARANDA,
       'Trituradora': PF_EXCAVACION_TRITURADORA_POZO,
       'Clasificadora': PF_EXCAVACION_TRITURADORA_POZO,
+      'Repaso': PF_EXCAVACION_ZARANDA,
+      'Revolver': PF_EXCAVACION_ZARANDA,
+      [DESTINO_ALMACEN_GRANZON]: PF_ALMACENAMIENTO,
       [DESTINO_ALMACEN_TIERRA]: PF_ALMACENAMIENTO,
     },
     'Zaranda': {
@@ -148,14 +151,23 @@ const PORCENTAJES_ARENA = {
       'Repaso': PF_ZARANDA_DESTINO,
       'Revolver': PF_ZARANDA_DESTINO,
       [DESTINO_ALMACEN_GRANZON]: PF_ALMACENAMIENTO,
+      [DESTINO_ALMACEN_TIERRA]: PF_ALMACENAMIENTO,
     },
     'Trituradora': {
       'Zaranda': PF_RETORNO_ZARANDA,
+      'Clasificadora': PF_RETORNO_ZARANDA,
+      'Repaso': PF_RETORNO_ZARANDA,
+      'Revolver': PF_RETORNO_ZARANDA,
       [DESTINO_ALMACEN_GRANZON]: PF_ALMACENAMIENTO,
+      [DESTINO_ALMACEN_TIERRA]: PF_ALMACENAMIENTO,
     },
     'Clasificadora': {
       'Zaranda': PF_RETORNO_ZARANDA,
+      'Trituradora': PF_RETORNO_ZARANDA,
+      'Repaso': PF_RETORNO_ZARANDA,
+      'Revolver': PF_RETORNO_ZARANDA,
       [DESTINO_ALMACEN_GRANZON]: PF_ALMACENAMIENTO,
+      [DESTINO_ALMACEN_TIERRA]: PF_ALMACENAMIENTO,
     },
   },
   'Silice B - Pozo': {
@@ -163,21 +175,34 @@ const PORCENTAJES_ARENA = {
       'Zaranda': PF_EXCAVACION_ZARANDA,
       'Trituradora': PF_EXCAVACION_TRITURADORA_POZO,
       'Clasificadora': PF_EXCAVACION_TRITURADORA_POZO,
+      'Repaso': PF_EXCAVACION_ZARANDA,
+      'Revolver': PF_EXCAVACION_ZARANDA,
+      [DESTINO_ALMACEN_GRANZON]: PF_ALMACENAMIENTO,
       [DESTINO_ALMACEN_TIERRA]: PF_ALMACENAMIENTO,
     },
     'Zaranda': {
       'Trituradora': PF_ZARANDA_DESTINO,  // Resultado: Silice A - Peña
       'Clasificadora': PF_ZARANDA_DESTINO, // Resultado: Silice A - Peña
       'Repaso': PF_ZARANDA_DESTINO,        // Resultado: Silice A - Peña
+      'Revolver': PF_ZARANDA_DESTINO,      // Resultado: Silice A - Peña
       [DESTINO_ALMACEN_GRANZON]: PF_ALMACENAMIENTO,
+      [DESTINO_ALMACEN_TIERRA]: PF_ALMACENAMIENTO,
     },
     'Trituradora': {
       'Zaranda': PF_RETORNO_ZARANDA,
+      'Clasificadora': PF_RETORNO_ZARANDA,
+      'Repaso': PF_RETORNO_ZARANDA,
+      'Revolver': PF_RETORNO_ZARANDA,
       [DESTINO_ALMACEN_GRANZON]: PF_ALMACENAMIENTO,
+      [DESTINO_ALMACEN_TIERRA]: PF_ALMACENAMIENTO,
     },
     'Clasificadora': {
       'Zaranda': PF_RETORNO_ZARANDA,
+      'Trituradora': PF_RETORNO_ZARANDA,
+      'Repaso': PF_RETORNO_ZARANDA,
+      'Revolver': PF_RETORNO_ZARANDA,
       [DESTINO_ALMACEN_GRANZON]: PF_ALMACENAMIENTO,
+      [DESTINO_ALMACEN_TIERRA]: PF_ALMACENAMIENTO,
     },
   },
   'Silice C - Arena Fina': {
@@ -185,21 +210,34 @@ const PORCENTAJES_ARENA = {
       'Zaranda': PF_EXCAVACION_ZARANDA,
       'Trituradora': PF_EXCAVACION_TRITURADORA_POZO,
       'Clasificadora': PF_EXCAVACION_TRITURADORA_POZO,
+      'Repaso': PF_EXCAVACION_ZARANDA,
+      'Revolver': PF_EXCAVACION_ZARANDA,
+      [DESTINO_ALMACEN_GRANZON]: PF_ALMACENAMIENTO,
       [DESTINO_ALMACEN_TIERRA]: PF_ALMACENAMIENTO,
     },
     'Zaranda': {
       'Trituradora': PF_ZARANDA_DESTINO,  // Resultado: Silice A - Peña
       'Clasificadora': PF_ZARANDA_DESTINO, // Resultado: Silice A - Peña
       'Repaso': PF_ZARANDA_DESTINO,        // Resultado: Silice A - Peña
+      'Revolver': PF_ZARANDA_DESTINO,      // Resultado: Silice A - Peña
       [DESTINO_ALMACEN_GRANZON]: PF_ALMACENAMIENTO,
+      [DESTINO_ALMACEN_TIERRA]: PF_ALMACENAMIENTO,
     },
     'Trituradora': {
       'Zaranda': PF_RETORNO_ZARANDA,
+      'Clasificadora': PF_RETORNO_ZARANDA,
+      'Repaso': PF_RETORNO_ZARANDA,
+      'Revolver': PF_RETORNO_ZARANDA,
       [DESTINO_ALMACEN_GRANZON]: PF_ALMACENAMIENTO,
+      [DESTINO_ALMACEN_TIERRA]: PF_ALMACENAMIENTO,
     },
     'Clasificadora': {
       'Zaranda': PF_RETORNO_ZARANDA,
+      'Trituradora': PF_RETORNO_ZARANDA,
+      'Repaso': PF_RETORNO_ZARANDA,
+      'Revolver': PF_RETORNO_ZARANDA,
       [DESTINO_ALMACEN_GRANZON]: PF_ALMACENAMIENTO,
+      [DESTINO_ALMACEN_TIERRA]: PF_ALMACENAMIENTO,
     },
   },
 };
