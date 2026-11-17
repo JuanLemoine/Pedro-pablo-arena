@@ -33,6 +33,9 @@ export const CAPACIDAD_VOLQUETAS: Record<string, number> = {
   'AFE681': 7,
   'OKE331': 7,
   'SWJ304': 7,
+  'SBF439': 7,
+  'AEC030': 7,
+  'SDQ327': 7,
 };
 
 export const CAPACIDAD_DEFAULT = 7;
