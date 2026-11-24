@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Check, X, Search, PackageCheck, Loader2 } from 'lucide-react';
+import { Check, X, Search, PackageCheck, Loader2, Pencil } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,17 +10,42 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { useAcopios, useConfirmarAcopio } from '@/hooks/useAcopios';
+import { useAcopios, useConfirmarAcopio, useUpdateAcopio } from '@/hooks/useAcopios';
 import { CAPACIDAD_M3_ACOPIO } from '@/lib/volquetas';
 
 const AcopioConfirmacion = () => {
   const { data: acopios = [], isLoading, error } = useAcopios();
   const confirmarAcopio = useConfirmarAcopio();
+  const updateAcopio = useUpdateAcopio();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filtroEstado, setFiltroEstado] = useState<'todos' | 'pendiente' | 'confirmado'>('pendiente');
   const [filterSilice, setFilterSilice] = useState('all');
   const [confirmandoId, setConfirmandoId] = useState<string | null>(null);
+  const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [editandoViajes, setEditandoViajes] = useState('');
+
+  const handleStartEditViajes = (id: string, valorActual: number) => {
+    setEditandoId(id);
+    setEditandoViajes(String(valorActual));
+  };
+
+  const handleSaveViajes = (acopio: (typeof acopios)[0]) => {
+    const nuevo = parseInt(editandoViajes, 10);
+    setEditandoId(null);
+    if (isNaN(nuevo) || nuevo < 1 || nuevo === acopio.cantidad_viajes) return;
+    updateAcopio.mutate({
+      id: acopio.id,
+      acopio: {
+        fecha: acopio.fecha,
+        fuente: acopio.fuente,
+        silice: acopio.silice,
+        placa: acopio.placa,
+        cantidad_viajes: nuevo,
+        confirmado: acopio.confirmado,
+      },
+    });
+  };
 
   const handleToggleConfirmado = (id: string, actual: boolean | null) => {
     setConfirmandoId(id);
@@ -169,7 +194,32 @@ const AcopioConfirmacion = () => {
                           {(a.silice ?? '').replace('Silice A - ', '').replace('Silice B - ', '').replace('Silice C - ', '')}
                         </TableCell>
                         <TableCell className="font-mono text-sm">{a.placa}</TableCell>
-                        <TableCell className="text-right tabular-nums">{a.cantidad_viajes}</TableCell>
+                        <TableCell className="text-right">
+                          {editandoId === a.id ? (
+                            <input
+                              type="number"
+                              min={1}
+                              value={editandoViajes}
+                              onChange={e => setEditandoViajes(e.target.value)}
+                              onBlur={() => handleSaveViajes(a)}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') handleSaveViajes(a);
+                                if (e.key === 'Escape') setEditandoId(null);
+                              }}
+                              autoFocus
+                              className="w-16 rounded border border-primary px-1 py-0.5 text-right tabular-nums text-sm focus:outline-none"
+                            />
+                          ) : (
+                            <button
+                              onClick={() => handleStartEditViajes(a.id, a.cantidad_viajes)}
+                              className="group inline-flex items-center gap-1 tabular-nums hover:text-primary"
+                              title="Editar cantidad de viajes"
+                            >
+                              <span>{a.cantidad_viajes}</span>
+                              <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-60" />
+                            </button>
+                          )}
+                        </TableCell>
                         <TableCell className="text-right tabular-nums font-medium">
                           {m3.toLocaleString('es-CO')} m³
                         </TableCell>
