@@ -19,7 +19,7 @@ const AcopioConfirmacion = () => {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filtroEstado, setFiltroEstado] = useState<'todos' | 'pendiente' | 'confirmado'>('pendiente');
-  const [filterSilice, setFilterSilice] = useState('');
+  const [filterSilice, setFilterSilice] = useState('all');
   const [confirmandoId, setConfirmandoId] = useState<string | null>(null);
 
   const handleToggleConfirmado = (id: string, actual: boolean | null) => {
@@ -35,7 +35,7 @@ const AcopioConfirmacion = () => {
       filtroEstado === 'todos' ||
       (filtroEstado === 'pendiente' && !a.confirmado) ||
       (filtroEstado === 'confirmado' && !!a.confirmado);
-    const siliceOk = !filterSilice || a.silice === filterSilice;
+    const siliceOk = filterSilice === 'all' || a.silice === filterSilice;
     const textOk =
       !searchTerm ||
       a.placa.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -115,10 +115,10 @@ const AcopioConfirmacion = () => {
             </Select>
             <Select value={filterSilice} onValueChange={setFilterSilice}>
               <SelectTrigger className="w-44">
-                <SelectValue placeholder="Todos los tipos" />
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todos los tipos</SelectItem>
+                <SelectItem value="all">Todos los tipos</SelectItem>
                 <SelectItem value="Silice A - Peña">Sílice A - Peña</SelectItem>
                 <SelectItem value="Silice B - Pozo">Sílice B - Pozo</SelectItem>
                 <SelectItem value="Silice C - Arena Fina">Sílice C - Arena Fina</SelectItem>
@@ -160,13 +160,13 @@ const AcopioConfirmacion = () => {
                         className={cn(estaConfirmado && 'bg-green-50/50 dark:bg-green-950/20')}
                       >
                         <TableCell className="whitespace-nowrap">
-                          {format(parseISO(a.fecha), "d MMM yyyy", { locale: es })}
+                          {a.fecha ? format(parseISO(a.fecha), "d MMM yyyy", { locale: es }) : '—'}
                         </TableCell>
                         <TableCell className="max-w-36 truncate text-xs text-muted-foreground">
                           {a.fuente}
                         </TableCell>
                         <TableCell className="text-xs">
-                          {a.silice.replace('Silice A - ', '').replace('Silice B - ', '').replace('Silice C - ', '')}
+                          {(a.silice ?? '').replace('Silice A - ', '').replace('Silice B - ', '').replace('Silice C - ', '')}
                         </TableCell>
                         <TableCell className="font-mono text-sm">{a.placa}</TableCell>
                         <TableCell className="text-right tabular-nums">{a.cantidad_viajes}</TableCell>
