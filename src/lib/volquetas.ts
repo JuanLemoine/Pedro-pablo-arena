@@ -40,6 +40,7 @@ export const CAPACIDAD_VOLQUETAS: Record<string, number> = {
   'ELC767': 7,
   'JIJ390': 7,
   'SBB136': 7,
+  'GLB661': 7,
 };
 
 export const CAPACIDAD_DEFAULT = 7;
