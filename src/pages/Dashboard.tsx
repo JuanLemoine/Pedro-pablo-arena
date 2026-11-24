@@ -31,6 +31,7 @@ import {
   FileDown,
   Loader2,
   Mountain,
+  Tag,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { traerTodo } from '@/lib/fetchTodo';
@@ -627,14 +628,57 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
+        {/* Ventas del Acopio */}
+        <Card className="shadow-card border-violet-200/60 bg-gradient-to-br from-violet-50/40 to-white">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2 text-violet-700">
+              <Tag className="h-4 w-4" />
+              Ventas del Acopio
+            </CardTitle>
+            <CardDescription className="text-xs">Ventas registradas en el punto de acopio</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {resumenLoading ? (
+              <div className="space-y-2"><Skeleton className="h-10 w-full" /><Skeleton className="h-6 w-3/4" /></div>
+            ) : resumen ? (
+              <>
+                <div className="grid grid-cols-2 gap-2">
+                  <ResumenChip label="Registros" value={resumen.ventasAcopio.totalRegistros.toString()} color="bg-violet-50 border-violet-200" />
+                  <ResumenChip label="Valor total" value={`$${resumen.ventasAcopio.totalValor.toLocaleString('es-CO')}`} color="bg-purple-50 border-purple-200" />
+                  <ResumenChip label="m³ vendidos" value={`${resumen.ventasAcopio.totalM3.toLocaleString('es-CO', { maximumFractionDigits: 1 })} m³`} color="bg-indigo-50 border-indigo-200" />
+                </div>
+                {resumen.ventasAcopio.porSilice.length > 0 && (
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground font-medium">Por sílice</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {resumen.ventasAcopio.porSilice.map(s => (
+                        <Badge key={s.silice} variant="outline" className={cn('text-xs',
+                          s.silice.includes('A') ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-purple-50 text-purple-700 border-purple-200')}>
+                          {s.silice.replace('Silice ', '')}: {s.m3.toLocaleString('es-CO', { maximumFractionDigits: 1 })} m³ · ${s.valor.toLocaleString('es-CO')}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {resumen.ventasAcopio.totalRegistros === 0 && (
+                  <p className="text-xs text-muted-foreground">Sin ventas registradas en el acopio para este período.</p>
+                )}
+                <button onClick={() => navigate('/ventas-acopio')} className="text-xs text-primary hover:underline flex items-center gap-1 pt-0.5">
+                  Ver detalle <ArrowUpRight className="h-3 w-3" />
+                </button>
+              </>
+            ) : null}
+          </CardContent>
+        </Card>
+
         {/* Total Combinado */}
         <Card className="shadow-card border-teal-200/60 bg-gradient-to-br from-teal-50/60 to-white">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-semibold flex items-center gap-2 text-teal-700">
               <BadgeDollarSign className="h-4 w-4" />
-              Total Combinado
+              Total Ventas
             </CardTitle>
-            <CardDescription className="text-xs">Ventas + Acopio</CardDescription>
+            <CardDescription className="text-xs">Mina + Acopio</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {resumenLoading ? (
@@ -642,34 +686,36 @@ const Dashboard = () => {
             ) : resumen ? (
               <>
                 <div className="p-4 rounded-xl bg-teal-50 border border-teal-200 text-center">
-                  <p className="text-xs text-teal-600 mb-1">Ingreso total del período</p>
-                  <p className="text-3xl font-bold text-teal-800">${resumen.totalCombinado.toLocaleString('es-CO')}</p>
+                  <p className="text-xs text-teal-600 mb-1">Total vendido del período</p>
+                  <p className="text-3xl font-bold text-teal-800">${resumen.totalVentas.toLocaleString('es-CO')}</p>
                   <p className="mt-2 border-t border-teal-200 pt-2 text-xs text-teal-600">
                     Producto final entregado{' '}
                     <span className="font-semibold text-teal-800">
                       {resumen.productoFinalEntregado.toLocaleString('es-CO', { maximumFractionDigits: 1 })} m³
                     </span>
                   </p>
-                  <p className="text-[10px] text-teal-600/80">
-                    {resumen.ventas.totalM3Entregados.toLocaleString('es-CO', { maximumFractionDigits: 1 })} m³ a clientes
-                    {' + '}
-                    {resumen.acopio.totalM3.toLocaleString('es-CO', { maximumFractionDigits: 1 })} m³ al acopio
-                  </p>
                 </div>
                 <div className="space-y-2">
+                  {/* Ventas mina */}
                   <div className="flex items-center justify-between text-xs">
-                    <span className="flex items-center gap-1.5 text-green-700"><ShoppingCart className="h-3 w-3" /> Ventas</span>
-                    <span className="font-semibold">${resumen.ventas.totalValor.toLocaleString('es-CO')}</span>
+                    <span className="flex items-center gap-1.5 text-green-700"><ShoppingCart className="h-3 w-3" /> Ventas mina</span>
+                    <span className="font-semibold">${(resumen.totalVentas - resumen.ventasAcopio.totalValor).toLocaleString('es-CO')}</span>
                   </div>
                   <div className="w-full bg-muted rounded-full h-1.5">
-                    <div className="bg-green-500 h-1.5 rounded-full" style={{ width: resumen.totalCombinado > 0 ? `${(resumen.ventas.totalValor / resumen.totalCombinado) * 100}%` : '0%' }} />
+                    <div className="bg-green-500 h-1.5 rounded-full" style={{ width: resumen.totalVentas > 0 ? `${((resumen.totalVentas - resumen.ventasAcopio.totalValor) / resumen.totalVentas) * 100}%` : '0%' }} />
                   </div>
+                  {/* Ventas acopio */}
                   <div className="flex items-center justify-between text-xs">
-                    <span className="flex items-center gap-1.5 text-amber-700"><Warehouse className="h-3 w-3" /> Acopio</span>
+                    <span className="flex items-center gap-1.5 text-violet-700"><Tag className="h-3 w-3" /> Ventas acopio</span>
+                    <span className="font-semibold">${resumen.ventasAcopio.totalValor.toLocaleString('es-CO')}</span>
+                  </div>
+                  <div className="w-full bg-muted rounded-full h-1.5">
+                    <div className="bg-violet-500 h-1.5 rounded-full" style={{ width: resumen.totalVentas > 0 ? `${(resumen.ventasAcopio.totalValor / resumen.totalVentas) * 100}%` : '0%' }} />
+                  </div>
+                  {/* Acopio enviado */}
+                  <div className="flex items-center justify-between text-xs pt-1 border-t">
+                    <span className="flex items-center gap-1.5 text-amber-700"><Warehouse className="h-3 w-3" /> Acopio enviado (est.)</span>
                     <span className="font-semibold">${resumen.acopio.totalValor.toLocaleString('es-CO')}</span>
-                  </div>
-                  <div className="w-full bg-muted rounded-full h-1.5">
-                    <div className="bg-amber-500 h-1.5 rounded-full" style={{ width: resumen.totalCombinado > 0 ? `${(resumen.acopio.totalValor / resumen.totalCombinado) * 100}%` : '0%' }} />
                   </div>
                 </div>
               </>

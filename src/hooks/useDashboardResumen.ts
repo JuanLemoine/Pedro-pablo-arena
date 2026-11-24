@@ -163,13 +163,23 @@ interface ClienteVenta {
   descuenta_anticipo: boolean | null;
 }
 
+export interface ResumenVentasAcopio {
+  totalRegistros: number;
+  totalM3: number;
+  totalValor: number;
+  porSilice: { silice: string; registros: number; m3: number; valor: number }[];
+}
+
 export interface DashboardResumen {
   ventas: ResumenVentas;
+  ventasAcopio: ResumenVentasAcopio;
   acopio: ResumenAcopio;
   movimientos: ResumenMovimientos;
   porFuente: ResumenPorFuente[];
   clientes: ResumenCliente[];
   totalCombinado: number;
+  /** Solo ventas: mina + acopio. */
+  totalVentas: number;
   /** Producto final entregado = ventas (con yapa) + acopio. */
   productoFinalEntregado: number;
   anticiposPorNIT: AnticipoPorNIT[];
@@ -204,6 +214,12 @@ export const useDashboardResumen = (filtros: DashboardFiltros) => {
       let totalValorVentas = 0;
       const totalRegistrosVentas = ventasData?.length || 0;
 
+      // Ventas registradas en el acopio (fuente = 'Acopio')
+      let totalRegistrosVA = 0;
+      let totalM3VA = 0;
+      let totalValorVA = 0;
+      const ventasAcopioPorSiliceMap = new Map<string, { registros: number; m3: number; valor: number }>();
+
       ventasData?.forEach(v => {
         const tipo = (v as any).tipo_transaccion || 'Venta';
         const sil = v.silice;
@@ -212,6 +228,18 @@ export const useDashboardResumen = (filtros: DashboardFiltros) => {
         const val = Number(v.valor_total);
         // Los consumos de anticipo no generan nuevo ingreso (ya fueron cobrados como anticipo)
         const consumo = esConsumoAnticipo(v as any);
+
+        if (fuente === 'Acopio') {
+          totalRegistrosVA++;
+          totalM3VA += m3;
+          if (!consumo) totalValorVA += val;
+          const pa = ventasAcopioPorSiliceMap.get(sil) || { registros: 0, m3: 0, valor: 0 };
+          ventasAcopioPorSiliceMap.set(sil, {
+            registros: pa.registros + 1,
+            m3: pa.m3 + m3,
+            valor: pa.valor + (consumo ? 0 : val),
+          });
+        }
 
         totalM3Vendidos += m3;
         if (!consumo) totalValorVentas += val;
@@ -476,13 +504,22 @@ export const useDashboardResumen = (filtros: DashboardFiltros) => {
         }))
         .sort((a, b) => b.valorTotal - a.valorTotal);
 
+      const ventasAcopio: ResumenVentasAcopio = {
+        totalRegistros: totalRegistrosVA,
+        totalM3: Math.round(totalM3VA * 100) / 100,
+        totalValor: Math.round(totalValorVA),
+        porSilice: Array.from(ventasAcopioPorSiliceMap.entries()).map(([silice, d]) => ({ silice, ...d })),
+      };
+
       return {
         ventas,
+        ventasAcopio,
         acopio,
         movimientos,
         porFuente,
         clientes,
         totalCombinado: Math.round(ventas.totalValor + acopio.totalValor),
+        totalVentas: Math.round(ventas.totalValor),
         /**
          * Producto final entregado: lo que salió hacia clientes (facturado más
          * la yapa) más lo que se llevó al acopio. Es la fila "Producto final
