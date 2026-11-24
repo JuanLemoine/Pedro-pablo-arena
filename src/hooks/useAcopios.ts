@@ -100,6 +100,25 @@ export const useUpdateAcopio = () => {
   });
 };
 
+export const useConfirmarAcopio = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, confirmado }: { id: string; confirmado: boolean }) => {
+      const { error } = await supabase
+        .from('acopios')
+        .update({ confirmado })
+        .eq('id', id);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['acopios'] });
+    },
+    onError: (error: Error) => {
+      toast.error(`Error al confirmar: ${error.message}`);
+    },
+  });
+};
+
 export const useDeleteAcopio = () => {
   const queryClient = useQueryClient();
 

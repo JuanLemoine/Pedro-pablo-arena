@@ -79,6 +79,7 @@ export interface Database {
           silice: string;
           placa: string;
           cantidad_viajes: number;
+          confirmado: boolean | null;
           usuario_id: string | null;
           created_at: string;
         };
@@ -89,6 +90,7 @@ export interface Database {
           silice: string;
           placa: string;
           cantidad_viajes: number;
+          confirmado?: boolean | null;
           usuario_id?: string | null;
           created_at?: string;
         };
@@ -99,6 +101,7 @@ export interface Database {
           silice?: string;
           placa?: string;
           cantidad_viajes?: number;
+          confirmado?: boolean | null;
           usuario_id?: string | null;
           created_at?: string;
         };

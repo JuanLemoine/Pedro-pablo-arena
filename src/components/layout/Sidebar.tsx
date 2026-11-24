@@ -13,6 +13,8 @@ import {
   Timer,
   Calculator,
   Wallet,
+  PackageCheck,
+  Tag,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
@@ -22,6 +24,8 @@ const navigation = [
   { name: 'Ventas', href: '/ventas', icon: ShoppingCart },
   { name: 'Anticipos', href: '/anticipos', icon: Wallet },
   { name: 'Acopio', href: '/acopio', icon: Warehouse },
+  { name: 'Confirmación', href: '/acopio-confirmacion', icon: PackageCheck },
+  { name: 'Ventas acopio', href: '/ventas-acopio', icon: Tag },
   { name: 'Movimientos', href: '/movimientos', icon: ArrowLeftRight },
   { name: 'Tiempos', href: '/tiempos', icon: Timer },
   { name: 'Simulador', href: '/simulador', icon: Calculator },
