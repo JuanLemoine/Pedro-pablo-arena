@@ -216,7 +216,7 @@ const AcopioConfirmacion = () => {
                               title="Editar cantidad de viajes"
                             >
                               <span>{a.cantidad_viajes}</span>
-                              <Pencil className="h-3 w-3 text-muted-foreground/50" />
+                              <Pencil className="h-3 w-3 opacity-40" />
                             </button>
                           )}
                         </TableCell>
