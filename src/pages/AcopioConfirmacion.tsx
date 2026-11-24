@@ -212,11 +212,11 @@ const AcopioConfirmacion = () => {
                           ) : (
                             <button
                               onClick={() => handleStartEditViajes(a.id, a.cantidad_viajes)}
-                              className="group inline-flex items-center gap-1 tabular-nums hover:text-primary"
+                              className="inline-flex items-center gap-1 tabular-nums hover:text-primary"
                               title="Editar cantidad de viajes"
                             >
                               <span>{a.cantidad_viajes}</span>
-                              <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-60" />
+                              <Pencil className="h-3 w-3 text-muted-foreground/50" />
                             </button>
                           )}
                         </TableCell>
