@@ -6,6 +6,7 @@ import {
   calcularM3PorMovimiento,
   getCapacidadVolqueta,
   esDestinoAlmacenamiento,
+  CAPACIDAD_M3_ACOPIO,
 } from '@/lib/volquetas';
 
 export interface DashboardFiltros {
@@ -272,8 +273,7 @@ export const useDashboardResumen = (filtros: DashboardFiltros) => {
 
       acopioData?.forEach(a => {
         const viajes = a.cantidad_viajes;
-        const capacidad = getCapacidadVolqueta(a.placa);
-        const m3 = capacidad * viajes;
+        const m3 = CAPACIDAD_M3_ACOPIO * viajes;
         const precio = PRECIO_M3[a.silice] ?? 0;
         const valor = m3 * precio;
         totalViajesAcopio += viajes;

@@ -14,6 +14,7 @@ import {
   PF_EXCAVACION_ZARANDA,
   PF_ZARANDA_DESTINO,
   PF_GRANZON,
+  CAPACIDAD_M3_ACOPIO,
 } from '@/lib/volquetas';
 import { jornadaSegundosParaFecha, JORNADA_SAB } from '@/lib/simulador';
 import { PRECIO_M3 } from '@/hooks/useDashboardResumen';
@@ -694,7 +695,7 @@ export const calcularMetricasPeriodo = (
   acopios.forEach(a => {
     placasConActividad.add(a.placa.toUpperCase());
     const viajes = Number(a.cantidad_viajes) || 0;
-    const m3 = getCapacidadVolqueta(a.placa) * viajes;
+    const m3 = CAPACIDAD_M3_ACOPIO * viajes;
     viajesAcopio += viajes;
     m3Acopio += m3;
     m3AcopioPorSilice.set(a.silice, (m3AcopioPorSilice.get(a.silice) || 0) + m3);

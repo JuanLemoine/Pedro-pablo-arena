@@ -44,6 +44,9 @@ export const CAPACIDAD_VOLQUETAS: Record<string, number> = {
 
 export const CAPACIDAD_DEFAULT = 7;
 
+/** Capacidad fija que se usa para calcular m³ en registros de acopio. */
+export const CAPACIDAD_M3_ACOPIO = 6;
+
 export const getCapacidadVolqueta = (placa: string): number => {
   return CAPACIDAD_VOLQUETAS[placa.toUpperCase()] || CAPACIDAD_DEFAULT;
 };
